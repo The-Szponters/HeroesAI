@@ -27,9 +27,9 @@ TEST(HexTest, DistanceOperator) {
     Hex h2(1, 0, -1);
     Hex h3(-2, 1, 1);
     
-    EXPECT_EQ(h1 - h2, 1);
-    EXPECT_EQ(h1 - h3, 2);
-    EXPECT_EQ(h2 - h3, 3);
+    EXPECT_EQ(h1.distance_to(h2), 1);
+    EXPECT_EQ(h1.distance_to(h3), 2);
+    EXPECT_EQ(h2.distance_to(h3), 3);
 }
 
 TEST(HexTest, InitializationWithUnit) {
