@@ -1,6 +1,7 @@
 #include "unit_factory.hpp"
 #include <fstream>
 #include <stdexcept>
+std::unordered_map<UnitID, nlohmann::json> UnitFactory::unit_data;
 
 std::string UnitFactory::unit_id_to_string(UnitID id) {
     static const char* unit_names[] = {
@@ -42,21 +43,25 @@ std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
     
     const auto& data = it->second;
     std::string name = unit_id_to_string(id);
-    int tier = data.value("tier", 1);
-    int attack = data.value("attack", 1);
-    int defense = data.value("defense", 1);
-    int health = data.value("health", 1);
     
-    int damage_min = data.value("damage_min", 1);
-    int damage_max = data.value("damage_max", 1);
-    
-    int speed = data.value("speed", 1);
-    int size = data.value("size", 1);
-    
-    if (data.contains("shoots")) {
-        int shoots = data["shoots"];
-        return std::make_shared<RangeUnit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count, shoots);
-    } else {
-        return std::make_shared<Unit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count);
+    try {
+        int tier = data.at("tier").get<int>();
+        int attack = data.at("attack").get<int>();
+        int defense = data.at("defense").get<int>();
+        int health = data.at("health").get<int>();
+        
+        int damage_min = data.at("damage_min").get<int>();
+        int damage_max = data.at("damage_max").get<int>();
+        
+        int speed = data.at("speed").get<int>();
+        
+        if (data.contains("shoots")) {
+            int shoots = data.at("shoots").get<int>();
+            return std::make_shared<RangeUnit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count, shoots);
+        } else {
+            return std::make_shared<Unit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count);
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error("UnitFactory: missing or invalid field for unit " + name + " (" + e.what() + ")");
     }
 }
