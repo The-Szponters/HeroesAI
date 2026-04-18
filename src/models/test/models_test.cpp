@@ -33,7 +33,7 @@ TEST(HexTest, DistanceOperator) {
 }
 
 TEST(HexTest, InitializationWithUnit) {
-    Unit u("Warrior", 2, 10, 5, 100, 15, 3, 1);
+    Unit u("Warrior", 2, 10, 5, 100, 15, 3, 5);
     Hex h1(0, 0, 0, u);
     EXPECT_EQ(h1.get_q(), 0);
     EXPECT_EQ(h1.get_r(), 0);
@@ -45,11 +45,11 @@ TEST(HexTest, InitializationWithUnit) {
     EXPECT_EQ(h1.get_unit().get_health(), 100);
     EXPECT_EQ(h1.get_unit().get_damage(), 15);
     EXPECT_EQ(h1.get_unit().get_speed(), 3);
-    EXPECT_EQ(h1.get_unit().get_size(), 1);
+    EXPECT_EQ(h1.get_unit().get_count(), 5);
 }
 
 TEST(UnitTest, Initialization) {
-    Unit u("Warrior", 2, 10, 5, 100, 15, 3, 1);
+    Unit u("Warrior", 2, 10, 5, 100, 15, 3, 5);
     EXPECT_EQ(u.get_name(), "Warrior");
     EXPECT_EQ(u.get_tier(), 2);
     EXPECT_EQ(u.get_attack(), 10);
@@ -57,14 +57,16 @@ TEST(UnitTest, Initialization) {
     EXPECT_EQ(u.get_health(), 100);
     EXPECT_EQ(u.get_damage(), 15);
     EXPECT_EQ(u.get_speed(), 3);
-    EXPECT_EQ(u.get_size(), 1);
+    
+    EXPECT_EQ(u.get_count(), 5);
     EXPECT_EQ(u.get_health_left(), 100);
 }
 
 TEST(RangeUnitTest, Initialization) {
-    RangeUnit ru("Archer", 3, 8, 3, 50, 12, 4, 1, 10);
+    RangeUnit ru("Archer", 3, 8, 3, 50, 12, 4, 10, 12);
     EXPECT_EQ(ru.get_name(), "Archer");
     EXPECT_EQ(ru.get_tier(), 3);
     EXPECT_EQ(ru.get_attack(), 8);
-    EXPECT_EQ(ru.get_shoots(), 10);
+    EXPECT_EQ(ru.get_shoots(), 12);
+    EXPECT_EQ(ru.get_count(), 10);
 }

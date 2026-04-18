@@ -5,8 +5,8 @@ class Unit
 {
 public:
     Unit() = default;
-    Unit(std::string name, int tier, int attack, int defense, int health, int damage, int speed, int size)
-        : name(name), tier(tier), attack(attack), defense(defense), health(health), damage(damage), speed(speed), size(size), health_left(health) {}
+    Unit(std::string name, int tier, int attack, int defense, int health, int damage, int speed, int count)
+        : name(name), tier(tier), attack(attack), defense(defense), health(health), damage(damage), speed(speed), count(count), health_left(health) {}
     virtual ~Unit() = default;
 
     std::string get_name() const { return name; }
@@ -16,7 +16,7 @@ public:
     int get_health() const { return health; }
     int get_damage() const { return damage; }
     int get_speed() const { return speed; }
-    int get_size() const { return size; }
+    int get_count() const { return count; }
     int get_health_left() const { return health_left; }
 
 protected:
@@ -28,5 +28,5 @@ protected:
     int health_left = 1;
     int damage = 1;
     int speed = 1;
-    int size = 1;
+    int count = 1;
 };
