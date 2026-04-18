@@ -19,8 +19,17 @@ public:
     int get_speed() const { return speed; }
     int get_count() const { return count; }
     int get_health_left() const { return health_left; }
+    int get_q() const { return q; }
+    int get_r() const { return r; }
+    int get_s() const { return s; }
 
-protected:
+    void set_position(int q, int r, int s) {
+        this->q = q;
+        this->r = r;
+        this->s = s;
+    }
+
+private:
     std::string name;
     int tier = 1;
     int attack = 1;
@@ -31,4 +40,5 @@ protected:
     int damage_max = 1;
     int speed = 1;
     int count = 1;
+    int q = 0; int r = 0; int s = 0;
 };

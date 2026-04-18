@@ -62,6 +62,19 @@ TEST(UnitTest, Initialization) {
     
     EXPECT_EQ(u.get_count(), 5);
     EXPECT_EQ(u.get_health_left(), 100);
+    
+    // Default position
+    EXPECT_EQ(u.get_q(), 0);
+    EXPECT_EQ(u.get_r(), 0);
+    EXPECT_EQ(u.get_s(), 0);
+}
+
+TEST(UnitTest, SetPosition) {
+    Unit u;
+    u.set_position(1, -1, 0);
+    EXPECT_EQ(u.get_q(), 1);
+    EXPECT_EQ(u.get_r(), -1);
+    EXPECT_EQ(u.get_s(), 0);
 }
 
 TEST(RangeUnitTest, Initialization) {
