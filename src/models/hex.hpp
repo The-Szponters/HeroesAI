@@ -7,7 +7,6 @@
 class Hex
 {
 public:
-    Hex() = default;
     Hex(int q, int r, int s) : q(q), r(r), s(s) {
         if (!is_valid()) {
             throw std::invalid_argument("q + r + s must sum to 0");
@@ -24,7 +23,12 @@ public:
     const int get_q() const { return q; }
     const int get_r() const { return r; }
     const int get_s() const { return s; }
-    const Unit& get_unit() const { return *unit; }
+    const Unit& get_unit() const { 
+        if (!unit) {
+            throw std::runtime_error("Hex does not contain a unit");
+        }
+        return *unit; 
+    }
 
     bool operator==(const Hex& other) const {
         return q == other.q && r == other.r && s == other.s;

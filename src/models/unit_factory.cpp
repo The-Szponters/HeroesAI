@@ -10,7 +10,7 @@ std::string UnitFactory::unit_id_to_string(UnitID id) {
         "Skeleton", "SkeletonWarrior", "WalkingDead", "Zombie", "Wight", "Wraith", "Vampire", "VampireLord", "Lich", "PowerLich", "BlackKnight", "DreadKnight", "BoneDragon", "GhostDragon"
     };
     int index = static_cast<int>(id);
-    if (index >= 0 && index < 42) {
+    if (index >= 0 && index < sizeof(unit_names) / sizeof(unit_names[0])) {
         return unit_names[index];
     }
     throw std::invalid_argument("Unknown UnitID");

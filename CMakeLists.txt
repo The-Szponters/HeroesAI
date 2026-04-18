@@ -18,6 +18,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SFML)
 
+include(FetchContent)
+FetchContent_Declare(
+  json
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+FetchContent_MakeAvailable(json)
+
 add_executable(${PROJECT_NAME} src/main.cpp src/models/unit_factory.cpp)
 
 target_link_libraries(${PROJECT_NAME} 
@@ -42,16 +49,10 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(HeroesAITests src/models/test/models_test.cpp src/models/test/unit_factory_test.cpp src/models/unit_factory.cpp)
+add_executable(HeroesAITests src/models/test/models_test.cpp src/models/test/unit_factory_test.cpp src/models/test/board_test.cpp src/models/unit_factory.cpp)
 target_include_directories(HeroesAITests PRIVATE src/models)
 target_link_libraries(HeroesAITests GTest::gtest_main nlohmann_json::nlohmann_json)
 
 include(GoogleTest)
 gtest_discover_tests(HeroesAITests)
 
-include(FetchContent)
-FetchContent_Declare(
-  json
-  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-)
-FetchContent_MakeAvailable(json)
