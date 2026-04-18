@@ -49,7 +49,7 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(HeroesAITests src/models/test/models_test.cpp src/models/test/unit_factory_test.cpp src/models/test/board_test.cpp src/models/test/army_test.cpp src/models/test/hero_test.cpp src/models/unit_factory.cpp src/core/RoundManager.cpp src/core/test/round_manager_test.cpp)
+add_executable(HeroesAITests src/models/test/models_test.cpp src/models/test/unit_factory_test.cpp src/models/test/board_test.cpp src/models/test/army_test.cpp src/models/test/hero_test.cpp src/models/unit_factory.cpp src/core/RoundManager.cpp src/core/test/round_manager_test.cpp src/core/ActionManager.cpp src/core/test/action_manager_test.cpp)
 target_include_directories(HeroesAITests PRIVATE src/models)
 target_link_libraries(HeroesAITests GTest::gtest_main nlohmann_json::nlohmann_json)
 

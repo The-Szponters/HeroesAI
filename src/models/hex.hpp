@@ -23,6 +23,7 @@ public:
     const int get_q() const { return q; }
     const int get_r() const { return r; }
     const int get_s() const { return s; }
+    
     std::shared_ptr<Unit> get_unit() const { 
         auto shared_unit = unit.lock();
         if (!shared_unit) {
@@ -41,6 +42,19 @@ public:
             std::abs(s - other.s)
         });
     }
+
+    bool has_unit() const {
+        return !unit.expired();
+    }
+
+    void set_unit(std::weak_ptr<Unit> new_unit) {
+        unit = std::move(new_unit);
+    }
+
+    void remove_unit() {
+        unit.reset();
+    }
+
 private:
     const int q;
     const int r;
