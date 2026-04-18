@@ -13,7 +13,7 @@ public:
             throw std::invalid_argument("q + r + s must sum to 0");
         }
     }
-    Hex(int q, int r, int s, std::shared_ptr<Unit> unit) : q(q), r(r), s(s), unit(std::move(unit)) {
+    Hex(int q, int r, int s, const Unit& unit) : q(q), r(r), s(s), unit(std::make_shared<Unit>(unit)) {
         if (!is_valid()) {
             throw std::invalid_argument("q + r + s must sum to 0");
         }
@@ -24,6 +24,7 @@ public:
     int get_q() const { return q; }
     int get_r() const { return r; }
     int get_s() const { return s; }
+    const Unit& get_unit() const { return *unit; }
 
     bool operator==(const Hex& other) const {
         return q == other.q && r == other.r && s == other.s;
