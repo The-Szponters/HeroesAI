@@ -12,7 +12,7 @@ public:
             throw std::invalid_argument("q + r + s must sum to 0");
         }
     }
-    Hex(int q, int r, int s, const Unit& unit) : q(q), r(r), s(s), unit(std::make_shared<Unit>(unit)) {
+    Hex(int q, int r, int s, std::weak_ptr<Unit> unit) : q(q), r(r), s(s), unit(std::move(unit)) {
         if (!is_valid()) {
             throw std::invalid_argument("q + r + s must sum to 0");
         }
@@ -23,11 +23,12 @@ public:
     const int get_q() const { return q; }
     const int get_r() const { return r; }
     const int get_s() const { return s; }
-    const Unit& get_unit() const { 
-        if (!unit) {
+    std::shared_ptr<Unit> get_unit() const { 
+        auto shared_unit = unit.lock();
+        if (!shared_unit) {
             throw std::runtime_error("Hex does not contain a unit");
         }
-        return *unit; 
+        return shared_unit; 
     }
 
     bool operator==(const Hex& other) const {
@@ -44,7 +45,7 @@ private:
     const int q;
     const int r;
     const int s;
-    std::shared_ptr<Unit> unit;
+    std::weak_ptr<Unit> unit;
     bool is_valid() const {
         return q + r + s == 0;
     }

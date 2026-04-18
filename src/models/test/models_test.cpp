@@ -33,20 +33,20 @@ TEST(HexTest, DistanceOperator) {
 }
 
 TEST(HexTest, InitializationWithUnit) {
-    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    auto u = std::make_shared<Unit>("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
     Hex h1(0, 0, 0, u);
     EXPECT_EQ(h1.get_q(), 0);
     EXPECT_EQ(h1.get_r(), 0);
     EXPECT_EQ(h1.get_s(), 0);
-    EXPECT_EQ(h1.get_unit().get_name(), "Warrior");
-    EXPECT_EQ(h1.get_unit().get_tier(), 2);
-    EXPECT_EQ(h1.get_unit().get_attack(), 10);
-    EXPECT_EQ(h1.get_unit().get_defense(), 5);
-    EXPECT_EQ(h1.get_unit().get_health(), 100);
-    EXPECT_EQ(h1.get_unit().get_damage_min(), 10);
-    EXPECT_EQ(h1.get_unit().get_damage_max(), 15);
-    EXPECT_EQ(h1.get_unit().get_speed(), 3);
-    EXPECT_EQ(h1.get_unit().get_count(), 5);
+    EXPECT_EQ(h1.get_unit()->get_name(), "Warrior");
+    EXPECT_EQ(h1.get_unit()->get_tier(), 2);
+    EXPECT_EQ(h1.get_unit()->get_attack(), 10);
+    EXPECT_EQ(h1.get_unit()->get_defense(), 5);
+    EXPECT_EQ(h1.get_unit()->get_health(), 100);
+    EXPECT_EQ(h1.get_unit()->get_damage_min(), 10);
+    EXPECT_EQ(h1.get_unit()->get_damage_max(), 15);
+    EXPECT_EQ(h1.get_unit()->get_speed(), 3);
+    EXPECT_EQ(h1.get_unit()->get_count(), 5);
 }
 
 TEST(UnitTest, Initialization) {
