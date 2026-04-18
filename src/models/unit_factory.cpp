@@ -34,7 +34,7 @@ void UnitFactory::init(const std::string& filepath) {
     }
 }
 
-std::unique_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
+std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
     auto it = unit_data.find(id);
     if (it == unit_data.end()) {
         throw std::runtime_error("UnitFactory: JSON data not loaded or unit not found: " + unit_id_to_string(id));
@@ -47,15 +47,16 @@ std::unique_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
     int defense = data.value("defense", 1);
     int health = data.value("health", 1);
     
-    int damage = data.value("damage_max", 1);
+    int damage_min = data.value("damage_min", 1);
+    int damage_max = data.value("damage_max", 1);
     
     int speed = data.value("speed", 1);
     int size = data.value("size", 1);
     
     if (data.contains("shoots")) {
         int shoots = data["shoots"];
-        return std::make_unique<RangeUnit>(name, tier, attack, defense, health, damage, speed, count, shoots);
+        return std::make_shared<RangeUnit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count, shoots);
     } else {
-        return std::make_unique<Unit>(name, tier, attack, defense, health, damage, speed, count);
+        return std::make_shared<Unit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count);
     }
 }
