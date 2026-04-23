@@ -29,6 +29,18 @@ public:
         this->s = s;
     }
 
+    void take_damage(int damage) {
+        int total_health = health_left + (count - 1) * health;
+        total_health -= damage;
+        if (total_health < 0) total_health = 0;
+
+        count = (total_health + health - 1) / health;
+        health_left = total_health % health;
+        if (health_left == 0 && count > 0) {
+            health_left = health;
+        }
+    }
+
 private:
     std::string name;
     int tier = 1;

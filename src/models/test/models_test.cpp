@@ -77,6 +77,34 @@ TEST(UnitTest, SetPosition) {
     EXPECT_EQ(u.get_s(), 0);
 }
 
+TEST(UnitTest, TakeDamageLessThanHealthLeft) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(20);
+    EXPECT_EQ(u.get_count(), 5);
+    EXPECT_EQ(u.get_health_left(), 80);
+}
+
+TEST(UnitTest, TakeDamageExactlyOneUnit) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(100);
+    EXPECT_EQ(u.get_count(), 4);
+    EXPECT_EQ(u.get_health_left(), 100);
+}
+
+TEST(UnitTest, TakeDamageMultipleUnits) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(230);
+    EXPECT_EQ(u.get_count(), 3);
+    EXPECT_EQ(u.get_health_left(), 70);
+}
+
+TEST(UnitTest, TakeDamageMoreThanTotalHealth) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(1000);
+    EXPECT_EQ(u.get_count(), 0);
+    EXPECT_EQ(u.get_health_left(), 0);
+}
+
 TEST(RangeUnitTest, Initialization) {
     RangeUnit ru("Archer", 3, 8, 3, 50, 10, 12, 4, 10, 12);
     EXPECT_EQ(ru.get_name(), "Archer");
