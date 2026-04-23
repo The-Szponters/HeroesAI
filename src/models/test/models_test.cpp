@@ -33,20 +33,20 @@ TEST(HexTest, DistanceOperator) {
 }
 
 TEST(HexTest, InitializationWithUnit) {
-    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    auto u = std::make_shared<Unit>("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
     Hex h1(0, 0, 0, u);
     EXPECT_EQ(h1.get_q(), 0);
     EXPECT_EQ(h1.get_r(), 0);
     EXPECT_EQ(h1.get_s(), 0);
-    EXPECT_EQ(h1.get_unit().get_name(), "Warrior");
-    EXPECT_EQ(h1.get_unit().get_tier(), 2);
-    EXPECT_EQ(h1.get_unit().get_attack(), 10);
-    EXPECT_EQ(h1.get_unit().get_defense(), 5);
-    EXPECT_EQ(h1.get_unit().get_health(), 100);
-    EXPECT_EQ(h1.get_unit().get_damage_min(), 10);
-    EXPECT_EQ(h1.get_unit().get_damage_max(), 15);
-    EXPECT_EQ(h1.get_unit().get_speed(), 3);
-    EXPECT_EQ(h1.get_unit().get_count(), 5);
+    EXPECT_EQ(h1.get_unit()->get_name(), "Warrior");
+    EXPECT_EQ(h1.get_unit()->get_tier(), 2);
+    EXPECT_EQ(h1.get_unit()->get_attack(), 10);
+    EXPECT_EQ(h1.get_unit()->get_defense(), 5);
+    EXPECT_EQ(h1.get_unit()->get_health(), 100);
+    EXPECT_EQ(h1.get_unit()->get_damage_min(), 10);
+    EXPECT_EQ(h1.get_unit()->get_damage_max(), 15);
+    EXPECT_EQ(h1.get_unit()->get_speed(), 3);
+    EXPECT_EQ(h1.get_unit()->get_count(), 5);
 }
 
 TEST(UnitTest, Initialization) {
@@ -62,6 +62,105 @@ TEST(UnitTest, Initialization) {
     
     EXPECT_EQ(u.get_count(), 5);
     EXPECT_EQ(u.get_health_left(), 100);
+    
+    // Default position
+    EXPECT_EQ(u.get_q(), 0);
+    EXPECT_EQ(u.get_r(), 0);
+    EXPECT_EQ(u.get_s(), 0);
+}
+
+TEST(UnitTest, SetPosition) {
+    Unit u;
+    u.set_position(1, -1, 0);
+    EXPECT_EQ(u.get_q(), 1);
+    EXPECT_EQ(u.get_r(), -1);
+    EXPECT_EQ(u.get_s(), 0);
+}
+
+TEST(UnitTest, TakeDamageLessThanHealthLeft) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(20);
+    EXPECT_EQ(u.get_count(), 5);
+    EXPECT_EQ(u.get_health_left(), 80);
+}
+
+TEST(UnitTest, TakeDamageExactlyOneUnit) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(100);
+    EXPECT_EQ(u.get_count(), 4);
+    EXPECT_EQ(u.get_health_left(), 100);
+}
+
+TEST(UnitTest, TakeDamageMultipleUnits) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(230);
+    EXPECT_EQ(u.get_count(), 3);
+    EXPECT_EQ(u.get_health_left(), 70);
+}
+
+TEST(UnitTest, TakeDamageMoreThanTotalHealth) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 3, 5);
+    u.take_damage(1000);
+    EXPECT_EQ(u.get_count(), 0);
+    EXPECT_EQ(u.get_health_left(), 0);
+}
+
+TEST(UnitTest, BuffSystemDefend) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_defense(), 5);
+
+    Buff b = BuffFactory::create_defend_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 10);
+
+    u.remove_buff(BuffType::Defend);
+    EXPECT_EQ(u.get_defense(), 5);
+}
+
+TEST(UnitTest, BuffSystemSlowPercentage) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_speed(), 6);
+
+    Buff b = BuffFactory::create_slow_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_speed(), 3);
+
+    u.remove_buff(BuffType::Slow);
+    EXPECT_EQ(u.get_speed(), 6);
+}
+
+TEST(UnitTest, BuffSystemBlindHardOverride) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_speed(), 6);
+
+    Buff b = BuffFactory::create_blind_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_speed(), 0);
+
+    u.remove_buff(BuffType::Blind);
+    EXPECT_EQ(u.get_speed(), 6);
+}
+
+TEST(UnitTest, BuffSystemTurnTick) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    Buff b = BuffFactory::create_defend_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 10);
+
+    u.on_turn_start();
+    EXPECT_EQ(u.get_defense(), 5);
+}
+
+TEST(UnitTest, BuffSystemStatClamping) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    
+    Buff b;
+    b.type = BuffType::Defend;
+    b.duration = 1;
+    b.modify_defense = [](int d) { return d - 100; };
+    
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 0);
 }
 
 TEST(RangeUnitTest, Initialization) {

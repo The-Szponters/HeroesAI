@@ -35,6 +35,19 @@ public:
         throw std::out_of_range("Hex with given coordinates not found");
     }
 
+    const Hex& get_hex(int q, int r, int s) const {
+        for (const Hex& hex : grid) {
+            if (hex.get_q() == q && hex.get_r() == r && hex.get_s() == s) {
+                return hex;
+            }
+        }
+        throw std::out_of_range("Hex with given coordinates not found");
+    }
+
+    const std::vector<Hex>& get_grid() const {
+        return grid;
+    }
+
 private:
     std::vector<Hex> grid;
 };
