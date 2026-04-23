@@ -3,6 +3,7 @@
 #include <queue>
 #include <set>
 #include <map>
+#include <random>
 
 std::vector<Hex*> ActionManager::get_available_destinations(const Unit& unit, const Board& board) const {
     std::vector<Hex*> destinations;
@@ -113,9 +114,48 @@ void ActionManager::move(Unit& unit, Hex& dest_hex, Board& board) {
 }
 
 void ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board) {
-    // placeholder for combat logic
+    if (attack_from_hex.has_unit() && attack_from_hex.get_unit().get() != &attacker) {
+        throw std::runtime_error("Attack hex already has a unit");
+    }
+
+    try {
+        Hex& current = board.get_hex(attacker.get_q(), attacker.get_r(), attacker.get_s());
+        if (&current != &attack_from_hex) {
+            move(attacker, attack_from_hex, board);
+        }
+    } catch(std::out_of_range&) { }
+    
+    int damage = calculate_damage(attacker, defender);
+    defender.take_damage(damage);
 }
 
 void ActionManager::defend(Unit& unit) {
-    // placeholder for defend logic
+    unit.apply_buff(BuffFactory::create_defend_buff());
+}
+
+int ActionManager::calculate_damage(const Unit& attacker, const Unit& defender) const {
+    if (attacker.get_count() <= 0) return 0;
+    
+    int total_base_damage = 0;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(attacker.get_damage_min(), attacker.get_damage_max());
+    
+    for (int i = 0; i < attacker.get_count(); ++i) {
+        total_base_damage += distrib(gen);
+    }
+    
+    double modifier = 1.0;
+    int attack_stat = attacker.get_attack();
+    int defense_stat = defender.get_defense();
+    
+    if (attack_stat > defense_stat) {
+        modifier += 0.05 * (attack_stat - defense_stat);
+        if (modifier > 4.0) modifier = 4.0;
+    } else if (attack_stat < defense_stat) {
+        modifier -= 0.025 * (defense_stat - attack_stat);
+        if (modifier < 0.3) modifier = 0.3;
+    }
+    
+    return static_cast<int>(total_base_damage * modifier);
 }

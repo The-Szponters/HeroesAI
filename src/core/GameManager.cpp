@@ -10,7 +10,7 @@ std::vector<Unit*> GameManager::get_units_left_in_round() const {
 }
 
 std::vector<Unit*> GameManager::get_unit_queue_in_round() const {
-    return round_manager.get_unit_queue_in_round(all_units_in_battle);
+    return round_manager.get_unit_queue_in_round();
 }
 
 std::vector<Hex*> GameManager::get_available_destinations(const Unit& unit) const {

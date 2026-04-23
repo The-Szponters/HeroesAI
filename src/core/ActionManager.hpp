@@ -14,4 +14,5 @@ public:
     void move(Unit& unit, Hex& dest_hex, Board& board);
     void attack(Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board);
     void defend(Unit& unit);
+    int calculate_damage(const Unit& attacker, const Unit& defender) const;
 };
