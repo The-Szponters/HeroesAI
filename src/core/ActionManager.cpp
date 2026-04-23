@@ -92,25 +92,16 @@ void ActionManager::move(Unit& unit, Hex& dest_hex, Board& board) {
         throw std::runtime_error("Destination hex already has a unit");
     }
 
-    try {
-        Hex& start_hex = board.get_hex(unit.get_q(), unit.get_r(), unit.get_s());
-        
-        std::shared_ptr<Unit> shared_u;
-        if (start_hex.has_unit()) {
-            shared_u = start_hex.get_unit();
-            if (shared_u.get() == &unit) {
-                start_hex.remove_unit();
-            } else {
-                shared_u.reset();
-            }
-        }
-        
-        if (shared_u && shared_u.get() == &unit) {
-            dest_hex.set_unit(shared_u);
-        }
-        
-        unit.set_position(dest_hex.get_q(), dest_hex.get_r(), dest_hex.get_s());
-    } catch(std::out_of_range&) { }
+    Hex& start_hex = board.get_hex(unit.get_q(), unit.get_r(), unit.get_s());
+    std::shared_ptr<Unit> unit_ptr = start_hex.get_unit();
+
+    if (!unit_ptr || unit_ptr.get() != &unit) {
+        throw std::logic_error("Unit coordinates and Board state are out of sync");
+    }
+
+    dest_hex.set_unit(unit_ptr);
+    start_hex.remove_unit();
+    unit.set_position(dest_hex.get_q(), dest_hex.get_r(), dest_hex.get_s());
 }
 
 void ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board) {
@@ -120,9 +111,7 @@ void ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
 
     try {
         Hex& current = board.get_hex(attacker.get_q(), attacker.get_r(), attacker.get_s());
-        if (&current != &attack_from_hex) {
-            move(attacker, attack_from_hex, board);
-        }
+        move(attacker, attack_from_hex, board);
     } catch(std::out_of_range&) { }
     
     int damage = calculate_damage(attacker, defender);
