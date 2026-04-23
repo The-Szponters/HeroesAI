@@ -19,6 +19,7 @@ public:
     int get_knowledge() const { return knowledge; }
 
     Army& get_army() { return army; } 
+    const Army& get_army() const { return army; }
 
 private:
     std::string name;

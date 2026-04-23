@@ -144,13 +144,47 @@ TEST_F(ActionManagerTest, AttackActionAppliesDamageAndMoves) {
     
     // Move to 1, 0, -1 to attack
     Hex& attack_hex = board.get_hex(1, 0, -1);
-    am.attack(*att, *def, attack_hex, board);
+    bool is_dead = am.attack(*att, *def, attack_hex, board);
     
+    EXPECT_FALSE(is_dead);
     EXPECT_EQ(att->get_q(), 1);
     EXPECT_EQ(att->get_r(), 0);
     EXPECT_EQ(att->get_s(), -1);
     
     EXPECT_EQ(def->get_health_left(), 95); // 100 - base damage 5
+    EXPECT_TRUE(board.get_hex(2, 0, -2).has_unit());
+}
+
+TEST_F(ActionManagerTest, AttackActionKillsUnitAndMovesToDeadUnits) {
+    board.get_hex(0, 0, 0).remove_unit();
+    board.get_hex(1, 0, -1).remove_unit();
+    
+    // Overpowered Attacker at 0, 0, 0
+    auto att = std::make_shared<Unit>("Attacker", 1, 200, 10, 100, 1000, 1000, 5, 1);
+    att->set_position(0, 0, 0);
+    board.get_hex(0, 0, 0).set_unit(att);
+    
+    // Weak Defender at 2, 0, -2
+    auto def = std::make_shared<Unit>("Defender", 1, 10, 10, 100, 5, 5, 5, 1);
+    def->set_position(2, 0, -2);
+    board.get_hex(2, 0, -2).set_unit(def);
+    
+    // Move to 1, 0, -1 to attack
+    Hex& attack_hex = board.get_hex(1, 0, -1);
+    bool is_dead = am.attack(*att, *def, attack_hex, board);
+    
+    EXPECT_TRUE(is_dead);
+    EXPECT_EQ(def->get_count(), 0);
+    
+    // The hex should no longer have an active unit, but should have a dead unit
+    Hex& def_hex = board.get_hex(2, 0, -2);
+    EXPECT_FALSE(def_hex.has_unit());
+    EXPECT_EQ(def_hex.get_dead_units().size(), 1);
+    
+    // Validate we can reach the unit through weak ptr
+    auto dead_unit_ptr = def_hex.get_dead_units()[0].lock();
+    ASSERT_NE(dead_unit_ptr, nullptr);
+    EXPECT_EQ(dead_unit_ptr->get_name(), "Defender");
 }
 
 TEST_F(ActionManagerTest, AttackActionThrowsWhenOccupiedByAnother) {

@@ -104,18 +104,29 @@ void ActionManager::move(Unit& unit, Hex& dest_hex, Board& board) {
     unit.set_position(dest_hex.get_q(), dest_hex.get_r(), dest_hex.get_s());
 }
 
-void ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board) {
+bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board) {
     if (attack_from_hex.has_unit() && attack_from_hex.get_unit().get() != &attacker) {
         throw std::runtime_error("Attack hex already has a unit");
     }
 
     try {
         Hex& current = board.get_hex(attacker.get_q(), attacker.get_r(), attacker.get_s());
-        move(attacker, attack_from_hex, board);
+        if (&current != &attack_from_hex) {
+            move(attacker, attack_from_hex, board);
+        }
     } catch(std::out_of_range&) { }
     
     int damage = calculate_damage(attacker, defender);
     defender.take_damage(damage);
+    
+    if (defender.get_count() == 0) {
+        try {
+            Hex& def_hex = board.get_hex(defender.get_q(), defender.get_r(), defender.get_s());
+            def_hex.unit_died();
+        } catch(std::out_of_range&) {}
+        return true;
+    }
+    return false;
 }
 
 void ActionManager::defend(Unit& unit) {

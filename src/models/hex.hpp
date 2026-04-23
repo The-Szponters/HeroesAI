@@ -55,11 +55,23 @@ public:
         unit.reset();
     }
 
+    void unit_died() {
+        if (!unit.expired()) {
+            dead_units.push_back(unit);
+            unit.reset();
+        }
+    }
+
+    const std::vector<std::weak_ptr<Unit>>& get_dead_units() const {
+        return dead_units;
+    }
+
 private:
     const int q;
     const int r;
     const int s;
     std::weak_ptr<Unit> unit;
+    std::vector<std::weak_ptr<Unit>> dead_units;
     bool is_valid() const {
         return q + r + s == 0;
     }
