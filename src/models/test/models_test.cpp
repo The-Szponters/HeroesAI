@@ -105,6 +105,64 @@ TEST(UnitTest, TakeDamageMoreThanTotalHealth) {
     EXPECT_EQ(u.get_health_left(), 0);
 }
 
+TEST(UnitTest, BuffSystemDefend) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_defense(), 5);
+
+    Buff b = BuffFactory::create_defend_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 10);
+
+    u.remove_buff(BuffType::Defend);
+    EXPECT_EQ(u.get_defense(), 5);
+}
+
+TEST(UnitTest, BuffSystemSlowPercentage) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_speed(), 6);
+
+    Buff b = BuffFactory::create_slow_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_speed(), 3);
+
+    u.remove_buff(BuffType::Slow);
+    EXPECT_EQ(u.get_speed(), 6);
+}
+
+TEST(UnitTest, BuffSystemBlindHardOverride) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    EXPECT_EQ(u.get_speed(), 6);
+
+    Buff b = BuffFactory::create_blind_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_speed(), 0);
+
+    u.remove_buff(BuffType::Blind);
+    EXPECT_EQ(u.get_speed(), 6);
+}
+
+TEST(UnitTest, BuffSystemTurnTick) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    Buff b = BuffFactory::create_defend_buff();
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 10);
+
+    u.on_turn_start();
+    EXPECT_EQ(u.get_defense(), 5);
+}
+
+TEST(UnitTest, BuffSystemStatClamping) {
+    Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
+    
+    Buff b;
+    b.type = BuffType::Defend;
+    b.duration = 1;
+    b.modify_defense = [](int d) { return d - 100; };
+    
+    u.apply_buff(b);
+    EXPECT_EQ(u.get_defense(), 0);
+}
+
 TEST(RangeUnitTest, Initialization) {
     RangeUnit ru("Archer", 3, 8, 3, 50, 10, 12, 4, 10, 12);
     EXPECT_EQ(ru.get_name(), "Archer");
