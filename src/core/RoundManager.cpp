@@ -93,16 +93,25 @@ std::vector<Unit*> RoundManager::get_units_left_in_round() const {
 }
 
 std::vector<Unit*> RoundManager::get_unit_queue_in_round() const {
-    std::vector<Unit*> sorted_units;
-    sorted_units.reserve(all_units.size());
-    for (Unit* unit : all_units) {
-        if (unit != nullptr && unit->get_count() > 0) {
-            sorted_units.push_back(unit);
-        }
+    // Return the actual action order for the current round state:
+    //   1. Units still to act (unactivated_units, highest-speed first = heap order)
+    //   2. Units that waited (waited_units, their heap order)
+    // The first element is the current active unit.
+    std::vector<Unit*> result;
+
+    auto temp_unactivated = unactivated_units;
+    while (!temp_unactivated.empty()) {
+        Unit* u = temp_unactivated.top();
+        temp_unactivated.pop();
+        if (u != nullptr && u->get_count() > 0) result.push_back(u);
     }
 
-    std::sort(sorted_units.begin(), sorted_units.end(), [](const Unit* a, const Unit* b) {
-        return a->get_speed() > b->get_speed();
-    });
-    return sorted_units;
+    auto temp_waited = waited_units;
+    while (!temp_waited.empty()) {
+        Unit* u = temp_waited.top();
+        temp_waited.pop();
+        if (u != nullptr && u->get_count() > 0) result.push_back(u);
+    }
+
+    return result;
 }

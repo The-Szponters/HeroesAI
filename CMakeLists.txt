@@ -14,7 +14,7 @@ include(FetchContent)
 FetchContent_Declare(
     SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2
+  GIT_TAG 3.0.1
 )
 FetchContent_MakeAvailable(SFML)
 
@@ -25,7 +25,25 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(${PROJECT_NAME} src/main.cpp src/models/unit_factory.cpp)
+add_executable(${PROJECT_NAME}
+  src/main.cpp
+  src/models/unit_factory.cpp
+  src/core/ActionManager.cpp
+  src/core/RoundManager.cpp
+  src/core/GameManager.cpp
+  src/presenters/BattlePresenter.cpp
+  src/views/DefParser.cpp
+  src/views/DefManager.cpp
+  src/views/AnimationController.cpp
+  src/views/SfmlBattleView.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+  src/models
+  src/core
+  src/views
+  src/presenters
+)
 
 target_link_libraries(${PROJECT_NAME} 
     sfml-graphics 

@@ -8,9 +8,20 @@ class Unit
 {
 public:
     Unit() = default;
-    Unit(std::string name, int tier, int attack, int defense, int health, int damage_min, int damage_max, int speed, int count)
+    Unit(std::string name,
+         int tier,
+         int attack,
+         int defense,
+         int health,
+         int damage_min,
+         int damage_max,
+         int speed,
+         int count,
+         std::string asset_filename = "",
+         std::string description = "")
         : name(std::move(name)), tier(tier), attack(attack), defense(defense), health(health), damage_min(damage_min), damage_max(damage_max), speed(speed), count(count), health_left(health),
-          total_attack(attack), total_defense(defense), total_damage_min(damage_min), total_damage_max(damage_max), total_speed(speed) {}
+          total_attack(attack), total_defense(defense), total_damage_min(damage_min), total_damage_max(damage_max), total_speed(speed),
+          asset_filename(std::move(asset_filename)), description(std::move(description)) {}
     virtual ~Unit() = default;
 
     const std::string& get_name() const { return name; }
@@ -27,10 +38,42 @@ public:
     int get_r() const { return r; }
     int get_s() const { return s; }
 
-    void set_position(int q, int r, int s) {
-        this->q = q;
-        this->r = r;
-        this->s = s;
+    int get_base_attack() const { return attack; }
+    int get_base_defense() const { return defense; }
+    int get_base_speed() const { return speed; }
+    int get_base_damage_min() const { return damage_min; }
+    int get_base_damage_max() const { return damage_max; }
+    const std::string& get_asset_filename() const { return asset_filename; }
+    const std::string& get_description() const { return description; }
+
+    int get_size() const { return size; }
+    void set_size(int s) { size = (s == 2 ? 2 : 1); }
+    bool is_teleporter_unit() const { return is_teleporter; }
+    void set_is_teleporter(bool value) { is_teleporter = value; }
+
+    bool has_retaliated_this_round() const { return has_retaliated; }
+    void set_retaliated(bool v) { has_retaliated = v; }
+
+    // Logical facing used for tail-direction maths (right army = faces left).
+    // Never changes after initial placement.
+    bool is_facing_left() const { return logical_facing_left; }
+
+    // Visual facing for sprite mirroring — updates whenever the unit moves
+    // to a different column (face the direction of travel).
+    bool get_visual_facing_left() const { return visual_facing_left; }
+
+    void set_position(int new_q, int new_r, int new_s) {
+        if (!position_initialized) {
+            // Initial placement: derive both facings from army side.
+            logical_facing_left = (new_q >= 7);
+            visual_facing_left  = (new_q >= 7);
+            position_initialized = true;
+        } else if (new_q != q) {
+            // Horizontal movement: sprite faces direction of travel.
+            visual_facing_left = (new_q < q);
+            // logical_facing_left never changes.
+        }
+        q = new_q; r = new_r; s = new_s;
     }
 
     void take_damage(int damage) {
@@ -87,6 +130,7 @@ public:
     }
 
     void on_turn_start() {
+        has_retaliated = false;
         bool removed = false;
         for (auto& buff : active_buffs) {
             buff.duration--;
@@ -120,6 +164,16 @@ private:
     int total_damage_min = 1;
     int total_damage_max = 1;
     int total_speed = 1;
+
+    int size = 1;
+    bool is_teleporter = false;
+    bool has_retaliated = false;
+    bool logical_facing_left = false;   // army side — set once, never changes
+    bool visual_facing_left  = false;   // mirrors on movement direction
+    bool position_initialized = false;
+
+    std::string asset_filename;
+    std::string description;
 
     std::vector<Buff> active_buffs;
 };

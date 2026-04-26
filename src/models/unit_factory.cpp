@@ -49,18 +49,47 @@ std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
         int attack = data.at("attack").get<int>();
         int defense = data.at("defense").get<int>();
         int health = data.at("health").get<int>();
-        
+
         int damage_min = data.at("damage_min").get<int>();
         int damage_max = data.at("damage_max").get<int>();
-        
+
         int speed = data.at("speed").get<int>();
-        
+        int size  = data.value("size", 1);
+        bool is_teleporter = data.value("is_teleporter", false);
+        std::string asset_filename = data.value("asset_filename", "");
+        std::string description = data.value("description", "");
+
+        std::shared_ptr<Unit> unit;
         if (data.contains("shoots")) {
             int shoots = data.at("shoots").get<int>();
-            return std::make_shared<RangeUnit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count, shoots);
+            unit = std::make_shared<RangeUnit>(name,
+                                               tier,
+                                               attack,
+                                               defense,
+                                               health,
+                                               damage_min,
+                                               damage_max,
+                                               speed,
+                                               count,
+                                               shoots,
+                                               asset_filename,
+                                               description);
         } else {
-            return std::make_shared<Unit>(name, tier, attack, defense, health, damage_min, damage_max, speed, count);
+            unit = std::make_shared<Unit>(name,
+                                          tier,
+                                          attack,
+                                          defense,
+                                          health,
+                                          damage_min,
+                                          damage_max,
+                                          speed,
+                                          count,
+                                          asset_filename,
+                                          description);
         }
+        unit->set_size(size);
+        unit->set_is_teleporter(is_teleporter);
+        return unit;
     } catch (const std::exception& e) {
         throw std::runtime_error("UnitFactory: missing or invalid field for unit " + name + " (" + e.what() + ")");
     }
