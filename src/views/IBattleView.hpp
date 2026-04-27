@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 enum class AnimState : int;
 
@@ -11,17 +12,31 @@ enum class HighlightType {
     ActiveUnit,
     Walkable,
     Attackable,
+    AttackOrigin,
     HoverDestination   // dark grey/black tint shown on hex(es) the unit will occupy
 };
 
+// Combat cursor states.  Each value (except Default) maps 1:1 to a frame
+// index in `assets/ui/combat_icons.def`, so the View can blit the correct
+// sprite without any switch logic of its own.  Default keeps the OS cursor.
 enum class CursorStyle {
-    Default,
-    SwordE,
-    SwordNE,
-    SwordNW,
-    SwordW,
-    SwordSW,
-    SwordSE
+    Default        = -1,   // OS cursor, no DEF frame drawn
+    NotAvailable   = 0,    // O-with-slash (cannot interact)
+    NormalMove     = 1,    // boot — empty reachable hex
+    FlyMove        = 2,    // wings — fliers / teleporters
+    RangeShoot     = 3,    // arrow — clear shot
+    Skip           = 4,    // hourglass — skip turn
+    QuestionMark   = 5,    // ? — info / shift-hover
+    StandardPointer= 6,    // plain pointer (over UI)
+    SwordNE        = 7,
+    SwordE         = 8,
+    SwordSE        = 9,
+    SwordSW        = 10,
+    SwordW         = 11,
+    SwordNW        = 12,
+    SwordN         = 13,
+    SwordS         = 14,
+    BrokenArrow    = 15,   // shoot/melee with damage penalty
 };
 
 struct UnitRenderData {
@@ -33,6 +48,9 @@ struct UnitRenderData {
     std::string description;
     int count = 0;
     int hp_left = 0;
+    int max_hp_per_unit = 0;
+    int current_top_unit_hp = 0;
+    int owner_id = -1;
     int base_attack = 0;
     int total_attack = 0;
     int base_defense = 0;
@@ -45,6 +63,9 @@ struct UnitRenderData {
     int total_damage_max = 0;
     bool is_facing_left = false;        // logical — determines tail hex for render center
     bool visual_facing_left = false;    // sprite mirror — updates with movement direction
+    bool is_ranged = false;
+    int ammo = 0;
+    int max_ammo = 0;
     bool is_corpse = false;
     int size = 1;   // 1 = single-hex, 2 = large creature spanning two hexes
     bool is_teleporter = false;
@@ -72,6 +93,15 @@ public:
     virtual void clear_active_unit_highlight() = 0;
     virtual void set_hover_destination_highlight(int q, int r, bool has_tail, int tail_q, int tail_r) = 0;
     virtual void clear_hover_destination_highlight() = 0;
+    struct AttackOriginHex {
+        int q = 0;
+        int r = 0;
+        bool has_tail = false;
+        int tail_q = 0;
+        int tail_r = 0;
+    };
+    virtual void set_attack_origin_highlights(const std::vector<AttackOriginHex>& origins) = 0;
+    virtual void clear_attack_origin_highlights() = 0;
     // Per-destination predicted facing.  The presenter computes this from the
     // actual reconstructed path (second-to-last hex → final hex direction) and
     // hands the View a lookup table so the per-frame hover code can mirror the
@@ -94,6 +124,18 @@ public:
     // behind the attacker (e.g. attacker moved past it during a flank).
     virtual void queue_attack_animation_facing(std::uint64_t attacker_id,
                                                int target_q, int target_r) = 0;
+    // Flies a projectile sprite (loaded from `projectile_asset`) from the
+    // attacker's position to (target_q, target_r) over `duration_seconds`.
+    // Empty `projectile_asset` is a no-op shaped like a 0-duration event so
+    // visual queues for ranged units without a shipped projectile DEF still
+    // resolve cleanly.
+    virtual void queue_projectile_animation(std::uint64_t attacker_id,
+                                            int target_q, int target_r,
+                                            const std::string& projectile_asset,
+                                            float duration_seconds) = 0;
+    // Plays morale.def's 20-frame aura over the unit's sprite as a one-shot
+    // overlay.  Used by the +morale bonus "good morale" trigger.
+    virtual void queue_morale_animation(std::uint64_t unit_id) = 0;
     // Plays the TakeDamage (flinch) animation on defender; resolves when the animation finishes.
     virtual void queue_hit_animation(std::uint64_t defender_id) = 0;
     // Waits for the Death animation on a unit that was already committed as a corpse.
@@ -101,6 +143,14 @@ public:
     virtual void queue_render_data_commit(const std::vector<UnitRenderData>& units) = 0;
     virtual void clear_visual_events() = 0;
     virtual bool has_pending_visual_events() const = 0;
+    // Schedule a callback to fire exactly once, when the visual queue
+    // transitions from non-empty to empty.  Used by the presenter to defer
+    // the next-turn UI refresh (active-unit highlight, range, attackable
+    // tints) until the previous unit's animations have actually finished —
+    // otherwise the next unit's overlays appear over the still-animating
+    // sprite of the unit that just acted.  Calling again replaces the
+    // pending callback; passing `nullptr` cancels.
+    virtual void set_idle_callback(std::function<void()> cb) = 0;
     virtual void set_cursor_style(CursorStyle style, int pixel_x, int pixel_y) = 0;
     virtual void show_unit_info_panel(const UnitRenderData& unit_data) = 0;
     virtual void hide_unit_info_panel() = 0;

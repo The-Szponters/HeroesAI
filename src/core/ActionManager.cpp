@@ -1,5 +1,6 @@
 #include "ActionManager.hpp"
 #include <algorithm>
+#include <limits>
 #include <queue>
 #include <set>
 #include <map>
@@ -44,20 +45,19 @@ bool can_occupy(const Unit& mover, int q, int r, int s, const Board& board) {
     return true;
 }
 
+std::vector<std::tuple<int,int,int>> body_hexes(const Unit& u) {
+    std::vector<std::tuple<int,int,int>> v;
+    v.emplace_back(u.get_q(), u.get_r(), u.get_s());
+    if (u.get_size() == 2) {
+        auto [dq, dr, ds] = tail_delta(u);
+        v.emplace_back(u.get_q() + dq, u.get_r() + dr, u.get_s() + ds);
+    }
+    return v;
+}
+
 bool are_units_adjacent(const Unit& a, const Unit& b) {
-    auto positions = [](const Unit& u) {
-        std::vector<std::tuple<int,int,int>> v;
-        v.emplace_back(u.get_q(), u.get_r(), u.get_s());
-        if (u.get_size() == 2) {
-            auto [dq, dr, ds] = tail_delta(u);
-            v.emplace_back(u.get_q() + dq, u.get_r() + dr, u.get_s() + ds);
-        }
-        return v;
-    };
-    const auto pa = positions(a);
-    const auto pb = positions(b);
-    for (const auto& [aq, ar, as] : pa) {
-        for (const auto& [bq, br, bs] : pb) {
+    for (const auto& [aq, ar, as] : body_hexes(a)) {
+        for (const auto& [bq, br, bs] : body_hexes(b)) {
             const int d = std::max({std::abs(aq - bq), std::abs(ar - br), std::abs(as - bs)});
             if (d == 1) return true;
         }
@@ -66,6 +66,46 @@ bool are_units_adjacent(const Unit& a, const Unit& b) {
 }
 
 } // namespace
+
+int ActionManager::hex_distance(const Unit& a, const Unit& b) {
+    int best = std::numeric_limits<int>::max();
+    for (const auto& [aq, ar, as] : body_hexes(a)) {
+        for (const auto& [bq, br, bs] : body_hexes(b)) {
+            const int d = std::max({std::abs(aq - bq), std::abs(ar - br), std::abs(as - bs)});
+            if (d < best) best = d;
+        }
+    }
+    return best;
+}
+
+bool ActionManager::is_blocked_by_adjacent_enemy(const Unit& unit,
+                                                 const EnemyPredicate& is_enemy,
+                                                 const Board& board) const {
+    static constexpr int dq[] = { 1,  1,  0, -1, -1,  0};
+    static constexpr int dr[] = { 0, -1, -1,  0,  1,  1};
+    static constexpr int ds[] = {-1,  0,  1,  1,  0, -1};
+
+    for (const auto& [oq, orr, os] : body_hexes(unit)) {
+        for (int i = 0; i < 6; ++i) {
+            try {
+                const Hex& nhex = board.get_hex(oq + dq[i], orr + dr[i], os + ds[i]);
+                if (!nhex.has_unit()) continue;
+                const std::shared_ptr<Unit>& neighbour = nhex.get_unit();
+                if (neighbour.get() == &unit) continue;
+                if (is_enemy && is_enemy(*neighbour)) return true;
+            } catch (const std::out_of_range&) {}
+        }
+    }
+    return false;
+}
+
+bool ActionManager::can_shoot(const Unit& attacker, const Unit& defender,
+                              const EnemyPredicate& is_enemy, const Board& board) const {
+    if (!attacker.is_ranged() || attacker.get_ammo() <= 0) return false;
+    if (are_units_adjacent(attacker, defender)) return false;
+    if (is_blocked_by_adjacent_enemy(attacker, is_enemy, board)) return false;
+    return true;
+}
 
 std::vector<const Hex*> ActionManager::find_path(const Unit& unit, const Hex& dest_hex, const Board& board) const {
     // Plain BFS over the same hex adjacency the destination scan uses, but
@@ -292,7 +332,16 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
         }
     } catch (std::out_of_range&) {}
 
-    const int damage = calculate_damage(attacker, defender);
+    // Defender turns toward the side the hit comes from.
+    if (attacker.get_q() < defender.get_q()) {
+        defender.set_visual_facing_left(true);
+    } else if (attacker.get_q() > defender.get_q()) {
+        defender.set_visual_facing_left(false);
+    }
+
+    // Ranged units fighting in melee deal half damage (HoMM3 melee penalty).
+    int damage = calculate_damage(attacker, defender);
+    if (attacker.is_ranged()) damage /= 2;
     defender.take_damage(damage);
 
     if (defender.get_count() == 0) {
@@ -305,7 +354,8 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
                     Hex& def_tail = board.get_hex(defender.get_q() + dq,
                                                   defender.get_r() + dr,
                                                   defender.get_s() + ds);
-                    def_tail.remove_unit();
+                    // Keep corpse metadata on both occupied hexes for 2-hex units.
+                    def_tail.unit_died();
                 } catch (std::out_of_range&) {}
             }
         } catch (std::out_of_range&) {}
@@ -315,6 +365,13 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
     // Retaliation: defender hits back once per round if it survived and is
     // adjacent to the attacker (HoMM3 standard counter-attack).
     if (!defender.has_retaliated_this_round() && are_units_adjacent(attacker, defender)) {
+        // Retaliation direction follows the same rule for the struck attacker.
+        if (defender.get_q() < attacker.get_q()) {
+            attacker.set_visual_facing_left(true);
+        } else if (defender.get_q() > attacker.get_q()) {
+            attacker.set_visual_facing_left(false);
+        }
+
         const int counter = calculate_damage(defender, attacker);
         attacker.take_damage(counter);
         defender.set_retaliated(true);
@@ -329,7 +386,8 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
                         Hex& atk_tail = board.get_hex(attacker.get_q() + dq,
                                                       attacker.get_r() + dr,
                                                       attacker.get_s() + ds);
-                        atk_tail.remove_unit();
+                        // Keep corpse metadata on both occupied hexes for 2-hex units.
+                        atk_tail.unit_died();
                     } catch (std::out_of_range&) {}
                 }
             } catch (std::out_of_range&) {}
@@ -368,4 +426,42 @@ int ActionManager::calculate_damage(const Unit& attacker, const Unit& defender) 
     }
 
     return static_cast<int>(total_base_damage * modifier);
+}
+
+bool ActionManager::shoot(Unit& attacker, Unit& defender, Board& board) {
+    if (!attacker.is_ranged() || attacker.get_ammo() <= 0) {
+        throw std::logic_error("shoot() called on a unit that cannot shoot");
+    }
+
+    // Face the target — purely visual; ranged units never move.
+    if (attacker.get_q() < defender.get_q()) {
+        attacker.set_visual_facing_left(false);
+    } else if (attacker.get_q() > defender.get_q()) {
+        attacker.set_visual_facing_left(true);
+    }
+
+    int damage = calculate_damage(attacker, defender);
+    if (hex_distance(attacker, defender) > 10) {
+        damage /= 2;
+    }
+    defender.take_damage(damage);
+    attacker.decrement_ammo();
+
+    if (defender.get_count() == 0) {
+        try {
+            Hex& def_hex = board.get_hex(defender.get_q(), defender.get_r(), defender.get_s());
+            def_hex.unit_died();
+            if (defender.get_size() == 2) {
+                auto [dq, dr, ds] = tail_delta(defender);
+                try {
+                    Hex& def_tail = board.get_hex(defender.get_q() + dq,
+                                                  defender.get_r() + dr,
+                                                  defender.get_s() + ds);
+                    def_tail.unit_died();
+                } catch (std::out_of_range&) {}
+            }
+        } catch (std::out_of_range&) {}
+        return true;
+    }
+    return false;
 }

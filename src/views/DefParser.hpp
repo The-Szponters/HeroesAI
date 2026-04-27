@@ -60,7 +60,6 @@ struct DefHeader {
 class DefParser {
 public:
     DefResource parse_file(const std::filesystem::path& filepath) const;
-    static void debug_parse_file(const std::string& filepath);
 
 private:
     template <typename T>

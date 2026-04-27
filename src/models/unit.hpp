@@ -54,6 +54,21 @@ public:
     bool has_retaliated_this_round() const { return has_retaliated; }
     void set_retaliated(bool v) { has_retaliated = v; }
 
+    // Ranged-combat interface — default no-op for melee units.  RangeUnit
+    // overrides every method below; calling them on a melee unit must always
+    // be safe (returns 0/false) so callers can be polymorphic without
+    // dynamic_cast'ing.
+    virtual bool is_ranged() const { return false; }
+    virtual int  get_ammo() const { return 0; }
+    virtual int  get_max_ammo() const { return 0; }
+    virtual int  get_max_range_damage() const { return 0; }
+    virtual void decrement_ammo() {}
+    // Empty filename → no dedicated projectile sprite for this unit.
+    virtual const std::string& get_projectile_asset() const {
+        static const std::string empty;
+        return empty;
+    }
+
     // Logical facing used for tail-direction maths (right army = faces left).
     // Never changes after initial placement.
     bool is_facing_left() const { return logical_facing_left; }
@@ -61,6 +76,7 @@ public:
     // Visual facing for sprite mirroring — updates whenever the unit moves
     // to a different column (face the direction of travel).
     bool get_visual_facing_left() const { return visual_facing_left; }
+    void set_visual_facing_left(bool value) { visual_facing_left = value; }
 
     void set_position(int new_q, int new_r, int new_s) {
         if (!position_initialized) {

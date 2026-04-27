@@ -4,13 +4,15 @@
 #include "../views/IBattleView.hpp"
 #include <SFML/System/Vector2.hpp>
 #include <optional>
+#include <unordered_map>
+#include <unordered_set>
 
 class BattlePresenter {
 public:
     BattlePresenter(GameManager& model, IBattleView& view);
 
     void start_battle();
-    void on_hex_clicked(int q, int r);
+    void on_hex_clicked(int q, int r, bool shift_held = false);
     void on_mouse_hover(int pixel_x, int pixel_y, bool shift_held);
     void on_right_click_pressed(int pixel_x, int pixel_y);
     void on_right_click_released();
@@ -29,6 +31,21 @@ private:
     void queue_move_visual_if_needed(std::uint64_t unit_id,
                                      const std::vector<UnitRenderData>& before,
                                      const std::vector<UnitRenderData>& after);
+    // Wraps the post-action transition: clear all stale highlights so they
+    // don't appear over the still-animating sprite, optionally append the
+    // morale aura at the actor's final position, and schedule the next
+    // refresh_ui_for_active_unit() call to fire when the visual queue drains.
+    void finalize_action_visuals(std::uint64_t actor_id, bool had_morale_bonus);
+    std::vector<IBattleView::AttackOriginHex> build_attack_origins_for_target(
+        const Unit& attacker,
+        const Unit& target,
+        const std::vector<Hex*>& destinations,
+        const std::vector<IBattleView::PredictedFacing>& predictions) const;
+    static std::vector<IBattleView::AttackOriginHex> dedupe_attack_origins(
+        const std::vector<IBattleView::AttackOriginHex>& origins);
+    const std::vector<IBattleView::AttackOriginHex>* get_cached_attack_origins_for_target(const Unit& target) const;
+    const Hex* resolve_move_head_destination(const Unit& unit, const Hex& clicked_or_hovered_hex) const;
+    void highlight_unit_body(const Unit& unit, HighlightType type) const;
 
     // Returns the reachable approach hex (adjacent to any target-occupied hex)
     // whose pixel center is closest to (pixel_x, pixel_y), or nullptr if none.
@@ -41,6 +58,16 @@ private:
     GameManager& model;
     IBattleView& view;
     bool range_preview_active = false;
+    bool info_panel_visible = false;   // mirrors view's info panel state so we
+                                       // can close on the next click anywhere
     int last_cursor_px = 0;
     int last_cursor_py = 0;
+    std::unordered_map<std::uint64_t, std::vector<IBattleView::AttackOriginHex>> cached_attack_origins_by_target;
+
+    // Per-turn cache populated by refresh_ui_for_active_unit.  The hover hot
+    // path queries it via O(1) hex-key lookup instead of running a fresh BFS
+    // on every MouseMoved event — a real lag source for high-speed units.
+    std::vector<Hex*>          cached_destinations;
+    std::unordered_set<std::int64_t> cached_destinations_set;
+    bool is_destination_cached(int q, int r) const;
 };

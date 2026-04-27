@@ -9,9 +9,6 @@
 #include <cstdint>
 #include <cstring>
 #include <cctype>
-#include <fstream>
-#include <iostream>
-#include <limits>
 #include <sstream>
 #include <unordered_set>
 
@@ -40,18 +37,6 @@ std::pair<int, int> cube_round_to_axial(float fq, float fr, float fs) {
     return {rq, rr};
 }
 
-float cursor_angle_deg(CursorStyle style) {
-    switch (style) {
-        case CursorStyle::SwordE: return 0.0f;
-        case CursorStyle::SwordNE: return -60.0f;
-        case CursorStyle::SwordNW: return -120.0f;
-        case CursorStyle::SwordW: return 180.0f;
-        case CursorStyle::SwordSW: return 120.0f;
-        case CursorStyle::SwordSE: return 60.0f;
-        case CursorStyle::Default: return 0.0f;
-    }
-    return 0.0f;
-}
 }
 
 SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const std::string& title)
@@ -67,27 +52,6 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
       hud_count(0),
       hud_hp_left(0) {
     window.setFramerateLimit(60);
-
-    // HUD panel occupies the bottom 20% of the screen.
-    hud_background.setPosition({0.0f, battlefield_height});
-    hud_background.setSize({screen_width, screen_height - battlefield_height});
-    hud_background.setFillColor(sf::Color(36, 36, 42));
-
-    // Action buttons: stacked vertically against the right edge of the HUD.
-    // Defend sits ABOVE Wait, both aligned to a 30 px right margin.
-    const float btn_w           = 120.0f;
-    const float btn_h           = 42.0f;
-    const float btn_right_x     = screen_width - btn_w - 30.0f;
-    const float btn_defend_y    = battlefield_height + 14.0f;
-    const float btn_wait_y      = btn_defend_y + btn_h + 10.0f;
-
-    defend_button.setPosition({btn_right_x, btn_defend_y});
-    defend_button.setSize({btn_w, btn_h});
-    defend_button.setFillColor(sf::Color(90, 90, 100));
-
-    wait_button.setPosition({btn_right_x, btn_wait_y});
-    wait_button.setSize({btn_w, btn_h});
-    wait_button.setFillColor(sf::Color(90, 90, 100));
 
     // Try project font first, then common Linux system fonts as fallbacks.
     const std::array<const char*, 5> font_candidates = {
@@ -108,34 +72,29 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
     hud_text = std::make_unique<sf::Text>(font);
     queue_text = std::make_unique<sf::Text>(font);
     log_text = std::make_unique<sf::Text>(font);
-    wait_text = std::make_unique<sf::Text>(font);
-    defend_text = std::make_unique<sf::Text>(font);
     info_panel_text = std::make_unique<sf::Text>(font);
+    unit_stack_count_text = std::make_unique<sf::Text>(font);
 
     hud_text->setCharacterSize(18);
     hud_text->setFillColor(sf::Color::White);
-    hud_text->setPosition({350.0f, battlefield_height + 16.0f});
+    hud_text->setPosition({16.0f, battlefield_height + 8.0f});
 
     queue_text->setCharacterSize(16);
     queue_text->setFillColor(sf::Color(230, 230, 230));
-    queue_text->setPosition({350.0f, battlefield_height + 44.0f});
+    queue_text->setPosition({16.0f, battlefield_height + 30.0f});
 
     log_text->setCharacterSize(17);
     log_text->setFillColor(sf::Color(220, 220, 220));
-    log_text->setPosition({350.0f, battlefield_height + 74.0f});
-
-    defend_text->setCharacterSize(18);
-    defend_text->setFillColor(sf::Color::White);
-    defend_text->setString("Defend");
-    defend_text->setPosition({btn_right_x + 30.0f, btn_defend_y + 9.0f});
-
-    wait_text->setCharacterSize(18);
-    wait_text->setFillColor(sf::Color::White);
-    wait_text->setString("Wait");
-    wait_text->setPosition({btn_right_x + 42.0f, btn_wait_y + 9.0f});
+    log_text->setPosition({16.0f, battlefield_height + 52.0f});
 
     // Dedicated DEF manager keeps resources alive while sprites reference frame textures.
-    def_manager.set_units_root("assets/units");
+    // Both unit animations and UI elements (combat cursor, morale aura, action-bar
+    // icons, spellbook) share the same DefParser; the manager indexes them under
+    // a single normalised filename namespace.
+    def_manager.set_search_roots({
+        "assets/units",
+        "assets/ui",
+    });
 
     // Load a default battle background (grass terrain).
     if (battlefield_texture.loadFromFile("assets/backgrounds/CmBkGrTr.bmp")) {
@@ -148,14 +107,63 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
         battlefield_sprite->setPosition({0.0f, 0.0f});
     }
 
-    // Right-click info panel style.
-    info_panel_background.setSize({300.0f, 210.0f});
-    info_panel_background.setFillColor(sf::Color(20, 20, 24, 240));
-    info_panel_background.setOutlineColor(sf::Color(175, 175, 195));
-    info_panel_background.setOutlineThickness(2.0f);
+    // Custom combat cursor: hide OS pointer once and forever; the rendered
+    // DEF frame replaces it entirely.  Re-enabled only if the user requests
+    // CursorStyle::Default (e.g. from outside-window guards).
+    window.setMouseCursorVisible(false);
+    os_cursor_visible = false;
 
-    info_panel_text->setCharacterSize(16);
+    info_panel_text->setCharacterSize(15);
     info_panel_text->setFillColor(sf::Color::White);
+
+    unit_stack_count_text->setCharacterSize(8);
+    unit_stack_count_text->setFillColor(sf::Color(20, 20, 20));
+
+    unit_stack_team_backer.setFillColor(sf::Color::Transparent);
+    unit_stack_team_backer.setOutlineThickness(0.0f);
+    unit_stack_hp_back.setFillColor(sf::Color::Black);
+    unit_stack_hp_fill.setFillColor(sf::Color::Green);
+
+    load_action_bar_assets();
+    load_info_panel_assets();
+    load_unit_stack_assets();
+}
+
+void SfmlBattleView::load_action_bar_assets() {
+    // No background bar — the icons composite directly over the HUD strip.
+    // Cluster all five on the right edge with Wait immediately to the left of
+    // Defend so the reading order keeps "Wait above Defend" intact.
+    constexpr float kIconW = 48.0f;
+    constexpr float kIconH = 36.0f;
+    constexpr float kPad   = 8.0f;
+    const float icon_y     = screen_height - kIconH - 8.0f;
+
+    auto add = [&](ActionKind kind, const std::string& def, float x) {
+        action_slots.push_back({
+            kind, def, sf::FloatRect({x, icon_y}, {kIconW, kIconH}), 0.0f
+        });
+    };
+
+    // Right-anchored, walking left so the table reads:
+    //   ... Spellbook  Wait  Defend  AutoCombat  Surrender ]edge
+    float x = screen_width - kIconW - kPad;
+    add(ActionKind::Surrender,  "surrender_icon.def",  x); x -= kIconW + kPad;
+    add(ActionKind::AutoCombat, "autocombat_icon.def", x); x -= kIconW + kPad;
+    add(ActionKind::Defend,     "defend_icon.def",     x); x -= kIconW + kPad;
+    add(ActionKind::Wait,       "wait_icon.def",       x); x -= kIconW + kPad;
+    add(ActionKind::Spellbook,  "spellbook.def",       x);
+}
+
+void SfmlBattleView::load_info_panel_assets() {
+    if (info_panel_texture.loadFromFile("assets/ui/unit_stats.bmp")) {
+        info_panel_sprite = std::make_unique<sf::Sprite>(info_panel_texture);
+    }
+}
+
+void SfmlBattleView::load_unit_stack_assets() {
+    if (unit_stack_box_texture.loadFromFile("assets/ui/num_units.bmp")) {
+        unit_stack_box_sprite = std::make_unique<sf::Sprite>(unit_stack_box_texture);
+    }
 }
 
 bool SfmlBattleView::is_open() const {
@@ -163,6 +171,24 @@ bool SfmlBattleView::is_open() const {
 }
 
 void SfmlBattleView::on_mouse_hover(int pixel_x, int pixel_y, BattlePresenter& presenter) {
+    // Off-battlefield hovers (HUD background, action buttons, turn queue): use
+    // the plain HoMM3 pointer (combat_icons frame 6) and don't disturb the
+    // presenter's active-unit highlights.  The presenter still owns every
+    // battlefield interaction.
+    if (!is_point_in_battlefield(static_cast<float>(pixel_x), static_cast<float>(pixel_y))) {
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
+            presenter.on_right_click_released();
+        }
+        set_cursor_style(CursorStyle::StandardPointer, pixel_x, pixel_y);
+        return;
+    }
+
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
+        presenter.on_right_click_pressed(pixel_x, pixel_y);
+        set_cursor_style(CursorStyle::StandardPointer, pixel_x, pixel_y);
+        return;
+    }
+
     const bool shift_held = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)
                             || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift);
     presenter.on_mouse_hover(pixel_x, pixel_y, shift_held);
@@ -193,19 +219,15 @@ void SfmlBattleView::process_events(BattlePresenter& presenter) {
                 continue;
             }
 
-            if (wait_button.getGlobalBounds().contains({mx, my})) {
-                presenter.on_wait_clicked();
-                continue;
-            }
-
-            if (defend_button.getGlobalBounds().contains({mx, my})) {
-                presenter.on_defend_clicked();
+            if (route_action_click(mx, my, presenter)) {
                 continue;
             }
 
             if (is_point_in_battlefield(mx, my)) {
                 const auto [q, r] = pixel_to_hex(mx, my);
-                presenter.on_hex_clicked(q, r);
+                const bool shift_held = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift)
+                                        || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift);
+                presenter.on_hex_clicked(q, r, shift_held);
             } else {
                 presenter.on_right_click_released();
             }
@@ -216,7 +238,10 @@ void SfmlBattleView::process_events(BattlePresenter& presenter) {
             if (mouseRelease->button == sf::Mouse::Button::Right) {
                 presenter.on_right_click_released();
             }
+            continue;
         }
+
+        // The info panel follows the held right mouse button and hides on release.
     }
 }
 
@@ -229,17 +254,32 @@ void SfmlBattleView::render() {
         (void)key;
         controller.update(dt);
     }
+    pulse_phase_seconds += dt.asSeconds();
+    // Tick down the action-button "pressed" flash timers.
+    for (ActionSlot& slot : action_slots) {
+        if (slot.pressed_seconds_left > 0.0f) {
+            slot.pressed_seconds_left = std::max(0.0f, slot.pressed_seconds_left - dt.asSeconds());
+        }
+    }
 
     // Recompute hover destination every frame from the actual mouse position so
     // highlights stay correct even when the game state changes without a new
     // MouseMoved event (e.g. after a turn ends while the cursor is stationary).
     update_hover_from_mouse();
 
+    // Per-frame cursor follow: keep the custom sprite glued to the OS pointer
+    // even on frames where no MouseMoved event fires (e.g. during animations).
+    // update_hover_from_mouse() also queries the mouse position; we cache the
+    // value into `cursor_position` here so neither path makes a second X11
+    // server roundtrip per frame.
+    cursor_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
     draw_battlefield_background();
     draw_hex_grid();
     draw_units();
     draw_hud();
     draw_turn_queue();
+    draw_unit_stack_ui();
     draw_info_panel();
     draw_cursor();
 
@@ -283,6 +323,9 @@ void SfmlBattleView::draw_hex_grid() {
                     case HighlightType::Attackable:
                         hex.setFillColor(sf::Color(220, 70, 70, 90));
                         break;
+                    case HighlightType::AttackOrigin:
+                        hex.setFillColor(sf::Color(95, 95, 95, 150));
+                        break;
                     case HighlightType::HoverDestination:
                         // Distinctly darker than Walkable so the player can
                         // see exactly which hex(es) the unit will occupy
@@ -299,6 +342,45 @@ void SfmlBattleView::draw_hex_grid() {
 }
 
 void SfmlBattleView::draw_units() {
+    // Identify the live unit currently holding the turn (if any).  Match by
+    // the active-unit highlight's (q,r) — that's what the presenter feeds
+    // us; anchoring on a position avoids extending the View interface for a
+    // single visual cue.
+    std::uint64_t active_unit_id_for_glow = 0;
+    if (active_unit_highlight.has_value()) {
+        for (const UnitRenderData& u : units_to_draw) {
+            if (!u.is_corpse
+                && u.q == active_unit_highlight->q
+                && u.r == active_unit_highlight->r) {
+                active_unit_id_for_glow = u.id;
+                break;
+            }
+        }
+    }
+
+    // Phase 6 — golden glow under the active unit.  Renders a slightly-larger
+    // yellow-tinted copy of the live sprite behind the unit, alpha pulsing
+    // at ~1 Hz between 0.30 and 0.75 so the unit reads as "selected" without
+    // visually stealing attention from its own animation.
+    auto draw_active_glow = [this](const UnitRenderData& unit) {
+        const auto ctrl_it = animation_controllers.find(unit.id);
+        if (ctrl_it == animation_controllers.end() || !ctrl_it->second.is_ready()) return;
+        const sf::Sprite* base = ctrl_it->second.get_sprite();
+        if (base == nullptr) return;
+
+        constexpr float kPulseHz = 1.0f;
+        const float t = 0.5f + 0.5f * std::sin(pulse_phase_seconds * 2.0f * kPi * kPulseHz);
+        const float alpha_norm = 0.30f + 0.45f * t;
+        const auto alpha = static_cast<std::uint8_t>(std::round(255.0f * alpha_norm));
+
+        sf::Sprite glow = *base;                   // copy texture + transform
+        glow.setColor(sf::Color(255, 215, 0, alpha));
+        const sf::Vector2f s = base->getScale();
+        constexpr float kGlowGrow = 1.08f;
+        glow.setScale({s.x * kGlowGrow, s.y * kGlowGrow});
+        window.draw(glow, sf::BlendAdd);
+    };
+
     auto draw_one = [this](const UnitRenderData& unit) {
         sf::Vector2f center = unit_render_center(unit);
         const auto override_it = visual_position_overrides.find(unit.id);
@@ -344,16 +426,104 @@ void SfmlBattleView::draw_units() {
         if (unit.is_corpse) draw_one(unit);
     }
     for (const UnitRenderData& unit : units_to_draw) {
-        if (!unit.is_corpse) draw_one(unit);
+        if (unit.is_corpse) continue;
+        // Glow goes UNDER the sprite — same z-layer, drawn first so the
+        // unit's own art composites on top of the additive halo.
+        if (unit.id == active_unit_id_for_glow) {
+            draw_active_glow(unit);
+        }
+        draw_one(unit);
     }
+
+    // Active projectile (if a Projectile event sits at the front of the queue).
+    if (!visual_events.empty() && visual_events.front().type == VisualEvent::Type::Projectile) {
+        const ProjectileVisualEvent& pe = visual_events.front().projectile;
+        const float t = std::clamp(pe.elapsed_seconds / pe.duration_seconds, 0.0f, 1.0f);
+        const sf::Vector2f pos {
+            pe.from.x + (pe.to.x - pe.from.x) * t,
+            pe.from.y + (pe.to.y - pe.from.y) * t,
+        };
+
+        std::shared_ptr<DefResource> proj = pe.projectile_asset.empty()
+            ? nullptr : def_manager.get_or_load(pe.projectile_asset);
+        const DefFrame* frame = nullptr;
+        if (proj) {
+            for (const auto& [gid, frames] : proj->groups) {
+                (void)gid;
+                for (const DefFrame& f : frames) {
+                    if (f.width > 0 && f.height > 0) { frame = &f; break; }
+                }
+                if (frame) break;
+            }
+        }
+
+        if (frame) {
+            sf::Sprite spr(frame->texture);
+            const auto sz = frame->texture.getSize();
+            spr.setOrigin({sz.x * 0.5f, sz.y * 0.5f});
+            // Rotate the projectile to face its travel direction so arrows
+            // visually align with the line of flight.
+            const float dx = pe.to.x - pe.from.x;
+            const float dy = pe.to.y - pe.from.y;
+            const float angle_deg = std::atan2(dy, dx) * (180.0f / kPi);
+            spr.setRotation(sf::degrees(angle_deg));
+            spr.setPosition(pos);
+            window.draw(spr);
+        } else {
+            // Fallback: tiny circle so the absence of a projectile DEF is
+            // never a silent rendering failure during development.
+            sf::CircleShape dot(4.0f);
+            dot.setOrigin({4.0f, 4.0f});
+            dot.setPosition(pos);
+            dot.setFillColor(sf::Color(255, 230, 100, 230));
+            window.draw(dot);
+        }
+    }
+
+    // Active morale aura — overlay morale.def's frames just above the unit.
+    if (!visual_events.empty() && visual_events.front().type == VisualEvent::Type::Morale) {
+        const MoraleVisualEvent& me = visual_events.front().morale;
+
+        std::shared_ptr<DefResource> aura = def_manager.get_or_load("morale.def");
+        const UnitRenderData* unit = find_unit_render_data(me.unit_id);
+        if (aura && unit != nullptr) {
+            const auto group_it = aura->groups.find(0);
+            if (group_it != aura->groups.end() && !group_it->second.empty()) {
+                const std::vector<DefFrame>& frames = group_it->second;
+                const float t = std::clamp(me.elapsed_seconds / me.duration_seconds, 0.0f, 0.999f);
+                const std::size_t idx = std::min<std::size_t>(
+                    frames.size() - 1,
+                    static_cast<std::size_t>(t * static_cast<float>(frames.size())));
+                const DefFrame& frame = frames[idx];
+
+                if (frame.width > 0 && frame.height > 0) {
+                    sf::Sprite spr(frame.texture);
+                    const auto sz = frame.texture.getSize();
+                    sf::Vector2f center = unit_render_center(*unit);
+                    if (const auto override_it = visual_position_overrides.find(unit->id);
+                        override_it != visual_position_overrides.end()) {
+                        center = override_it->second;
+                    }
+                    // Anchor the aura's bottom-centre slightly above the
+                    // unit's hex centre so it reads as floating overhead
+                    // rather than sitting on the sprite.
+                    spr.setOrigin({sz.x * 0.5f, static_cast<float>(sz.y)});
+                    spr.setPosition({center.x, center.y - hex_radius * 1.2f});
+                    window.draw(spr);
+                }
+            }
+        }
+    }
+
 }
 
 void SfmlBattleView::draw_hud() {
-    window.draw(hud_background);
-    window.draw(defend_button);
-    window.draw(wait_button);
-    window.draw(*defend_text);
-    window.draw(*wait_text);
+    // Subtle full-width strip behind the HUD text + turn queue; no down-bar
+    // background under the action icons (the icons render straight on top).
+    sf::RectangleShape hud_bg({screen_width, screen_height - battlefield_height});
+    hud_bg.setPosition({0.0f, battlefield_height});
+    hud_bg.setFillColor(sf::Color(36, 36, 42));
+    window.draw(hud_bg);
 
     hud_text->setString("Unit: " + hud_unit_name +
                         " | Count: "   + std::to_string(hud_count) +
@@ -362,6 +532,30 @@ void SfmlBattleView::draw_hud() {
 
     window.draw(*hud_text);
     window.draw(*log_text);
+
+    draw_action_bar();
+}
+
+void SfmlBattleView::draw_action_bar() {
+    // No down-bar background — icons composite directly onto the HUD strip.
+    // Each *_icon.def packs four poses (0=normal, 1=hover, 2=pressed,
+    // 3=disabled); we toggle frame 2 for the brief click-feedback window.
+    for (const ActionSlot& slot : action_slots) {
+        std::shared_ptr<DefResource> res = def_manager.get_or_load(slot.def_filename);
+        if (!res) continue;
+        const auto group_it = res->groups.find(0);
+        if (group_it == res->groups.end() || group_it->second.empty()) continue;
+
+        const std::vector<DefFrame>& frames = group_it->second;
+        const std::size_t want_idx = (slot.pressed_seconds_left > 0.0f && frames.size() > 2)
+                                     ? 2u : 0u;
+        const DefFrame& frame = frames[want_idx];
+        if (frame.width <= 0 || frame.height <= 0) continue;
+
+        sf::Sprite icon(frame.texture);
+        icon.setPosition({slot.bounds.position.x, slot.bounds.position.y});
+        window.draw(icon);
+    }
 }
 
 void SfmlBattleView::draw_turn_queue() {
@@ -379,7 +573,9 @@ void SfmlBattleView::draw_turn_queue() {
     constexpr float divider_w = 36.0f;
     constexpr float gap       = 4.0f;
     constexpr float start_x   = 16.0f;
-    const float queue_y       = screen_height - box_h - 12.0f;
+    constexpr float kBarHeight = 44.0f;
+    // Sit immediately above the action bar so neither overlaps the other.
+    const float queue_y       = screen_height - kBarHeight - box_h - 6.0f;
     const float right_limit   = screen_width - 320.0f;
     constexpr std::size_t kVisibleCapacity = 12;
 
@@ -446,60 +642,173 @@ void SfmlBattleView::draw_turn_queue() {
     }
 }
 
+void SfmlBattleView::draw_unit_stack_ui() {
+    constexpr float kBoxYOffset = 12.0f;
+    constexpr float kBackerPad = 2.0f;
+    constexpr float kBarHeight = 3.0f;
+    constexpr float kBarGap = 0.0f;
+
+    const sf::Vector2u box_size_u = unit_stack_box_texture.getSize();
+    const sf::Vector2f box_size{
+        static_cast<float>(box_size_u.x > 0 ? box_size_u.x : 30u),
+        static_cast<float>(box_size_u.y > 0 ? box_size_u.y : 11u),
+    };
+
+    for (const UnitRenderData& unit : units_to_draw) {
+        if (unit.is_corpse || unit.count <= 0) {
+            continue;
+        }
+
+        sf::Vector2f center = unit_render_center(unit);
+        if (const auto override_it = visual_position_overrides.find(unit.id);
+            override_it != visual_position_overrides.end()) {
+            center = override_it->second;
+        }
+        if (const auto ctrl_it = animation_controllers.find(unit.id);
+            ctrl_it != animation_controllers.end() && ctrl_it->second.is_ready()) {
+            if (const sf::Sprite* sprite = ctrl_it->second.get_sprite()) {
+                center = sprite->getPosition();
+            }
+        }
+
+        const sf::Vector2f box_pos {
+            std::round(center.x - box_size.x * 0.5f),
+            std::round(center.y + kBoxYOffset),
+        };
+        const sf::Vector2f box_center {
+            box_pos.x + box_size.x * 0.5f,
+            box_pos.y + box_size.y * 0.5f,
+        };
+
+        sf::Color team_color = sf::Color(160, 40, 40, 220);
+        if (unit.owner_id == 1) {
+            team_color = sf::Color(45, 75, 170, 220);
+        } else if (unit.owner_id != 0) {
+            team_color = sf::Color(90, 90, 90, 220);
+        }
+
+        unit_stack_team_backer.setSize({box_size.x + kBackerPad * 2.0f, box_size.y + kBackerPad * 2.0f});
+        unit_stack_team_backer.setPosition({box_pos.x - kBackerPad, box_pos.y - kBackerPad});
+        unit_stack_team_backer.setFillColor(team_color);
+        unit_stack_team_backer.setOutlineThickness(0.0f);
+        window.draw(unit_stack_team_backer);
+
+        const float hp_ratio = (unit.max_hp_per_unit > 0)
+            ? std::clamp(static_cast<float>(unit.current_top_unit_hp) / static_cast<float>(unit.max_hp_per_unit), 0.0f, 1.0f)
+            : 0.0f;
+        sf::Color hp_color = sf::Color::Red;
+        if (hp_ratio > 0.5f) {
+            hp_color = sf::Color::Green;
+        } else if (hp_ratio > 0.2f) {
+            hp_color = sf::Color::Yellow;
+        }
+
+        unit_stack_hp_back.setSize({box_size.x, kBarHeight});
+        unit_stack_hp_back.setPosition({box_pos.x, box_pos.y - kBarHeight - kBarGap});
+        window.draw(unit_stack_hp_back);
+
+        unit_stack_hp_fill.setSize({box_size.x * hp_ratio, kBarHeight});
+        unit_stack_hp_fill.setPosition({box_pos.x, box_pos.y - kBarHeight - kBarGap});
+        unit_stack_hp_fill.setFillColor(hp_color);
+        window.draw(unit_stack_hp_fill);
+
+        if (unit_stack_box_sprite) {
+            unit_stack_box_sprite->setPosition(box_pos);
+            window.draw(*unit_stack_box_sprite);
+        } else {
+            sf::RectangleShape fallback(box_size);
+            fallback.setPosition(box_pos);
+            fallback.setFillColor(sf::Color(230, 220, 170));
+            fallback.setOutlineColor(sf::Color(90, 70, 30));
+            fallback.setOutlineThickness(1.0f);
+            window.draw(fallback);
+        }
+
+        unit_stack_count_text->setString(std::to_string(unit.count));
+        const sf::FloatRect text_bounds = unit_stack_count_text->getLocalBounds();
+        unit_stack_count_text->setOrigin({
+            std::floor(text_bounds.position.x + text_bounds.size.x * 0.5f),
+            std::floor(text_bounds.position.y + text_bounds.size.y * 0.5f),
+        });
+        unit_stack_count_text->setPosition(box_center);
+        window.draw(*unit_stack_count_text);
+    }
+}
+
 void SfmlBattleView::draw_info_panel() {
     if (!info_panel_visible || !info_panel_unit.has_value()) return;
 
     const UnitRenderData& u = *info_panel_unit;
-    const sf::Vector2f center = hex_to_pixel(u.q, u.r);
-    sf::Vector2f panel_pos = {center.x + 20.0f, center.y - 90.0f};
 
-    // Keep the panel inside the window.
-    panel_pos.x = std::clamp(panel_pos.x, 10.0f,
-                             screen_width  - info_panel_background.getSize().x - 10.0f);
-    panel_pos.y = std::clamp(panel_pos.y, 10.0f,
-                             screen_height - info_panel_background.getSize().y - 10.0f);
+    // Anchor the panel to the screen centre so it reads as a modal overlay
+    // (the spec calls for centred placement) instead of trailing the unit.
+    const sf::Vector2u panel_size = info_panel_sprite
+        ? info_panel_texture.getSize()
+        : sf::Vector2u{300u, 311u};
+    const sf::Vector2f panel_pos {
+        (screen_width  - static_cast<float>(panel_size.x)) * 0.5f,
+        (screen_height - static_cast<float>(panel_size.y)) * 0.5f,
+    };
 
-    info_panel_background.setPosition(panel_pos);
+    if (info_panel_sprite) {
+        info_panel_sprite->setPosition(panel_pos);
+        window.draw(*info_panel_sprite);
+    } else {
+        sf::RectangleShape fallback({static_cast<float>(panel_size.x), static_cast<float>(panel_size.y)});
+        fallback.setPosition(panel_pos);
+        fallback.setFillColor(sf::Color(20, 20, 24, 240));
+        fallback.setOutlineColor(sf::Color(175, 175, 195));
+        fallback.setOutlineThickness(2.0f);
+        window.draw(fallback);
+    }
+
+    // Stat block.  The unit_stats.bmp template reserves the upper-left
+    // quadrant for a portrait — leave that area blank for now (Phase 5+
+    // will paint creature portraits there) and write text into the right
+    // column starting just below the title bar.
+    constexpr float kPortraitW = 130.0f;
+    constexpr float kTextLeftPad  = kPortraitW + 12.0f;
+    constexpr float kTextTopPad   = 24.0f;
 
     std::ostringstream panel;
     panel << u.name << (u.is_corpse ? " [Corpse]" : "") << "\n"
-          << "Count: "      << u.count            << "\n"
-          << "HP Left: "    << u.hp_left          << "\n"
-          << "Attack: "     << u.base_attack      << " (" << u.total_attack      << ")\n"
-          << "Defense: "    << u.base_defense     << " (" << u.total_defense     << ")\n"
-          << "Speed: "      << u.base_speed       << " (" << u.total_speed       << ")\n"
-          << "Damage Min: " << u.base_damage_min  << " (" << u.total_damage_min  << ")\n"
-          << "Damage Max: " << u.base_damage_max  << " (" << u.total_damage_max  << ")";
-    if (!u.description.empty()) {
-        panel << "\n\n" << u.description;
-    }
-
+          << "Attack: " << u.total_attack << "\n"
+          << "Defense: " << u.total_defense << "\n"
+          << "Shoots left: " << (u.is_ranged ? std::to_string(u.ammo) : "") << "\n"
+          << "Damage: " << u.total_damage_min << "-" << u.total_damage_max << "\n"
+          << "Health: " << u.max_hp_per_unit << "\n"
+          << "Health left: " << u.current_top_unit_hp << "\n"
+          << "Speed: " << u.total_speed;
     info_panel_text->setString(panel.str());
-    info_panel_text->setPosition({panel_pos.x + 12.0f, panel_pos.y + 10.0f});
-
-    window.draw(info_panel_background);
+    info_panel_text->setPosition({panel_pos.x + kTextLeftPad, panel_pos.y + kTextTopPad});
     window.draw(*info_panel_text);
 }
 
 void SfmlBattleView::draw_cursor() {
     if (cursor_style == CursorStyle::Default) return;
 
-    const float angle = cursor_angle_deg(cursor_style);
+    // combat_icons.def is loaded lazily on the first call (one-shot — the
+    // resource lives in the def_manager cache for the rest of the battle).
+    std::shared_ptr<DefResource> res = def_manager.get_or_load("combat_icons.def");
+    if (!res) return;
 
-    sf::RectangleShape blade({30.0f, 4.0f});
-    blade.setOrigin({6.0f, 2.0f});
-    blade.setPosition(cursor_position);
-    blade.setRotation(sf::degrees(angle));
-    blade.setFillColor(sf::Color(220, 220, 230));
+    const auto group_it = res->groups.find(0);
+    if (group_it == res->groups.end()) return;
+    const std::vector<DefFrame>& frames = group_it->second;
 
-    sf::RectangleShape handle({8.0f, 6.0f});
-    handle.setOrigin({4.0f, 3.0f});
-    handle.setPosition(cursor_position);
-    handle.setRotation(sf::degrees(angle));
-    handle.setFillColor(sf::Color(110, 80, 40));
+    const int frame_index = static_cast<int>(cursor_style);
+    if (frame_index < 0 || frame_index >= static_cast<int>(frames.size())) return;
 
-    window.draw(blade);
-    window.draw(handle);
+    const DefFrame& frame = frames[frame_index];
+    if (frame.width <= 0 || frame.height <= 0) return;
+
+    // HoMM3 cursor frames are top-left padded inside their canvas: anchoring
+    // the sprite at (0,0) and positioning it at the mouse keeps the click
+    // hotspot at the icon's tip exactly as the original game does.
+    sf::Sprite sprite(frame.texture);
+    sprite.setOrigin({0.0f, 0.0f});
+    sprite.setPosition(cursor_position);
+    window.draw(sprite);
 }
 
 void SfmlBattleView::clear_all_highlights() {
@@ -543,6 +852,16 @@ void SfmlBattleView::set_hover_destination_highlight(int q, int r, bool has_tail
 
 void SfmlBattleView::clear_hover_destination_highlight() {
     hover_destination_highlight.reset();
+    refresh_expanded_highlights();
+}
+
+void SfmlBattleView::set_attack_origin_highlights(const std::vector<AttackOriginHex>& origins) {
+    attack_origin_highlights = origins;
+    refresh_expanded_highlights();
+}
+
+void SfmlBattleView::clear_attack_origin_highlights() {
+    attack_origin_highlights.clear();
     refresh_expanded_highlights();
 }
 
@@ -650,6 +969,39 @@ void SfmlBattleView::queue_attack_animation_facing(std::uint64_t attacker_id, in
     visual_events.push_back(event);
 }
 
+void SfmlBattleView::queue_projectile_animation(std::uint64_t attacker_id,
+                                                int target_q, int target_r,
+                                                const std::string& projectile_asset,
+                                                float duration_seconds) {
+    VisualEvent event;
+    event.type = VisualEvent::Type::Projectile;
+    event.projectile.attacker_id     = attacker_id;
+    event.projectile.projectile_asset = projectile_asset;
+    event.projectile.duration_seconds = std::max(0.05f, duration_seconds);
+
+    // Resolve attacker's current sprite position (post-move overrides included).
+    sf::Vector2f from{0.0f, 0.0f};
+    if (const auto it = animation_controllers.find(attacker_id); it != animation_controllers.end()) {
+        if (const sf::Sprite* s = it->second.get_sprite()) {
+            from = s->getPosition();
+        }
+    }
+    if (const UnitRenderData* unit = find_unit_render_data(attacker_id); unit && from == sf::Vector2f{0.0f, 0.0f}) {
+        from = unit_render_center(*unit);
+    }
+
+    event.projectile.from = from;
+    event.projectile.to   = hex_to_pixel(target_q, target_r);
+    visual_events.push_back(std::move(event));
+}
+
+void SfmlBattleView::queue_morale_animation(std::uint64_t unit_id) {
+    VisualEvent event;
+    event.type = VisualEvent::Type::Morale;
+    event.morale.unit_id = unit_id;
+    visual_events.push_back(std::move(event));
+}
+
 void SfmlBattleView::queue_hit_animation(std::uint64_t defender_id) {
     VisualEvent event;
     event.type = VisualEvent::Type::Hit;
@@ -680,12 +1032,45 @@ bool SfmlBattleView::has_pending_visual_events() const {
     return !visual_events.empty();
 }
 
+void SfmlBattleView::set_idle_callback(std::function<void()> cb) {
+    idle_callback = std::move(cb);
+}
+
+bool SfmlBattleView::route_action_click(float x, float y, BattlePresenter& presenter) {
+    constexpr float kPressedFlashSeconds = 0.15f;
+
+    for (ActionSlot& slot : action_slots) {
+        if (!slot.bounds.contains({x, y})) continue;
+        slot.pressed_seconds_left = kPressedFlashSeconds;
+        switch (slot.kind) {
+            case ActionKind::Wait:       presenter.on_wait_clicked();   break;
+            case ActionKind::Defend:     presenter.on_defend_clicked(); break;
+            // Spellbook / AutoCombat / Surrender land later in their own
+            // phases; for now they're inert hit zones so the player gets
+            // hover feedback without surprising side effects.
+            case ActionKind::Spellbook:
+            case ActionKind::AutoCombat:
+            case ActionKind::Surrender:
+                show_message("Action not yet implemented");
+                break;
+        }
+        return true;
+    }
+    return false;
+}
+
 void SfmlBattleView::set_cursor_style(CursorStyle style, int pixel_x, int pixel_y) {
     cursor_style = style;
     cursor_position = {static_cast<float>(pixel_x), static_cast<float>(pixel_y)};
 
-    // Hide OS cursor only while rendering custom sword cursor.
-    window.setMouseCursorVisible(style == CursorStyle::Default);
+    // Only push the OS visibility flag on transitions: X11's XDefineCursor is
+    // a synchronous server roundtrip, and calling it on every MouseMoved
+    // event was the cause of the in-game input lag.
+    const bool want_visible = (style == CursorStyle::Default);
+    if (want_visible != os_cursor_visible) {
+        window.setMouseCursorVisible(want_visible);
+        os_cursor_visible = want_visible;
+    }
 }
 
 void SfmlBattleView::show_unit_info_panel(const UnitRenderData& unit_data) {
@@ -823,6 +1208,15 @@ void SfmlBattleView::refresh_expanded_highlights() {
     }
 
     // 2. Hover destination overlay (head + predicted tail) — uses the dark
+    // 2a. Attack-origin overlays (all valid post-attack positions).
+    for (const AttackOriginHex& origin : attack_origin_highlights) {
+        expanded_highlights[make_hex_key(origin.q, origin.r)] = HighlightType::AttackOrigin;
+        if (origin.has_tail) {
+            expanded_highlights[make_hex_key(origin.tail_q, origin.tail_r)] = HighlightType::AttackOrigin;
+        }
+    }
+
+    // 2b. Hover destination overlay (head + predicted tail) — uses the dark
     //    HoverDestination tint so it stands out from the lighter Walkable
     //    base layer that already covers every reachable hex.
     if (hover_destination_highlight.has_value()) {
@@ -847,6 +1241,12 @@ void SfmlBattleView::refresh_expanded_highlights() {
 }
 
 void SfmlBattleView::update_hover_from_mouse() {
+    // Presenter drives hover while previewing attack origins; keep its chosen
+    // destination marker stable even when the cursor is stationary.
+    if (!attack_origin_highlights.empty()) {
+        return;
+    }
+
     // During animations input is blocked; hide any stale hover highlight.
     if (has_pending_visual_events() || !active_unit_highlight.has_value()) {
         if (hover_destination_highlight.has_value()) {
@@ -856,11 +1256,9 @@ void SfmlBattleView::update_hover_from_mouse() {
         return;
     }
 
-    // Use mapPixelToCoords so the result is correct regardless of any view
-    // transform that SFML applies to the window's coordinate system.
-    const sf::Vector2i mouse_px   = sf::Mouse::getPosition(window);
-    const sf::Vector2f mouse_world = window.mapPixelToCoords(mouse_px);
-    const auto [hover_q, hover_r] = pixel_to_hex(mouse_world.x, mouse_world.y);
+    // Reuse the per-frame mouse position cached by render() — querying the OS
+    // mouse is an X11 roundtrip and we already paid for one this frame.
+    const auto [hover_q, hover_r] = pixel_to_hex(cursor_position.x, cursor_position.y);
     const std::int64_t hover_key  = make_hex_key(hover_q, hover_r);
 
     // Hex must be walkable.  We deliberately ignore highlight types other than
@@ -1000,6 +1398,23 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             break;
         }
 
+        // ── Projectile ────────────────────────────────────────────────────────
+        // Resolves on elapsed time only; the actual sprite drawing happens in
+        // draw_units() so the projectile composites correctly above corpses
+        // and below the HUD.
+        case VisualEvent::Type::Projectile: {
+            event.projectile.elapsed_seconds += dt.asSeconds();
+            finished = event.projectile.elapsed_seconds >= event.projectile.duration_seconds;
+            break;
+        }
+
+        // ── Morale aura ───────────────────────────────────────────────────────
+        case VisualEvent::Type::Morale: {
+            event.morale.elapsed_seconds += dt.asSeconds();
+            finished = event.morale.elapsed_seconds >= event.morale.duration_seconds;
+            break;
+        }
+
         // ── Hit (TakeDamage / flinch) ─────────────────────────────────────────
         case VisualEvent::Type::Hit: {
             event.hit.elapsed_seconds += dt.asSeconds();
@@ -1048,6 +1463,15 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             process_visual_event_start();
             process_visual_event_finish();
             visual_events.pop_front();
+        }
+
+        // Queue just drained → fire the one-shot idle callback (if any).
+        // We move it out before invoking so the callback can install a new
+        // one without losing it to the local clear.
+        if (visual_events.empty() && idle_callback) {
+            std::function<void()> cb = std::move(idle_callback);
+            idle_callback = nullptr;
+            cb();
         }
     }
 }
@@ -1105,6 +1529,22 @@ void SfmlBattleView::process_visual_event_start() {
             }
             break;
         }
+        case VisualEvent::Type::Projectile: {
+            // Snapshot the live attacker position when the event actually
+            // starts (the queue may have been built before the attacker's
+            // sprite moved into its final pose).
+            if (auto it = animation_controllers.find(event.projectile.attacker_id); it != animation_controllers.end()) {
+                if (const sf::Sprite* s = it->second.get_sprite()) {
+                    event.projectile.from = s->getPosition();
+                }
+            }
+            break;
+        }
+        case VisualEvent::Type::Morale: {
+            // No state to set up — duration is fixed, frame index is derived
+            // from elapsed in draw_units().
+            break;
+        }
         case VisualEvent::Type::Hit: {
             if (auto it = animation_controllers.find(event.hit.defender_id); it != animation_controllers.end()) {
                 it->second.set_animation_state(AnimState::TakeDamage, false, true);
@@ -1121,10 +1561,6 @@ void SfmlBattleView::process_visual_event_start() {
             break;
         }
     }
-}
-
-void SfmlBattleView::process_visual_event_update() {
-    // Kept for future extension; update logic currently lives in update_visual_events.
 }
 
 void SfmlBattleView::process_visual_event_finish() {
@@ -1146,6 +1582,14 @@ void SfmlBattleView::process_visual_event_finish() {
             if (auto it = animation_controllers.find(event.attack.attacker_id); it != animation_controllers.end()) {
                 it->second.set_animation_state(AnimState::Stand, true, true);
             }
+            break;
+        }
+        case VisualEvent::Type::Projectile: {
+            // No state to clean up — sprite stops being drawn once popped.
+            break;
+        }
+        case VisualEvent::Type::Morale: {
+            // No-op; the aura sprite is drawn directly from event state.
             break;
         }
         case VisualEvent::Type::Hit: {
@@ -1213,138 +1657,3 @@ bool SfmlBattleView::is_point_in_battlefield(float x, float y) const {
     return x >= 0.0f && x <= screen_width && y >= 0.0f && y < battlefield_height;
 }
 
-void SfmlBattleView::debug_render_sanity_check() {
-    // ── 1. Hardcoded file load ────────────────────────────────────────────────
-    const std::filesystem::path def_path =
-        "/home/dominik/Documents/zpr/assets/units/castle/CPKMAN.def";
-
-    DefParser::debug_parse_file(def_path.string());
-    std::cout << "[DBG] Absolute path being opened: " << def_path << "\n";
-
-    {
-        std::ifstream probe(def_path, std::ios::binary);
-        std::cout << "[DBG] std::ifstream::is_open() = " << std::boolalpha << probe.is_open() << "\n";
-        if (!probe.is_open()) {
-            std::cout << "[DBG] FATAL: cannot open file — check CWD and asset path.\n";
-            std::cout << "[DBG] CWD = " << std::filesystem::current_path() << "\n";
-            return;
-        }
-    }
-
-    std::shared_ptr<DefResource> resource;
-    try {
-        DefParser parser;
-        resource = std::make_shared<DefResource>(parser.parse_file(def_path));
-    } catch (const std::exception& e) {
-        std::cout << "[DBG] DefParser::parse_file() threw: " << e.what() << "\n";
-        return;
-    }
-
-    std::cout << "[DBG] Parsed OK — canvas " << resource->canvas_width
-              << " x " << resource->canvas_height
-              << ", groups: " << resource->groups.size() << "\n";
-
-    for (const auto& [gid, frames] : resource->groups) {
-        std::cout << "[DBG]   group " << gid << ": " << frames.size() << " frame(s)";
-        if (!frames.empty())
-            std::cout << "  [0] " << frames[0].width << "x" << frames[0].height
-                      << "  off=(" << frames[0].offset_x << "," << frames[0].offset_y << ")";
-        std::cout << "\n";
-    }
-
-    // Find the first group that has at least one frame with non-zero dimensions.
-    const DefFrame* first_frame = nullptr;
-    int group_used = -1;
-    for (auto& [gid, frames] : resource->groups) {
-        for (const DefFrame& f : frames) {
-            if (f.width > 0 && f.height > 0) {
-                first_frame = &f;
-                group_used = gid;
-                break;
-            }
-        }
-        if (first_frame) break;
-    }
-
-    if (!first_frame) {
-        std::cout << "[DBG] FATAL: no frame with valid dimensions found!\n";
-        return;
-    }
-
-    std::cout << "[DBG] Using group=" << group_used
-              << "  frame size=" << first_frame->width << "x" << first_frame->height << "\n";
-
-    // ── 5. Texture transparency check (read back pixels via copyToImage) ──────
-    {
-        const sf::Image img = first_frame->texture.copyToImage();
-        const unsigned int img_w = img.getSize().x;
-        const unsigned int img_h = img.getSize().y;
-        std::cout << "[DBG] copyToImage() size: " << img_w << "x" << img_h << "\n";
-
-        bool all_transparent = true;
-        const unsigned int pixels_to_check = std::min(100u, img_w * img_h);
-        for (unsigned int i = 0; i < pixels_to_check; ++i) {
-            if (img.getPixel({i % img_w, i / img_w}).a != 0) {
-                all_transparent = false;
-                break;
-            }
-        }
-        if (all_transparent) {
-            std::cout << "[DBG] WARNING: ENTIRE TEXTURE IS TRANSPARENT! "
-                         "Parser may be producing wrong pixel data.\n";
-        } else {
-            std::cout << "[DBG] Texture has non-transparent pixels — data looks OK.\n";
-        }
-
-        // Print the RGBA of the first non-trivial pixel for a quick sanity number.
-        for (unsigned int i = 0; i < img_w * img_h; ++i) {
-            const sf::Color px = img.getPixel({i % img_w, i / img_w});
-            if (px.a > 0) {
-                std::cout << "[DBG] First opaque pixel [" << (i % img_w) << ","
-                          << (i / img_w) << "] = rgba("
-                          << static_cast<int>(px.r) << ","
-                          << static_cast<int>(px.g) << ","
-                          << static_cast<int>(px.b) << ","
-                          << static_cast<int>(px.a) << ")\n";
-                break;
-            }
-        }
-    }
-
-    // ── 2. "Ugly Debug" Magenta box (proves the render loop works) ───────────
-    sf::RectangleShape debug_box({100.0f, 100.0f});
-    debug_box.setFillColor(sf::Color::Magenta);
-    debug_box.setPosition({400.0f, 300.0f});
-
-    // ── 3. Sprite at the same position, no HoMM3 offsets applied ─────────────
-    sf::Sprite debug_sprite(first_frame->texture);
-    debug_sprite.setOrigin({0.0f, 0.0f});
-    debug_sprite.setPosition({400.0f, 300.0f});
-
-    // ── 4. Blocking debug render loop ────────────────────────────────────────
-    std::cout << "[DBG] Entering debug render loop.\n"
-              << "[DBG]   • Magenta box at (400,300) — always visible if SFML works.\n"
-              << "[DBG]   • DEF sprite drawn on top — visible if parser+texture work.\n"
-              << "[DBG]   • Press Escape to exit debug view and continue normally.\n"
-              << "[DBG]   • Close window to terminate.\n";
-
-    while (window.isOpen()) {
-        while (const std::optional<sf::Event> ev = window.pollEvent()) {
-            if (ev->is<sf::Event::Closed>()) {
-                window.close();
-                return;
-            }
-            if (const auto* kp = ev->getIf<sf::Event::KeyPressed>()) {
-                if (kp->code == sf::Keyboard::Key::Escape) {
-                    std::cout << "[DBG] Escape pressed — exiting debug view.\n";
-                    return; // Window stays open; game continues normally.
-                }
-            }
-        }
-
-        window.clear(sf::Color(50, 50, 50));
-        window.draw(debug_box);    // Magenta — always visible.
-        window.draw(debug_sprite); // DEF frame — visible iff parser+texture OK.
-        window.display();
-    }
-}

@@ -216,5 +216,3 @@ DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
 
     return resource;
 }
-
-void DefParser::debug_parse_file(const std::string& /*filepath*/) {}

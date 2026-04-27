@@ -27,7 +27,7 @@ float AnimationController::fps_for_state(AnimState state, float base_fps) {
         case AnimState::Move:
         case AnimState::TakeDamage:
         case AnimState::Death:
-        case AnimState::Attack:     return base_fps * 2.0f;        // 10 fps
+        case AnimState::Attack:     return base_fps * 4.0f;        // 20 fps — Phase 6 spec doubles the previous 2× tempo for snappier combat
         case AnimState::Fidget:     return base_fps * 1.0f;
     }
     return base_fps;

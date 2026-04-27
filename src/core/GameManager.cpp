@@ -1,5 +1,6 @@
 #include "GameManager.hpp"
 #include <algorithm>
+#include <random>
 
 namespace {
 
@@ -54,7 +55,42 @@ Unit* GameManager::get_current_unit() {
     if (u != nullptr && before == 0) {
         ++round_number;
     }
+    // Roll morale exactly once per turn-start.  `last_morale_rolled_unit`
+    // dedups multiple presenter queries within the same turn; clearing it
+    // when the active unit changes (or becomes null) is what makes the
+    // unit's bonus turn re-use the existing flag without re-rolling.
+    roll_morale_for_active(u);
     return u;
+}
+
+void GameManager::roll_morale_for_active(Unit* unit) {
+    if (unit == nullptr) {
+        last_morale_rolled_unit = nullptr;
+        morale_triggered_this_turn = false;
+        return;
+    }
+    if (unit == last_morale_rolled_unit) {
+        return;   // already rolled this turn (same active unit)
+    }
+
+    // +2 morale → 10% chance to trigger good morale (HoMM3 standard).
+    static thread_local std::mt19937 rng{std::random_device{}()};
+    std::uniform_int_distribution<int> dist(0, 99);
+    morale_triggered_this_turn = (dist(rng) < 10);
+    last_morale_rolled_unit = unit;
+}
+
+void GameManager::consume_turn_or_burn_morale_bonus() {
+    if (morale_triggered_this_turn) {
+        // Bonus action used: clear the flag, do NOT advance the round queue
+        // — the same unit gets a second action this round.  Keep
+        // `last_morale_rolled_unit` latched so the bonus turn does not
+        // immediately reroll morale for the same activation.
+        morale_triggered_this_turn = false;
+        return;
+    }
+    round_manager.end_current_unit_turn();
+    last_morale_rolled_unit = nullptr;
 }
 
 std::vector<Unit*> GameManager::get_units_left_in_round() const {
@@ -139,8 +175,20 @@ bool GameManager::are_enemies(const Unit& first, const Unit& second) const {
 
 bool GameManager::can_attack(const Unit& attacker, const Hex& target_hex) const {
     const auto attacks = get_available_attacks(attacker);
+    Unit* clicked_target = nullptr;
+    if (target_hex.has_unit()) {
+        clicked_target = target_hex.get_unit().get();
+    }
+
     for (const auto& [target, hex] : attacks) {
-        if (target != nullptr && hex == &target_hex) {
+        if (target == nullptr) {
+            continue;
+        }
+        // Accept clicks on any occupied body hex of the same enemy unit.
+        if (clicked_target != nullptr && target == clicked_target) {
+            return true;
+        }
+        if (hex == &target_hex) {
             return true;
         }
     }
@@ -163,24 +211,45 @@ void GameManager::next_turn() {
 
 void GameManager::move(Unit& unit, Hex& dest_hex) {
     action_manager.move(unit, dest_hex, board);
-    round_manager.end_current_unit_turn();
+    consume_turn_or_burn_morale_bonus();
 }
 
 void GameManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex) {
-    if (action_manager.attack(attacker, defender, attack_from_hex, board)) {
-        // Attack returned true -> defender is dead
+    const auto enemy_predicate = [this, &attacker](const Unit& other) {
+        return are_enemies(attacker, other);
+    };
+
+    bool defender_died = false;
+    if (action_manager.can_shoot(attacker, defender, enemy_predicate, board)) {
+        defender_died = action_manager.shoot(attacker, defender, board);
+    } else {
+        defender_died = action_manager.attack(attacker, defender, attack_from_hex, board);
+    }
+
+    if (defender_died) {
         remove_dead_unit(defender);
     }
-    round_manager.end_current_unit_turn();
+    consume_turn_or_burn_morale_bonus();
+}
+
+bool GameManager::will_shoot(const Unit& attacker, const Unit& defender) const {
+    const auto enemy_predicate = [this, &attacker](const Unit& other) {
+        return are_enemies(attacker, other);
+    };
+    return action_manager.can_shoot(attacker, defender, enemy_predicate, board);
 }
 
 void GameManager::wait(Unit& unit) {
+    // Wait declines to act: the morale bonus is forfeit (HoMM3 behaviour —
+    // a unit that defers can't carry a +morale bonus into its later slot).
+    morale_triggered_this_turn = false;
+    last_morale_rolled_unit = nullptr;
     round_manager.wait_current_unit();
 }
 
 void GameManager::defend(Unit& unit) {
     action_manager.defend(unit);
-    round_manager.end_current_unit_turn();
+    consume_turn_or_burn_morale_bonus();
 }
 
 void GameManager::remove_dead_unit(Unit& unit) {
