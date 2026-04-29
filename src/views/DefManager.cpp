@@ -34,7 +34,7 @@ void DefManager::build_lookup() {
             if (!entry.is_regular_file()) continue;
 
             const std::string lower_name = normalize_filename(entry.path().filename().string());
-            // First match wins — earlier roots take precedence over later ones.
+
             filename_to_path.try_emplace(lower_name, entry.path());
         }
     }

@@ -9,8 +9,7 @@
 #include <memory>
 
 namespace {
-// Convert offset (col, row) to axial (q, r, s) for the pointy-top layout
-// used by Board (matches Board's grid-construction formula).
+
 struct Axial { int q; int r; int s; };
 Axial offset_to_axial(int col, int row) {
     const int q = col - (row - (row & 1)) / 2;
@@ -20,7 +19,7 @@ Axial offset_to_axial(int col, int row) {
 }
 
 int main() {
-    // Load unit stats, asset filenames and descriptions from JSON.
+
     UnitFactory::init("assets/units.json");
 
     Hero blue_hero("Blue Hero", 0, 0, 0, 0);
@@ -28,9 +27,6 @@ int main() {
 
     struct Placement { UnitID id; int count; int col; int row; };
 
-    // Blue (Castle) army on the left edge of the 15x11 grid.
-    // 2-hex units (Griffin, Cavalier) are shifted one column right so their
-    // tail hex (head_q - 1) stays within the board boundary.
     const Placement blue_roster[] = {
         { UnitID::Pikeman,    10, 0, 0  },
         { UnitID::Archer,      8, 0, 2  },
@@ -47,9 +43,6 @@ int main() {
         blue_hero.get_army().add_unit(unit);
     }
 
-    // Red (Inferno) army on the right edge.
-    // 2-hex units (HellHound) shifted one column left so their tail hex
-    // (head_q + 1) stays within the board boundary.
     const Placement red_roster[] = {
         { UnitID::Imp,         12, 14, 0  },
         { UnitID::Gog,          8, 14, 2  },
@@ -67,7 +60,7 @@ int main() {
     }
 
     GameManager model(blue_hero, red_hero);
-    SfmlBattleView view(1280, 720, "HeroesAI - Battle");
+    SfmlBattleView view(1280, 960, "HeroesAI - Battle");
     BattlePresenter presenter(model, view);
 
     presenter.start_battle();
@@ -77,7 +70,7 @@ int main() {
         try {
             view.process_events(presenter);
         } catch (const std::exception& e) {
-            // Prevent a stray model exception from crashing the whole game.
+
             (void)e;
         }
         view.render();

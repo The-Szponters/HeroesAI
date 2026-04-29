@@ -15,7 +15,7 @@ TEST(ArmyTest, AddUnitLimitFailure) {
     for (int i = 0; i < 7; ++i) {
         EXPECT_TRUE(army.add_unit(std::make_shared<Unit>()));
     }
-    // 8th unit should fail
+
     EXPECT_FALSE(army.add_unit(std::make_shared<Unit>()));
     EXPECT_EQ(army.get_units().size(), 7);
 }
@@ -33,11 +33,11 @@ TEST(ArmyTest, RemoveUnit) {
     army.add_unit(u1);
     army.add_unit(u2);
     EXPECT_EQ(army.get_units().size(), 2);
-    
+
     army.remove_unit(0);
     EXPECT_EQ(army.get_units().size(), 1);
     EXPECT_EQ(army.get_units()[0]->get_name(), "Archer");
-    
-    army.remove_unit(10); // out of bounds, shouldn't crash
+
+    army.remove_unit(10); 
     EXPECT_EQ(army.get_units().size(), 1);
 }

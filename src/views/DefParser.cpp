@@ -4,25 +4,6 @@
 
 namespace {
 
-// HoMM3 Format-1 palette reservations (verified against shipped DEFs):
-//   0       — true background, fully transparent
-//   1       — selection-marker border, fully transparent
-//   2       — soft ground shadow      → black @ alpha 64
-//   3       — hard ground shadow      → black @ alpha 128
-//   4       — selection-highlight ground shadow → black @ alpha 128
-//   5       — selection-highlight body shadow   → black @ alpha 128
-//   6       — body shadow                       → black @ alpha 160
-//   7       — body shadow (intense)             → black @ alpha 192
-// Index 8+ are normal opaque colours from the DEF palette.
-//
-// NOTE: indices 4 and 1 are commonly *shadow* indices in shipped DEFs — only
-// the literal palette entry 0 is a guaranteed background.  Marking 1 and 4 as
-// transparent (as we did before) deletes the unit's ground shadow for many
-// creatures, which is exactly the bug.  Treat 4 as a ground shadow and 1 as
-// transparent (it really is the selection border outside playmode).
-//
-// Alpha values are chosen so SFML's default BlendAlpha composites shadows over
-// any battlefield background without washing out the unit silhouette.
 sf::Color resolve_palette_entry(int i, std::uint8_t r, std::uint8_t g, std::uint8_t b) {
     switch (i) {
         case 0:  return sf::Color::Transparent;
@@ -37,7 +18,6 @@ sf::Color resolve_palette_entry(int i, std::uint8_t r, std::uint8_t g, std::uint
     }
 }
 
-// Read a single byte from the file; throws on EOF.
 std::uint8_t read_byte(std::ifstream& file) {
     std::uint8_t v;
     if (!file.read(reinterpret_cast<char*>(&v), 1))
@@ -45,18 +25,6 @@ std::uint8_t read_byte(std::ifstream& file) {
     return v;
 }
 
-// Decode one scanline of Format-1 HoMM3 RLE into `line[0..width-1]`.
-//
-// Format-1 RLE layout (verified against binary inspection of shipped DEF files):
-//   File position must be seeked to:  frame_start + 32 + line_offsets[y]
-//   Where `line_offsets` is the h×uint32 table that immediately follows the
-//   32-byte frame header. The table IS considered part of the "RLE block"; its
-//   own offsets are therefore relative to frame_start + 32 so that
-//   line_offsets[0] == h*4 (pointing just past the end of the table).
-//
-// Each scanline is a sequence of (segment_type, length_byte) pairs:
-//   segment_type == 0xFF → raw pixel run; next `length_byte+1` bytes are indices
-//   segment_type  < 0xFF → fill `length_byte+1` pixels with palette[segment_type]
 void decode_rle_line(std::ifstream& file, std::uint8_t* line, std::uint32_t width) {
     std::uint32_t x = 0;
     while (x < width) {
@@ -72,7 +40,7 @@ void decode_rle_line(std::ifstream& file, std::uint8_t* line, std::uint32_t widt
     }
 }
 
-} // namespace
+} 
 
 DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
     std::ifstream file(filepath, std::ios::binary);
@@ -123,15 +91,14 @@ DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
             const std::int32_t  tmargin  = read_binary<std::int32_t>(file, "tmargin");
 
             if (fmt == 1 && crop_w > 0 && crop_h > 0 && full_w > 0 && full_h > 0) {
-                // Line offset table: crop_h × uint32, relative to the RLE block
-                // that starts immediately after this 32-byte header (frame_offset+32).
+
                 std::vector<std::uint32_t> line_offsets(crop_h);
                 for (std::uint32_t y = 0; y < crop_h; ++y)
                     line_offsets[y] = read_binary<std::uint32_t>(file, "line_offset");
 
                 std::vector<std::uint8_t> indexed(crop_w * crop_h, 0);
                 for (std::uint32_t y = 0; y < crop_h; ++y) {
-                    // Seek: frame_start + 32 (skip header) + line_offsets[y]
+
                     const std::streamoff pos =
                         static_cast<std::streamoff>(frame_offsets[f]) + 32
                         + static_cast<std::streamoff>(line_offsets[y]);
@@ -139,7 +106,6 @@ DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
                     decode_rle_line(file, &indexed[y * crop_w], crop_w);
                 }
 
-                // Bake into a full-canvas RGBA texture with transparent background.
                 std::vector<std::uint8_t> rgba(full_w * full_h * 4u, 0);
                 for (std::uint32_t y = 0; y < crop_h; ++y) {
                     const std::int32_t dy = tmargin + static_cast<std::int32_t>(y);
@@ -156,12 +122,9 @@ DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
 
                 (void)frames[f].texture.resize({full_w, full_h});
                 frames[f].texture.update(rgba.data());
-                // Pixel-perfect — no bilinear smoothing across crop edges.
+
                 frames[f].texture.setSmooth(false);
 
-                // Crop geometry is preserved for *scale* computation only; the
-                // sprite anchor is now canvas-fixed (see AnimationController),
-                // so the (lmargin, tmargin) wobble can no longer occur.
                 frames[f].offset_x     = lmargin;
                 frames[f].offset_y     = tmargin;
                 frames[f].width        = crop_w;
@@ -175,15 +138,10 @@ DefResource DefParser::parse_file(const std::filesystem::path& filepath) const {
         resource.groups[block_id] = std::move(frames);
     }
 
-    // Compute the per-DEF anchor (feet_x, feet_y) from the Stand group only —
-    // Stand frames are the unit's at-rest pose so they give a stable centroid.
-    // Fall back to any non-empty group if Stand is missing.
     auto compute_anchor = [](const std::vector<DefFrame>& frames,
                              std::uint32_t& out_x, std::uint32_t& out_y) {
         std::uint32_t bottom_max = 0;
-        // Average horizontal centre across frames.  Averaging (rather than
-        // taking the first frame) tolerates idle frames that breathe slightly
-        // sideways without baking that drift into the anchor.
+
         std::uint64_t cx_sum = 0;
         std::uint32_t cx_count = 0;
         for (const DefFrame& f : frames) {

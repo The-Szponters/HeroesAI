@@ -9,9 +9,6 @@
 
 namespace {
 
-// Tail offset for a 2-hex unit, given its facing.
-// Right army (q >= 7, facing left) → tail extends RIGHT (dq=+1).
-// Left  army (q <  7, facing right) → tail extends LEFT  (dq=-1).
 std::tuple<int, int, int> tail_delta(const Unit& u) {
     if (u.is_facing_left()) return { 1, 0, -1};
     return {-1, 0,  1};
@@ -26,8 +23,6 @@ bool is_self_hex(const Unit& u, int q, int r, int s) {
     return false;
 }
 
-// Returns true if (q,r,s) AND (for size==2) its tail are valid, on-board,
-// and either empty or occupied only by `mover` itself.
 bool can_occupy(const Unit& mover, int q, int r, int s, const Board& board) {
     auto check = [&](int hq, int hr, int hs) {
         try {
@@ -65,7 +60,7 @@ bool are_units_adjacent(const Unit& a, const Unit& b) {
     return false;
 }
 
-} // namespace
+} 
 
 int ActionManager::hex_distance(const Unit& a, const Unit& b) {
     int best = std::numeric_limits<int>::max();
@@ -108,11 +103,6 @@ bool ActionManager::can_shoot(const Unit& attacker, const Unit& defender,
 }
 
 std::vector<const Hex*> ActionManager::find_path(const Unit& unit, const Hex& dest_hex, const Board& board) const {
-    // Plain BFS over the same hex adjacency the destination scan uses, but
-    // bounded by the unit's speed and constrained to hexes the unit can occupy
-    // as a HEAD position.  We keep `parent` indexed by (q,r,s) → predecessor
-    // tuple so we can reconstruct an actual chain (not just the set of
-    // reachable destinations).
 
     using Coord = std::tuple<int, int, int>;
     const Coord start{unit.get_q(), unit.get_r(), unit.get_s()};
@@ -122,6 +112,14 @@ std::vector<const Hex*> ActionManager::find_path(const Unit& unit, const Hex& de
         try {
             const Hex& s = board.get_hex(std::get<0>(start), std::get<1>(start), std::get<2>(start));
             return {&s};
+        } catch (const std::out_of_range&) { return {}; }
+    }
+
+    if (unit.ignores_path_blockers()) {
+        try {
+            const Hex& s = board.get_hex(std::get<0>(start), std::get<1>(start), std::get<2>(start));
+            const Hex& d = board.get_hex(std::get<0>(goal),  std::get<1>(goal),  std::get<2>(goal));
+            return {&s, &d};
         } catch (const std::out_of_range&) { return {}; }
     }
 
@@ -158,7 +156,6 @@ std::vector<const Hex*> ActionManager::find_path(const Unit& unit, const Hex& de
 
     if (!found) return {};
 
-    // Reconstruct path goal → start, then reverse.
     std::vector<const Hex*> chain;
     Coord cur = goal;
     while (true) {
@@ -176,8 +173,26 @@ std::vector<const Hex*> ActionManager::find_path(const Unit& unit, const Hex& de
 
 std::vector<Hex*> ActionManager::get_available_destinations(const Unit& unit, const Board& board) const {
     std::vector<Hex*> destinations;
-    std::set<std::tuple<int, int, int>> visited;
 
+    if (unit.ignores_path_blockers()) {
+        const int sq = unit.get_q();
+        const int sr = unit.get_r();
+        const int ss = unit.get_s();
+        const int range = unit.get_speed();
+        for (const Hex& hex : board.get_grid()) {
+            const int hq = hex.get_q();
+            const int hr = hex.get_r();
+            const int hs = hex.get_s();
+            if (hq == sq && hr == sr && hs == ss) continue;
+            const int d = std::max({std::abs(hq - sq), std::abs(hr - sr), std::abs(hs - ss)});
+            if (d > range) continue;
+            if (!can_occupy(unit, hq, hr, hs, board)) continue;
+            destinations.push_back(const_cast<Hex*>(&hex));
+        }
+        return destinations;
+    }
+
+    std::set<std::tuple<int, int, int>> visited;
     std::queue<std::pair<std::tuple<int, int, int>, int>> q;
 
     try {
@@ -185,7 +200,7 @@ std::vector<Hex*> ActionManager::get_available_destinations(const Unit& unit, co
         q.push({{start_hex.get_q(), start_hex.get_r(), start_hex.get_s()}, unit.get_speed()});
         visited.insert({start_hex.get_q(), start_hex.get_r(), start_hex.get_s()});
     } catch (const std::out_of_range&) {
-        return destinations; // Unit not on board
+        return destinations; 
     }
 
     const int dq[] = {1, 1, 0, -1, -1, 0};
@@ -204,8 +219,6 @@ std::vector<Hex*> ActionManager::get_available_destinations(const Unit& unit, co
 
             const bool at_start = (cq == unit.get_q() && cr == unit.get_r() && cs == unit.get_s());
 
-            // The current candidate hex must be reachable as a HEAD position;
-            // for size==2 that means head + tail are both clear of other units.
             const bool valid_stand = at_start || can_occupy(unit, cq, cr, cs, board);
 
             if (valid_stand) {
@@ -224,8 +237,6 @@ std::vector<Hex*> ActionManager::get_available_destinations(const Unit& unit, co
                             (void)board.get_hex(nq, nr, ns);
                         } catch (const std::out_of_range&) { continue; }
 
-                        // Walk-through still requires that the hex (and tail
-                        // for 2-hex creatures) is clear of OTHER units.
                         if (!can_occupy(unit, nq, nr, ns, board)) continue;
 
                         visited.insert({nq, nr, ns});
@@ -246,7 +257,6 @@ std::vector<std::pair<Unit*, Hex*>> ActionManager::get_available_attacks(const U
     const int dr[] = {0, -1, -1, 0, 1, 1};
     const int ds[] = {-1, 0, 1, 1, 0, -1};
 
-    // Origins from which the attacker threatens neighbours: head, plus tail for 2-hex.
     std::vector<std::tuple<int,int,int>> origins;
     origins.emplace_back(unit.get_q(), unit.get_r(), unit.get_s());
     if (unit.get_size() == 2) {
@@ -284,8 +294,6 @@ void ActionManager::move(Unit& unit, Hex& dest_hex, Board& board) {
     if (unit.get_size() == 2) {
         auto [dq, dr, ds] = tail_delta(unit);
 
-        // Clear the old tail if it is on the board (edge-placed units may have
-        // their tail off the board — treat it as a no-op in that case).
         try {
             Hex& start_tail = board.get_hex(start_hex.get_q() + dq,
                                             start_hex.get_r() + dr,
@@ -332,14 +340,12 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
         }
     } catch (std::out_of_range&) {}
 
-    // Defender turns toward the side the hit comes from.
     if (attacker.get_q() < defender.get_q()) {
         defender.set_visual_facing_left(true);
     } else if (attacker.get_q() > defender.get_q()) {
         defender.set_visual_facing_left(false);
     }
 
-    // Ranged units fighting in melee deal half damage (HoMM3 melee penalty).
     int damage = calculate_damage(attacker, defender);
     if (attacker.is_ranged()) damage /= 2;
     defender.take_damage(damage);
@@ -354,7 +360,7 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
                     Hex& def_tail = board.get_hex(defender.get_q() + dq,
                                                   defender.get_r() + dr,
                                                   defender.get_s() + ds);
-                    // Keep corpse metadata on both occupied hexes for 2-hex units.
+
                     def_tail.unit_died();
                 } catch (std::out_of_range&) {}
             }
@@ -362,10 +368,8 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
         return true;
     }
 
-    // Retaliation: defender hits back once per round if it survived and is
-    // adjacent to the attacker (HoMM3 standard counter-attack).
     if (!defender.has_retaliated_this_round() && are_units_adjacent(attacker, defender)) {
-        // Retaliation direction follows the same rule for the struck attacker.
+
         if (defender.get_q() < attacker.get_q()) {
             attacker.set_visual_facing_left(true);
         } else if (defender.get_q() > attacker.get_q()) {
@@ -386,7 +390,7 @@ bool ActionManager::attack(Unit& attacker, Unit& defender, Hex& attack_from_hex,
                         Hex& atk_tail = board.get_hex(attacker.get_q() + dq,
                                                       attacker.get_r() + dr,
                                                       attacker.get_s() + ds);
-                        // Keep corpse metadata on both occupied hexes for 2-hex units.
+
                         atk_tail.unit_died();
                     } catch (std::out_of_range&) {}
                 }
@@ -433,7 +437,6 @@ bool ActionManager::shoot(Unit& attacker, Unit& defender, Board& board) {
         throw std::logic_error("shoot() called on a unit that cannot shoot");
     }
 
-    // Face the target — purely visual; ranged units never move.
     if (attacker.get_q() < defender.get_q()) {
         attacker.set_visual_facing_left(false);
     } else if (attacker.get_q() > defender.get_q()) {

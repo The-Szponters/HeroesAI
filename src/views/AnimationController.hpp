@@ -10,9 +10,9 @@
 enum class AnimState : int {
     Move       = 0,
     Stand      = 1,
-    TakeDamage = 4,   // DEF group 4 — flinch / hit reaction
+    TakeDamage = 4,   
     Death      = 5,
-    Fidget     = 11,  // DEF group 11 — idle "shuffle" played occasionally during Stand
+    Fidget     = 11,  
     Attack     = 12,
 };
 
@@ -50,8 +50,7 @@ private:
     int group_id = 1;
     std::size_t frame_index = 0;
     float frame_accumulator = 0.0f;
-    // base_fps is the design-rate (5 fps); fps is the *effective* rate after
-    // applying the per-state multiplier (Stand×0.85, Move/Attack/Hit/Death×2).
+
     float base_fps = 5.0f;
     float fps = 5.0f;
     float scale = 1.0f;
@@ -60,9 +59,6 @@ private:
     bool freeze_on_last_frame = true;
     bool finished = false;
 
-    // Fidget (Group 11) bookkeeping: while the unit is idle in Stand we count
-    // down `fidget_cooldown`; when it hits zero and the DEF actually has a
-    // Group 11, we play it once and bounce back to Stand.
     float fidget_cooldown = 0.0f;
 
     sf::Vector2f hex_center = {0.0f, 0.0f};

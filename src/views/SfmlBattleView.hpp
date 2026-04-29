@@ -39,6 +39,7 @@ public:
     void clear_hover_destination_highlight() override;
     void set_attack_origin_highlights(const std::vector<AttackOriginHex>& origins) override;
     void clear_attack_origin_highlights() override;
+    void set_shift_preview_active(bool active) override;
     void set_predicted_facings(const std::vector<PredictedFacing>& predictions) override;
     void sync_unit_positions() override;
     void update_render_data(const std::vector<UnitRenderData>& units) override;
@@ -65,7 +66,7 @@ public:
     void hide_unit_info_panel() override;
 
 private:
-    // ── Render pipeline ──────────────────────────────────────────────────
+
     void draw_battlefield_background();
     void draw_hex_grid();
     void draw_units();
@@ -79,9 +80,6 @@ private:
     std::pair<int, int> pixel_to_hex(float x, float y) const;
     sf::ConvexShape make_hex_shape(int q, int r) const;
 
-    // For 1-hex units: centre of the (q,r) hex.
-    // For 2-hex units: midpoint between the head hex and the tail hex
-    // (tail extends opposite the facing direction).
     sf::Vector2f unit_render_center(const UnitRenderData& unit) const;
     sf::Vector2f unit_render_center(const UnitRenderData& unit, int q, int r) const;
 
@@ -115,34 +113,26 @@ private:
 
     struct AttackVisualEvent {
         std::uint64_t attacker_id = 0;
-        // Optional: when has_target_hex is true, the attacker is rotated to
-        // face (target_q, target_r) the instant the event starts.  This is
-        // how the View turns a unit toward the defender before the swing —
-        // important when the attacker walked past the target on a flank.
+
         bool has_target_hex = false;
         int  target_q = 0;
         int  target_r = 0;
-        float safety_timeout = 5.0f;   // fallback if DEF has no Attack group
+        float safety_timeout = 5.0f;   
         float elapsed_seconds = 0.0f;
     };
 
-    // Defender plays TakeDamage (DEF group 4); resolves frame-by-frame like AttackVisualEvent.
     struct HitVisualEvent {
         std::uint64_t defender_id = 0;
         float safety_timeout = 5.0f;
         float elapsed_seconds = 0.0f;
     };
 
-    // Waits for the Death animation (already triggered by a preceding CommitRenderData) to finish.
     struct DeathVisualEvent {
         std::uint64_t unit_id = 0;
         float safety_timeout = 8.0f;
         float elapsed_seconds = 0.0f;
     };
 
-    // A projectile sprite (e.g. arrow, fireball) flying from attacker's
-    // current pixel center to a destination hex.  Resolves when elapsed >=
-    // duration; the sprite is drawn during draw_units().
     struct ProjectileVisualEvent {
         std::uint64_t attacker_id = 0;
         sf::Vector2f from = {0.0f, 0.0f};
@@ -152,9 +142,6 @@ private:
         float elapsed_seconds  = 0.0f;
     };
 
-    // Morale aura — plays morale.def's 20 frames once at ~24 fps above the
-    // unit's sprite.  No model side-effects; the model has already granted
-    // the bonus action by the time this event is queued.
     struct MoraleVisualEvent {
         std::uint64_t unit_id = 0;
         float duration_seconds = 0.85f;
@@ -203,20 +190,17 @@ private:
 
     sf::RenderWindow window;
 
-    // Geometry and layout values.
     float screen_width;
     float screen_height;
     float battlefield_height;
     float hex_radius;
     sf::Vector2f grid_origin;
 
-    // HUD and combat log state.
     std::string hud_unit_name;
     int hud_count;
     int hud_hp_left;
     std::string latest_message;
 
-    // Render cache from presenter.
     std::vector<UnitRenderData> units_to_draw;
     std::vector<UnitRenderData> model_units_latest;
     std::unordered_map<std::uint64_t, sf::Vector2f> visual_position_overrides;
@@ -231,15 +215,11 @@ private:
     sf::Clock animation_clock;
     std::function<void()> idle_callback;
 
-    // Continuous accumulator used to drive the active-unit glow pulse.
-    // Distinct from animation_clock (which restarts every frame for dt).
     float pulse_phase_seconds = 0.0f;
 
-    // Battle background image.
     sf::Texture battlefield_texture;
     std::unique_ptr<sf::Sprite> battlefield_sprite;
 
-    // Unit stack quantity box / HP bar assets.
     sf::Texture unit_stack_box_texture;
     std::unique_ptr<sf::Sprite> unit_stack_box_sprite;
     std::unique_ptr<sf::Text> unit_stack_count_text;
@@ -247,31 +227,20 @@ private:
     sf::RectangleShape unit_stack_hp_back;
     sf::RectangleShape unit_stack_hp_fill;
 
-    // Highlight map keyed by axial (q, r).
     std::unordered_map<std::int64_t, HighlightType> highlights;
     std::optional<ActiveUnitHighlight> active_unit_highlight;
     std::optional<HoverDestinationHighlight> hover_destination_highlight;
     std::vector<AttackOriginHex> attack_origin_highlights;
-    // Hex key → predicted facing (true == facing left) for the active unit
-    // when it would arrive at that hex.  Built by the presenter via
-    // ActionManager::find_path so 2-hex tail prediction is exact even on
-    // C-shaped routes (Issue #2/#4).
+    bool shift_preview_active = false;
+
     std::unordered_map<std::int64_t, bool> predicted_facing_by_hex;
 
-    // ── Bottom action bar (down_bar.bmp + per-action icon DEFs) ───────────
-    // The bar stretches the original 800×44 graphic horizontally to fit the
-    // window width and anchors at the very bottom.  Each ActionSlot owns the
-    // icon DEF filename and the screen rect we hit-test against in
-    // process_events().  Click dispatch lives in route_action_click().
     enum class ActionKind { Spellbook, Wait, Defend, AutoCombat, Surrender };
     struct ActionSlot {
         ActionKind kind = ActionKind::Wait;
         std::string def_filename;
         sf::FloatRect bounds;
-        // Frame index 2 of each *_icon.def is the "pressed" pose.  When the
-        // user clicks an icon we display it for `pressed_seconds_left`
-        // seconds, ticked down each render() so the press feedback is
-        // independent of the rest of the visual queue.
+
         float pressed_seconds_left = 0.0f;
     };
     std::vector<ActionSlot> action_slots;
@@ -281,17 +250,10 @@ private:
     std::unique_ptr<sf::Text> queue_text;
     std::unique_ptr<sf::Text> log_text;
 
-    // Custom cursor data.  `os_cursor_visible` mirrors the SFML cursor
-    // visibility flag so we only push a new value when it actually changes —
-    // X11's XDefineCursor is a server roundtrip and calling it on every
-    // MouseMoved event makes the game feel sluggish.
     CursorStyle cursor_style = CursorStyle::Default;
     sf::Vector2f cursor_position = {0.0f, 0.0f};
     bool os_cursor_visible = true;
 
-    // Right-click unit info panel state.  Background is unit_stats.bmp
-    // (load_info_panel_assets() loads it once and falls back to a flat
-    // rectangle if the file is missing so the panel still works in tests).
     bool info_panel_visible = false;
     std::optional<UnitRenderData> info_panel_unit;
     sf::Texture info_panel_texture;

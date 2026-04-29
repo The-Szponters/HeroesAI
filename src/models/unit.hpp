@@ -50,44 +50,40 @@ public:
     void set_size(int s) { size = (s == 2 ? 2 : 1); }
     bool is_teleporter_unit() const { return is_teleporter; }
     void set_is_teleporter(bool value) { is_teleporter = value; }
+    bool is_flying_unit() const { return is_flying; }
+    void set_is_flying(bool value) { is_flying = value; }
+
+    bool ignores_path_blockers() const { return is_flying || is_teleporter; }
 
     bool has_retaliated_this_round() const { return has_retaliated; }
     void set_retaliated(bool v) { has_retaliated = v; }
 
-    // Ranged-combat interface — default no-op for melee units.  RangeUnit
-    // overrides every method below; calling them on a melee unit must always
-    // be safe (returns 0/false) so callers can be polymorphic without
-    // dynamic_cast'ing.
     virtual bool is_ranged() const { return false; }
     virtual int  get_ammo() const { return 0; }
     virtual int  get_max_ammo() const { return 0; }
     virtual int  get_max_range_damage() const { return 0; }
     virtual void decrement_ammo() {}
-    // Empty filename → no dedicated projectile sprite for this unit.
+
     virtual const std::string& get_projectile_asset() const {
         static const std::string empty;
         return empty;
     }
 
-    // Logical facing used for tail-direction maths (right army = faces left).
-    // Never changes after initial placement.
     bool is_facing_left() const { return logical_facing_left; }
 
-    // Visual facing for sprite mirroring — updates whenever the unit moves
-    // to a different column (face the direction of travel).
     bool get_visual_facing_left() const { return visual_facing_left; }
     void set_visual_facing_left(bool value) { visual_facing_left = value; }
 
     void set_position(int new_q, int new_r, int new_s) {
         if (!position_initialized) {
-            // Initial placement: derive both facings from army side.
+
             logical_facing_left = (new_q >= 7);
             visual_facing_left  = (new_q >= 7);
             position_initialized = true;
         } else if (new_q != q) {
-            // Horizontal movement: sprite faces direction of travel.
+
             visual_facing_left = (new_q < q);
-            // logical_facing_left never changes.
+
         }
         q = new_q; r = new_r; s = new_s;
     }
@@ -183,9 +179,10 @@ private:
 
     int size = 1;
     bool is_teleporter = false;
+    bool is_flying = false;
     bool has_retaliated = false;
-    bool logical_facing_left = false;   // army side — set once, never changes
-    bool visual_facing_left  = false;   // mirrors on movement direction
+    bool logical_facing_left = false;   
+    bool visual_facing_left  = false;   
     bool position_initialized = false;
 
     std::string asset_filename;

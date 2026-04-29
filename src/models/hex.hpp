@@ -19,11 +19,11 @@ public:
     }
     Hex(const Hex& other) = default;
     ~Hex() = default;
-    
+
     const int get_q() const { return q; }
     const int get_r() const { return r; }
     const int get_s() const { return s; }
-    
+
     std::shared_ptr<Unit> get_unit() const { 
         auto shared_unit = unit.lock();
         if (!shared_unit) {

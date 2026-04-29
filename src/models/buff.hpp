@@ -10,7 +10,7 @@ enum class BuffType {
 struct Buff {
     BuffType type;
     int duration;
-    
+
     std::function<int(int)> modify_attack = [](int x) { return x; };
     std::function<int(int)> modify_defense = [](int x) { return x; };
     std::function<int(int)> modify_speed = [](int x) { return x; };

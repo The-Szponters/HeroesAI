@@ -5,13 +5,6 @@
 #include <cctype>
 #include <string>
 
-// A creature with a finite supply of shots (HoMM3 "ammo cart" mechanic).
-// Combat policy lives in ActionManager / GameManager — RangeUnit only owns:
-//   • max_ammo  — initial ammunition pool from units.json ("shoots").
-//   • ammo      — remaining shots; decremented on every successful ranged
-//                 attack and never restored mid-battle.
-//   • the sprite filename of the projectile that flies from attacker to target
-//     (the unit's *attack pose* is its own DEF; this is the in-flight art).
 class RangeUnit : public Unit {
 public:
     RangeUnit() = default;
@@ -43,9 +36,7 @@ public:
     int  get_ammo() const override { return ammo; }
     int  get_max_ammo() const override { return max_ammo; }
     int  get_max_range_damage() const override {
-        // No unit currently has asymmetric melee/ranged damage; reuse the base
-        // damage_max so the View can display ammo+damage from a single source
-        // of truth.  Override per-unit later if a creature breaks this rule.
+
         return get_base_damage_max();
     }
     void decrement_ammo() override {
@@ -53,13 +44,10 @@ public:
     }
     const std::string& get_projectile_asset() const override { return projectile_asset; }
 
-    // Legacy alias kept until callers migrate.
     int get_shoots() const { return max_ammo; }
 
 private:
-    // Match the unit's main DEF filename (case-insensitive) to the projectile
-    // DEF that ships with it.  Centralising the table here avoids leaking the
-    // mapping into View/Presenter code.
+
     static std::string infer_projectile_asset(const std::string& unit_asset) {
         auto iequals = [](const std::string& a, const char* b) {
             const std::size_t n = std::char_traits<char>::length(b);

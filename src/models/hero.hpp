@@ -6,10 +6,10 @@
 class Hero {
 public:
     Hero() = default;
-    
+
     Hero(std::string name, int attack, int defense, int power, int knowledge)
         : name(std::move(name)), attack(attack), defense(defense), power(power), knowledge(knowledge) {}
-    
+
     ~Hero() = default;
 
     const std::string& get_name() const { return name; }
@@ -27,6 +27,6 @@ private:
     int defense = 0;
     int power = 0;
     int knowledge = 0;
-    
+
     Army army;
 };

@@ -13,7 +13,7 @@ TEST(HeroTest, InitializationValid) {
 TEST(HeroTest, ArmyAccess) {
     Hero hero("Hero", 1, 2, 3, 4);
     EXPECT_EQ(hero.get_army().get_units().size(), 0);
-    
+
     auto u1 = std::make_shared<Unit>("Warrior", 1, 1, 1, 10, 1, 2, 4, 10);
     hero.get_army().add_unit(u1);
     EXPECT_EQ(hero.get_army().get_units().size(), 1);

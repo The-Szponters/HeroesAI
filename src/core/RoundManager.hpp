@@ -18,20 +18,20 @@ public:
 private:
     struct MaxHeapComparator {
         bool operator()(const Unit* a, const Unit* b) const {
-            return a->get_speed() < b->get_speed(); // Max heap based on speed
+            return a->get_speed() < b->get_speed(); 
         }
     };
 
     struct MinHeapComparator {
         bool operator()(const Unit* a, const Unit* b) const {
-            return a->get_speed() > b->get_speed(); // Min heap based on speed
+            return a->get_speed() > b->get_speed(); 
         }
     };
 
     const std::vector<Unit*>& all_units;
-    
+
     std::priority_queue<Unit*, std::vector<Unit*>, MaxHeapComparator> unactivated_units;
     std::priority_queue<Unit*, std::vector<Unit*>, MinHeapComparator> waited_units;
-    
+
     Unit* current_unit = nullptr;
 };

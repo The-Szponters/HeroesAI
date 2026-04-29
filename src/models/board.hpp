@@ -2,7 +2,6 @@
 #include <vector>
 #include "hex.hpp"
 
-
 class Board {
 public:
     static constexpr int WIDTH = 15;

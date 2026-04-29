@@ -15,7 +15,6 @@
 namespace {
 constexpr float kPi = 3.14159265358979323846f;
 
-// Convert float cube coordinates to nearest valid axial hex.
 std::pair<int, int> cube_round_to_axial(float fq, float fr, float fs) {
     int rq = static_cast<int>(std::round(fq));
     int rr = static_cast<int>(std::round(fr));
@@ -45,15 +44,12 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
       screen_height(static_cast<float>(height)),
       battlefield_height(screen_height * 0.8f),
       hex_radius(28.0f),
-      // Origin Y bumped by 1.5 * hex_radius (one full hex row of vertical
-      // spacing) so the board sits lower on the battlefield panel and leaves
-      // room above it for hero portraits / spell slots later.
+
       grid_origin(300.0f, 70.0f + 28.0f * 1.5f),
       hud_count(0),
       hud_hp_left(0) {
     window.setFramerateLimit(60);
 
-    // Try project font first, then common Linux system fonts as fallbacks.
     const std::array<const char*, 5> font_candidates = {
         "assets/font.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -87,16 +83,11 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
     log_text->setFillColor(sf::Color(220, 220, 220));
     log_text->setPosition({16.0f, battlefield_height + 52.0f});
 
-    // Dedicated DEF manager keeps resources alive while sprites reference frame textures.
-    // Both unit animations and UI elements (combat cursor, morale aura, action-bar
-    // icons, spellbook) share the same DefParser; the manager indexes them under
-    // a single normalised filename namespace.
     def_manager.set_search_roots({
         "assets/units",
         "assets/ui",
     });
 
-    // Load a default battle background (grass terrain).
     if (battlefield_texture.loadFromFile("assets/backgrounds/CmBkGrTr.bmp")) {
         const sf::Vector2u ts = battlefield_texture.getSize();
         battlefield_sprite = std::make_unique<sf::Sprite>(battlefield_texture);
@@ -107,9 +98,6 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
         battlefield_sprite->setPosition({0.0f, 0.0f});
     }
 
-    // Custom combat cursor: hide OS pointer once and forever; the rendered
-    // DEF frame replaces it entirely.  Re-enabled only if the user requests
-    // CursorStyle::Default (e.g. from outside-window guards).
     window.setMouseCursorVisible(false);
     os_cursor_visible = false;
 
@@ -130,9 +118,7 @@ SfmlBattleView::SfmlBattleView(unsigned int width, unsigned int height, const st
 }
 
 void SfmlBattleView::load_action_bar_assets() {
-    // No background bar — the icons composite directly over the HUD strip.
-    // Cluster all five on the right edge with Wait immediately to the left of
-    // Defend so the reading order keeps "Wait above Defend" intact.
+
     constexpr float kIconW = 48.0f;
     constexpr float kIconH = 36.0f;
     constexpr float kPad   = 8.0f;
@@ -144,8 +130,6 @@ void SfmlBattleView::load_action_bar_assets() {
         });
     };
 
-    // Right-anchored, walking left so the table reads:
-    //   ... Spellbook  Wait  Defend  AutoCombat  Surrender ]edge
     float x = screen_width - kIconW - kPad;
     add(ActionKind::Surrender,  "surrender_icon.def",  x); x -= kIconW + kPad;
     add(ActionKind::AutoCombat, "autocombat_icon.def", x); x -= kIconW + kPad;
@@ -171,10 +155,7 @@ bool SfmlBattleView::is_open() const {
 }
 
 void SfmlBattleView::on_mouse_hover(int pixel_x, int pixel_y, BattlePresenter& presenter) {
-    // Off-battlefield hovers (HUD background, action buttons, turn queue): use
-    // the plain HoMM3 pointer (combat_icons frame 6) and don't disturb the
-    // presenter's active-unit highlights.  The presenter still owns every
-    // battlefield interaction.
+
     if (!is_point_in_battlefield(static_cast<float>(pixel_x), static_cast<float>(pixel_y))) {
         if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
             presenter.on_right_click_released();
@@ -241,7 +222,6 @@ void SfmlBattleView::process_events(BattlePresenter& presenter) {
             continue;
         }
 
-        // The info panel follows the held right mouse button and hides on release.
     }
 }
 
@@ -255,23 +235,15 @@ void SfmlBattleView::render() {
         controller.update(dt);
     }
     pulse_phase_seconds += dt.asSeconds();
-    // Tick down the action-button "pressed" flash timers.
+
     for (ActionSlot& slot : action_slots) {
         if (slot.pressed_seconds_left > 0.0f) {
             slot.pressed_seconds_left = std::max(0.0f, slot.pressed_seconds_left - dt.asSeconds());
         }
     }
 
-    // Recompute hover destination every frame from the actual mouse position so
-    // highlights stay correct even when the game state changes without a new
-    // MouseMoved event (e.g. after a turn ends while the cursor is stationary).
     update_hover_from_mouse();
 
-    // Per-frame cursor follow: keep the custom sprite glued to the OS pointer
-    // even on frames where no MouseMoved event fires (e.g. during animations).
-    // update_hover_from_mouse() also queries the mouse position; we cache the
-    // value into `cursor_position` here so neither path makes a second X11
-    // server roundtrip per frame.
     cursor_position = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
     draw_battlefield_background();
@@ -285,8 +257,6 @@ void SfmlBattleView::render() {
 
     window.display();
 }
-
-// ── Render helpers ──────────────────────────────────────────────────────────
 
 void SfmlBattleView::draw_battlefield_background() {
     if (battlefield_sprite) {
@@ -327,9 +297,7 @@ void SfmlBattleView::draw_hex_grid() {
                         hex.setFillColor(sf::Color(95, 95, 95, 150));
                         break;
                     case HighlightType::HoverDestination:
-                        // Distinctly darker than Walkable so the player can
-                        // see exactly which hex(es) the unit will occupy
-                        // *after* moving, on top of the lighter walkable tint.
+
                         hex.setFillColor(sf::Color(15, 15, 15, 200));
                         break;
                     case HighlightType::None:
@@ -342,10 +310,7 @@ void SfmlBattleView::draw_hex_grid() {
 }
 
 void SfmlBattleView::draw_units() {
-    // Identify the live unit currently holding the turn (if any).  Match by
-    // the active-unit highlight's (q,r) — that's what the presenter feeds
-    // us; anchoring on a position avoids extending the View interface for a
-    // single visual cue.
+
     std::uint64_t active_unit_id_for_glow = 0;
     if (active_unit_highlight.has_value()) {
         for (const UnitRenderData& u : units_to_draw) {
@@ -358,10 +323,6 @@ void SfmlBattleView::draw_units() {
         }
     }
 
-    // Phase 6 — golden glow under the active unit.  Renders a slightly-larger
-    // yellow-tinted copy of the live sprite behind the unit, alpha pulsing
-    // at ~1 Hz between 0.30 and 0.75 so the unit reads as "selected" without
-    // visually stealing attention from its own animation.
     auto draw_active_glow = [this](const UnitRenderData& unit) {
         const auto ctrl_it = animation_controllers.find(unit.id);
         if (ctrl_it == animation_controllers.end() || !ctrl_it->second.is_ready()) return;
@@ -373,7 +334,7 @@ void SfmlBattleView::draw_units() {
         const float alpha_norm = 0.30f + 0.45f * t;
         const auto alpha = static_cast<std::uint8_t>(std::round(255.0f * alpha_norm));
 
-        sf::Sprite glow = *base;                   // copy texture + transform
+        sf::Sprite glow = *base;                   
         glow.setColor(sf::Color(255, 215, 0, alpha));
         const sf::Vector2f s = base->getScale();
         constexpr float kGlowGrow = 1.08f;
@@ -396,7 +357,6 @@ void SfmlBattleView::draw_units() {
             }
         }
 
-        // Fallback debug token when DEF art is unavailable.
         const float radius = hex_radius * 0.34f;
         sf::CircleShape body(radius);
         body.setOrigin({radius, radius});
@@ -421,21 +381,18 @@ void SfmlBattleView::draw_units() {
         window.draw(facing_marker);
     };
 
-    // Corpses first, living units above them.
     for (const UnitRenderData& unit : units_to_draw) {
         if (unit.is_corpse) draw_one(unit);
     }
     for (const UnitRenderData& unit : units_to_draw) {
         if (unit.is_corpse) continue;
-        // Glow goes UNDER the sprite — same z-layer, drawn first so the
-        // unit's own art composites on top of the additive halo.
+
         if (unit.id == active_unit_id_for_glow) {
             draw_active_glow(unit);
         }
         draw_one(unit);
     }
 
-    // Active projectile (if a Projectile event sits at the front of the queue).
     if (!visual_events.empty() && visual_events.front().type == VisualEvent::Type::Projectile) {
         const ProjectileVisualEvent& pe = visual_events.front().projectile;
         const float t = std::clamp(pe.elapsed_seconds / pe.duration_seconds, 0.0f, 1.0f);
@@ -461,8 +418,7 @@ void SfmlBattleView::draw_units() {
             sf::Sprite spr(frame->texture);
             const auto sz = frame->texture.getSize();
             spr.setOrigin({sz.x * 0.5f, sz.y * 0.5f});
-            // Rotate the projectile to face its travel direction so arrows
-            // visually align with the line of flight.
+
             const float dx = pe.to.x - pe.from.x;
             const float dy = pe.to.y - pe.from.y;
             const float angle_deg = std::atan2(dy, dx) * (180.0f / kPi);
@@ -470,8 +426,7 @@ void SfmlBattleView::draw_units() {
             spr.setPosition(pos);
             window.draw(spr);
         } else {
-            // Fallback: tiny circle so the absence of a projectile DEF is
-            // never a silent rendering failure during development.
+
             sf::CircleShape dot(4.0f);
             dot.setOrigin({4.0f, 4.0f});
             dot.setPosition(pos);
@@ -480,7 +435,6 @@ void SfmlBattleView::draw_units() {
         }
     }
 
-    // Active morale aura — overlay morale.def's frames just above the unit.
     if (!visual_events.empty() && visual_events.front().type == VisualEvent::Type::Morale) {
         const MoraleVisualEvent& me = visual_events.front().morale;
 
@@ -504,9 +458,7 @@ void SfmlBattleView::draw_units() {
                         override_it != visual_position_overrides.end()) {
                         center = override_it->second;
                     }
-                    // Anchor the aura's bottom-centre slightly above the
-                    // unit's hex centre so it reads as floating overhead
-                    // rather than sitting on the sprite.
+
                     spr.setOrigin({sz.x * 0.5f, static_cast<float>(sz.y)});
                     spr.setPosition({center.x, center.y - hex_radius * 1.2f});
                     window.draw(spr);
@@ -518,8 +470,7 @@ void SfmlBattleView::draw_units() {
 }
 
 void SfmlBattleView::draw_hud() {
-    // Subtle full-width strip behind the HUD text + turn queue; no down-bar
-    // background under the action icons (the icons render straight on top).
+
     sf::RectangleShape hud_bg({screen_width, screen_height - battlefield_height});
     hud_bg.setPosition({0.0f, battlefield_height});
     hud_bg.setFillColor(sf::Color(36, 36, 42));
@@ -537,9 +488,7 @@ void SfmlBattleView::draw_hud() {
 }
 
 void SfmlBattleView::draw_action_bar() {
-    // No down-bar background — icons composite directly onto the HUD strip.
-    // Each *_icon.def packs four poses (0=normal, 1=hover, 2=pressed,
-    // 3=disabled); we toggle frame 2 for the brief click-feedback window.
+
     for (const ActionSlot& slot : action_slots) {
         std::shared_ptr<DefResource> res = def_manager.get_or_load(slot.def_filename);
         if (!res) continue;
@@ -559,22 +508,14 @@ void SfmlBattleView::draw_action_bar() {
 }
 
 void SfmlBattleView::draw_turn_queue() {
-    // ── HoMM3 turn queue with infinite lookahead (Issue #5) ────────────────
-    // The presenter has already done all the heavy lifting:
-    //   • slot[0] is the current actor (is_active = true).
-    //   • Subsequent unit slots are the remaining current-round queue, in
-    //     initiative order (waited units tailing per HoMM3 rules).
-    //   • A divider slot (is_divider = true) marks "Round N" boundaries.
-    //   • Slots after the divider are the *next* round's predicted initiative
-    //     order, dead units already filtered out.
-    // The View just paints the slots inside a fixed visible capacity.
+
     constexpr float box_w     = 56.0f;
     constexpr float box_h     = 56.0f;
     constexpr float divider_w = 36.0f;
     constexpr float gap       = 4.0f;
     constexpr float start_x   = 16.0f;
     constexpr float kBarHeight = 44.0f;
-    // Sit immediately above the action bar so neither overlaps the other.
+
     const float queue_y       = screen_height - kBarHeight - box_h - 6.0f;
     const float right_limit   = screen_width - 320.0f;
     constexpr std::size_t kVisibleCapacity = 12;
@@ -643,10 +584,10 @@ void SfmlBattleView::draw_turn_queue() {
 }
 
 void SfmlBattleView::draw_unit_stack_ui() {
-    constexpr float kBoxYOffset = 12.0f;
-    constexpr float kBackerPad = 2.0f;
-    constexpr float kBarHeight = 3.0f;
-    constexpr float kBarGap = 0.0f;
+    constexpr float kBoxYOffsetBelow = 12.0f;   
+    constexpr float kRimPad      = 1.0f;        
+    constexpr float kBarHeight   = 3.0f;
+    constexpr float kBarGap      = 0.0f;
 
     const sf::Vector2u box_size_u = unit_stack_box_texture.getSize();
     const sf::Vector2f box_size{
@@ -666,42 +607,46 @@ void SfmlBattleView::draw_unit_stack_ui() {
         }
         if (const auto ctrl_it = animation_controllers.find(unit.id);
             ctrl_it != animation_controllers.end() && ctrl_it->second.is_ready()) {
-            if (const sf::Sprite* sprite = ctrl_it->second.get_sprite()) {
-                center = sprite->getPosition();
+            if (const sf::Sprite* spr = ctrl_it->second.get_sprite()) {
+                center = spr->getPosition();
             }
         }
 
         const sf::Vector2f box_pos {
             std::round(center.x - box_size.x * 0.5f),
-            std::round(center.y + kBoxYOffset),
+            std::round(center.y + kBoxYOffsetBelow),
         };
+
         const sf::Vector2f box_center {
             box_pos.x + box_size.x * 0.5f,
             box_pos.y + box_size.y * 0.5f,
         };
 
-        sf::Color team_color = sf::Color(160, 40, 40, 220);
-        if (unit.owner_id == 1) {
-            team_color = sf::Color(45, 75, 170, 220);
-        } else if (unit.owner_id != 0) {
-            team_color = sf::Color(90, 90, 90, 220);
-        }
+        const sf::Color rim_color = (unit.owner_id == 1)
+            ? sf::Color( 30,  60, 200, 255)
+            : (unit.owner_id == 0
+                ? sf::Color(190,  20,  20, 255)
+                : sf::Color( 90,  90,  90, 255));
+        const sf::Color tint_color = (unit.owner_id == 1)
+            ? sf::Color(  0,   0, 255, 110)
+            : (unit.owner_id == 0
+                ? sf::Color(255,   0,   0, 110)
+                : sf::Color(120, 120, 120, 110));
 
-        unit_stack_team_backer.setSize({box_size.x + kBackerPad * 2.0f, box_size.y + kBackerPad * 2.0f});
-        unit_stack_team_backer.setPosition({box_pos.x - kBackerPad, box_pos.y - kBackerPad});
-        unit_stack_team_backer.setFillColor(team_color);
+        unit_stack_team_backer.setSize({box_size.x + kRimPad * 2.0f,
+                                        box_size.y + kRimPad * 2.0f});
+        unit_stack_team_backer.setPosition({box_pos.x - kRimPad, box_pos.y - kRimPad});
+        unit_stack_team_backer.setFillColor(rim_color);
         unit_stack_team_backer.setOutlineThickness(0.0f);
         window.draw(unit_stack_team_backer);
 
         const float hp_ratio = (unit.max_hp_per_unit > 0)
-            ? std::clamp(static_cast<float>(unit.current_top_unit_hp) / static_cast<float>(unit.max_hp_per_unit), 0.0f, 1.0f)
+            ? std::clamp(static_cast<float>(unit.current_top_unit_hp)
+                         / static_cast<float>(unit.max_hp_per_unit), 0.0f, 1.0f)
             : 0.0f;
         sf::Color hp_color = sf::Color::Red;
-        if (hp_ratio > 0.5f) {
-            hp_color = sf::Color::Green;
-        } else if (hp_ratio > 0.2f) {
-            hp_color = sf::Color::Yellow;
-        }
+        if      (hp_ratio > 0.5f) hp_color = sf::Color::Green;
+        else if (hp_ratio > 0.2f) hp_color = sf::Color::Yellow;
 
         unit_stack_hp_back.setSize({box_size.x, kBarHeight});
         unit_stack_hp_back.setPosition({box_pos.x, box_pos.y - kBarHeight - kBarGap});
@@ -718,11 +663,16 @@ void SfmlBattleView::draw_unit_stack_ui() {
         } else {
             sf::RectangleShape fallback(box_size);
             fallback.setPosition(box_pos);
-            fallback.setFillColor(sf::Color(230, 220, 170));
-            fallback.setOutlineColor(sf::Color(90, 70, 30));
+            fallback.setFillColor(sf::Color::Transparent);
+            fallback.setOutlineColor(sf::Color::White);
             fallback.setOutlineThickness(1.0f);
             window.draw(fallback);
         }
+
+        sf::RectangleShape tint(box_size);
+        tint.setPosition(box_pos);
+        tint.setFillColor(tint_color);
+        window.draw(tint);
 
         unit_stack_count_text->setString(std::to_string(unit.count));
         const sf::FloatRect text_bounds = unit_stack_count_text->getLocalBounds();
@@ -731,6 +681,7 @@ void SfmlBattleView::draw_unit_stack_ui() {
             std::floor(text_bounds.position.y + text_bounds.size.y * 0.5f),
         });
         unit_stack_count_text->setPosition(box_center);
+        unit_stack_count_text->setFillColor(sf::Color::White);
         window.draw(*unit_stack_count_text);
     }
 }
@@ -740,8 +691,6 @@ void SfmlBattleView::draw_info_panel() {
 
     const UnitRenderData& u = *info_panel_unit;
 
-    // Anchor the panel to the screen centre so it reads as a modal overlay
-    // (the spec calls for centred placement) instead of trailing the unit.
     const sf::Vector2u panel_size = info_panel_sprite
         ? info_panel_texture.getSize()
         : sf::Vector2u{300u, 311u};
@@ -762,23 +711,20 @@ void SfmlBattleView::draw_info_panel() {
         window.draw(fallback);
     }
 
-    // Stat block.  The unit_stats.bmp template reserves the upper-left
-    // quadrant for a portrait — leave that area blank for now (Phase 5+
-    // will paint creature portraits there) and write text into the right
-    // column starting just below the title bar.
     constexpr float kPortraitW = 130.0f;
     constexpr float kTextLeftPad  = kPortraitW + 12.0f;
     constexpr float kTextTopPad   = 24.0f;
 
     std::ostringstream panel;
     panel << u.name << (u.is_corpse ? " [Corpse]" : "") << "\n"
-          << "Attack: " << u.total_attack << "\n"
+          << "Attack: "  << u.total_attack  << "\n"
           << "Defense: " << u.total_defense << "\n"
+
           << "Shoots left: " << (u.is_ranged ? std::to_string(u.ammo) : "") << "\n"
-          << "Damage: " << u.total_damage_min << "-" << u.total_damage_max << "\n"
-          << "Health: " << u.max_hp_per_unit << "\n"
+          << "Damage: "      << u.total_damage_min << "-" << u.total_damage_max << "\n"
+          << "Health: "      << u.max_hp_per_unit  << "\n"
           << "Health left: " << u.current_top_unit_hp << "\n"
-          << "Speed: " << u.total_speed;
+          << "Speed: "       << u.total_speed;
     info_panel_text->setString(panel.str());
     info_panel_text->setPosition({panel_pos.x + kTextLeftPad, panel_pos.y + kTextTopPad});
     window.draw(*info_panel_text);
@@ -787,8 +733,6 @@ void SfmlBattleView::draw_info_panel() {
 void SfmlBattleView::draw_cursor() {
     if (cursor_style == CursorStyle::Default) return;
 
-    // combat_icons.def is loaded lazily on the first call (one-shot — the
-    // resource lives in the def_manager cache for the rest of the battle).
     std::shared_ptr<DefResource> res = def_manager.get_or_load("combat_icons.def");
     if (!res) return;
 
@@ -802,9 +746,6 @@ void SfmlBattleView::draw_cursor() {
     const DefFrame& frame = frames[frame_index];
     if (frame.width <= 0 || frame.height <= 0) return;
 
-    // HoMM3 cursor frames are top-left padded inside their canvas: anchoring
-    // the sprite at (0,0) and positioning it at the mouse keeps the click
-    // hotspot at the icon's tip exactly as the original game does.
     sf::Sprite sprite(frame.texture);
     sprite.setOrigin({0.0f, 0.0f});
     sprite.setPosition(cursor_position);
@@ -865,6 +806,14 @@ void SfmlBattleView::clear_attack_origin_highlights() {
     refresh_expanded_highlights();
 }
 
+void SfmlBattleView::set_shift_preview_active(bool active) {
+    shift_preview_active = active;
+    if (active && hover_destination_highlight.has_value()) {
+        hover_destination_highlight.reset();
+        refresh_expanded_highlights();
+    }
+}
+
 void SfmlBattleView::set_predicted_facings(const std::vector<PredictedFacing>& predictions) {
     predicted_facing_by_hex.clear();
     predicted_facing_by_hex.reserve(predictions.size());
@@ -873,9 +822,6 @@ void SfmlBattleView::set_predicted_facings(const std::vector<PredictedFacing>& p
     }
 }
 
-// Scale picks a creature size relative to the hex grid.  We measure off the
-// Stand group specifically (group 1) so dynamic poses like Attack/Move don't
-// influence the scale.  Falls back to any non-empty group if Stand is absent.
 static float compute_scale(const DefResource& res, int unit_size, float hex_radius,
                            const std::string& asset_filename) {
     auto pick_height = [](const std::vector<DefFrame>& frames) -> float {
@@ -899,9 +845,6 @@ static float compute_scale(const DefResource& res, int unit_size, float hex_radi
     const float target_h = (unit_size == 2) ? hex_radius * 3.5f : hex_radius * 3.0f;
     float scale = (target_h / content_h) * 0.8f;
 
-    // +25% global size bump for readability — except for Hell Hound (CHHOUN),
-    // whose DEF artwork already over-fills its 2-hex footprint.  Filename
-    // match is case-insensitive because asset paths can mix cases on disk.
     auto iequals = [](const std::string& a, const char* b) {
         if (a.size() != std::strlen(b)) return false;
         for (std::size_t i = 0; i < a.size(); ++i)
@@ -950,9 +893,8 @@ void SfmlBattleView::queue_move_animation(std::uint64_t unit_id,
     visual_events.push_back(event);
 }
 
-void SfmlBattleView::queue_attack_animation(std::uint64_t attacker_id, float /*duration_seconds*/) {
-    // duration_seconds is ignored; completion is frame-based (is_finished()), with a
-    // generous safety timeout to prevent hangs if the DEF lacks an Attack group.
+void SfmlBattleView::queue_attack_animation(std::uint64_t attacker_id, float ) {
+
     VisualEvent event;
     event.type = VisualEvent::Type::Attack;
     event.attack.attacker_id = attacker_id;
@@ -979,7 +921,6 @@ void SfmlBattleView::queue_projectile_animation(std::uint64_t attacker_id,
     event.projectile.projectile_asset = projectile_asset;
     event.projectile.duration_seconds = std::max(0.05f, duration_seconds);
 
-    // Resolve attacker's current sprite position (post-move overrides included).
     sf::Vector2f from{0.0f, 0.0f};
     if (const auto it = animation_controllers.find(attacker_id); it != animation_controllers.end()) {
         if (const sf::Sprite* s = it->second.get_sprite()) {
@@ -1045,9 +986,7 @@ bool SfmlBattleView::route_action_click(float x, float y, BattlePresenter& prese
         switch (slot.kind) {
             case ActionKind::Wait:       presenter.on_wait_clicked();   break;
             case ActionKind::Defend:     presenter.on_defend_clicked(); break;
-            // Spellbook / AutoCombat / Surrender land later in their own
-            // phases; for now they're inert hit zones so the player gets
-            // hover feedback without surprising side effects.
+
             case ActionKind::Spellbook:
             case ActionKind::AutoCombat:
             case ActionKind::Surrender:
@@ -1063,9 +1002,6 @@ void SfmlBattleView::set_cursor_style(CursorStyle style, int pixel_x, int pixel_
     cursor_style = style;
     cursor_position = {static_cast<float>(pixel_x), static_cast<float>(pixel_y)};
 
-    // Only push the OS visibility flag on transitions: X11's XDefineCursor is
-    // a synchronous server roundtrip, and calling it on every MouseMoved
-    // event was the cause of the in-game input lag.
     const bool want_visible = (style == CursorStyle::Default);
     if (want_visible != os_cursor_visible) {
         window.setMouseCursorVisible(want_visible);
@@ -1089,14 +1025,14 @@ sf::Vector2f SfmlBattleView::unit_render_center(const UnitRenderData& unit) cons
 
 sf::Vector2f SfmlBattleView::unit_render_center(const UnitRenderData& unit, int q, int r) const {
     const sf::Vector2f head = hex_to_pixel(q, r);
-    if (unit.size != 2) return head;
 
-    // 2-hex units occupy a tail hex extending opposite the facing direction:
-    //   facing left  → tail at (q+1, r)
-    //   facing right → tail at (q-1, r)
+    const float vertical_offset = 15.0f;
+
+    if (unit.size != 2) return {head.x, head.y + vertical_offset};
+
     const int tail_dq = unit.is_facing_left ? 1 : -1;
     const sf::Vector2f tail = hex_to_pixel(q + tail_dq, r);
-    return {(head.x + tail.x) * 0.5f, (head.y + tail.y) * 0.5f};
+    return {(head.x + tail.x) * 0.5f, (head.y + tail.y) * 0.5f + vertical_offset};
 }
 
 const UnitRenderData* SfmlBattleView::find_unit_render_data(std::uint64_t id) const {
@@ -1190,14 +1126,9 @@ void SfmlBattleView::apply_current_render_data_to_controllers(bool reset_standin
 }
 
 void SfmlBattleView::refresh_expanded_highlights() {
-    // Layered build: each later layer wins on key collisions, so the priority
-    // is base < 2-hex tail mirroring < hover preview < active unit.  The
-    // active unit highlight thus *cannot* be overwritten by hover or walkable
-    // tints — addressing the "tail randomly drops" symptom in Issue #4.
+
     expanded_highlights = highlights;
 
-    // 1. Mirror highlights onto the tail hex of every 2-hex unit on the board
-    //    so attackable / walkable tints cover both halves of the footprint.
     for (const UnitRenderData& unit : units_to_draw) {
         if (unit.size != 2) continue;
         const std::int64_t head_key = make_hex_key(unit.q, unit.r);
@@ -1207,8 +1138,6 @@ void SfmlBattleView::refresh_expanded_highlights() {
         expanded_highlights[make_hex_key(unit.q + tail_dq, unit.r)] = hit->second;
     }
 
-    // 2. Hover destination overlay (head + predicted tail) — uses the dark
-    // 2a. Attack-origin overlays (all valid post-attack positions).
     for (const AttackOriginHex& origin : attack_origin_highlights) {
         expanded_highlights[make_hex_key(origin.q, origin.r)] = HighlightType::AttackOrigin;
         if (origin.has_tail) {
@@ -1216,9 +1145,6 @@ void SfmlBattleView::refresh_expanded_highlights() {
         }
     }
 
-    // 2b. Hover destination overlay (head + predicted tail) — uses the dark
-    //    HoverDestination tint so it stands out from the lighter Walkable
-    //    base layer that already covers every reachable hex.
     if (hover_destination_highlight.has_value()) {
         const HoverDestinationHighlight& hover = *hover_destination_highlight;
         expanded_highlights[make_hex_key(hover.q, hover.r)] = HighlightType::HoverDestination;
@@ -1227,9 +1153,6 @@ void SfmlBattleView::refresh_expanded_highlights() {
         }
     }
 
-    // 3. Active unit ALWAYS wins — head AND tail rendered every frame, fully
-    //    decoupled from hover state.  This is the "always reliably highlighted
-    //    every frame" requirement from the spec.
     if (active_unit_highlight.has_value()) {
         const ActiveUnitHighlight& active = *active_unit_highlight;
         expanded_highlights[make_hex_key(active.q, active.r)] = HighlightType::ActiveUnit;
@@ -1241,13 +1164,19 @@ void SfmlBattleView::refresh_expanded_highlights() {
 }
 
 void SfmlBattleView::update_hover_from_mouse() {
-    // Presenter drives hover while previewing attack origins; keep its chosen
-    // destination marker stable even when the cursor is stationary.
+
     if (!attack_origin_highlights.empty()) {
         return;
     }
 
-    // During animations input is blocked; hide any stale hover highlight.
+    if (shift_preview_active) {
+        if (hover_destination_highlight.has_value()) {
+            hover_destination_highlight.reset();
+            refresh_expanded_highlights();
+        }
+        return;
+    }
+
     if (has_pending_visual_events() || !active_unit_highlight.has_value()) {
         if (hover_destination_highlight.has_value()) {
             hover_destination_highlight.reset();
@@ -1256,13 +1185,9 @@ void SfmlBattleView::update_hover_from_mouse() {
         return;
     }
 
-    // Reuse the per-frame mouse position cached by render() — querying the OS
-    // mouse is an X11 roundtrip and we already paid for one this frame.
     const auto [hover_q, hover_r] = pixel_to_hex(cursor_position.x, cursor_position.y);
     const std::int64_t hover_key  = make_hex_key(hover_q, hover_r);
 
-    // Hex must be walkable.  We deliberately ignore highlight types other than
-    // Walkable here so attack-range tinting can't fool the destination preview.
     const auto hit = highlights.find(hover_key);
     if (hit == highlights.end() || hit->second != HighlightType::Walkable) {
         if (hover_destination_highlight.has_value()) {
@@ -1272,10 +1197,6 @@ void SfmlBattleView::update_hover_from_mouse() {
         return;
     }
 
-    // ── Predicted final facing (Issue #2/#4) ───────────────────────────────
-    // Preferred: presenter-published `predicted_facing_by_hex`, derived from
-    // the actual reconstructed path's last segment (second-to-last → last
-    // hex).  Fallback: simple destination-vs-current-X comparison.
     bool future_facing_left = active_unit_highlight->is_facing_left;
     if (const auto pf = predicted_facing_by_hex.find(hover_key);
         pf != predicted_facing_by_hex.end()) {
@@ -1322,7 +1243,7 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
 
     bool finished = false;
     switch (event.type) {
-        // ── Move ──────────────────────────────────────────────────────────────
+
         case VisualEvent::Type::Move: {
             event.move.elapsed_seconds += dt.asSeconds();
             if (!event.move.is_teleporter) {
@@ -1382,10 +1303,6 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             break;
         }
 
-        // ── Attack ────────────────────────────────────────────────────────────
-        // Completion is purely frame-based: wait until AnimationController
-        // reports the one-shot Attack animation has played its last frame.
-        // The safety_timeout only guards against missing/empty DEF groups.
         case VisualEvent::Type::Attack: {
             event.attack.elapsed_seconds += dt.asSeconds();
             const auto it = animation_controllers.find(event.attack.attacker_id);
@@ -1398,24 +1315,18 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             break;
         }
 
-        // ── Projectile ────────────────────────────────────────────────────────
-        // Resolves on elapsed time only; the actual sprite drawing happens in
-        // draw_units() so the projectile composites correctly above corpses
-        // and below the HUD.
         case VisualEvent::Type::Projectile: {
             event.projectile.elapsed_seconds += dt.asSeconds();
             finished = event.projectile.elapsed_seconds >= event.projectile.duration_seconds;
             break;
         }
 
-        // ── Morale aura ───────────────────────────────────────────────────────
         case VisualEvent::Type::Morale: {
             event.morale.elapsed_seconds += dt.asSeconds();
             finished = event.morale.elapsed_seconds >= event.morale.duration_seconds;
             break;
         }
 
-        // ── Hit (TakeDamage / flinch) ─────────────────────────────────────────
         case VisualEvent::Type::Hit: {
             event.hit.elapsed_seconds += dt.asSeconds();
             const auto it = animation_controllers.find(event.hit.defender_id);
@@ -1428,10 +1339,6 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             break;
         }
 
-        // ── Death ─────────────────────────────────────────────────────────────
-        // The Death animation is started by the preceding CommitRenderData event
-        // (via apply_current_render_data_to_controllers).  This event just stalls
-        // until the animation controller reports it has played the last frame.
         case VisualEvent::Type::Death: {
             event.death.elapsed_seconds += dt.asSeconds();
             const auto it = animation_controllers.find(event.death.unit_id);
@@ -1444,7 +1351,6 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
             break;
         }
 
-        // ── CommitRenderData ──────────────────────────────────────────────────
         case VisualEvent::Type::CommitRenderData: {
             finished = true;
             break;
@@ -1455,19 +1361,12 @@ void SfmlBattleView::update_visual_events(sf::Time dt) {
         process_visual_event_finish();
         visual_events.pop_front();
 
-        // Resolve any zero-duration commit events immediately so that the state
-        // they encode (e.g. a unit turning into a corpse) is applied in the same
-        // frame and subsequent Death events can start checking is_finished() at
-        // the very next tick.
         while (!visual_events.empty() && visual_events.front().type == VisualEvent::Type::CommitRenderData) {
             process_visual_event_start();
             process_visual_event_finish();
             visual_events.pop_front();
         }
 
-        // Queue just drained → fire the one-shot idle callback (if any).
-        // We move it out before invoking so the callback can install a new
-        // one without losing it to the local clear.
         if (visual_events.empty() && idle_callback) {
             std::function<void()> cb = std::move(idle_callback);
             idle_callback = nullptr;
@@ -1492,11 +1391,6 @@ void SfmlBattleView::process_visual_event_start() {
                     event.move.phase = MoveVisualEvent::Phase::Slide;
                     it->second.set_animation_state(AnimState::Move, true, true);
 
-                    // ── Per-segment facing (Issue #1, walking) ────────────
-                    // For multi-hop paths the presenter queues one MoveEvent
-                    // per hop; here we flip the sprite for THIS segment based
-                    // on the segment's own (from→to), so a C-shaped path
-                    // mirrors the unit correctly at every turn.
                     constexpr float kFlipDeadZone = 1.0f;
                     if (event.move.to.x < event.move.from.x - kFlipDeadZone) {
                         it->second.set_facing_left(true);
@@ -1510,12 +1404,7 @@ void SfmlBattleView::process_visual_event_start() {
         }
         case VisualEvent::Type::Attack: {
             if (auto it = animation_controllers.find(event.attack.attacker_id); it != animation_controllers.end()) {
-                // ── Pre-attack facing (Issue #1, attacking/retaliating) ──
-                // If a target hex was supplied, rotate the attacker toward it
-                // *before* starting the swing, comparing pixel X of attacker
-                // vs target hex.  Same comparison used for retaliation, so
-                // the defender turns toward the attacker even if the attacker
-                // is now standing on the defender's previous side.
+
                 if (event.attack.has_target_hex) {
                     const sf::Vector2f tgt_px = hex_to_pixel(event.attack.target_q, event.attack.target_r);
                     const sf::Vector2f own_px = it->second.get_sprite()
@@ -1530,9 +1419,7 @@ void SfmlBattleView::process_visual_event_start() {
             break;
         }
         case VisualEvent::Type::Projectile: {
-            // Snapshot the live attacker position when the event actually
-            // starts (the queue may have been built before the attacker's
-            // sprite moved into its final pose).
+
             if (auto it = animation_controllers.find(event.projectile.attacker_id); it != animation_controllers.end()) {
                 if (const sf::Sprite* s = it->second.get_sprite()) {
                     event.projectile.from = s->getPosition();
@@ -1541,8 +1428,7 @@ void SfmlBattleView::process_visual_event_start() {
             break;
         }
         case VisualEvent::Type::Morale: {
-            // No state to set up — duration is fixed, frame index is derived
-            // from elapsed in draw_units().
+
             break;
         }
         case VisualEvent::Type::Hit: {
@@ -1552,12 +1438,11 @@ void SfmlBattleView::process_visual_event_start() {
             break;
         }
         case VisualEvent::Type::Death: {
-            // The Death animation was already started by the CommitRenderData event that
-            // preceded this one (handle_corpse_state_transition).  Nothing to do here.
+
             break;
         }
         case VisualEvent::Type::CommitRenderData: {
-            // No-op: commit happens in finish to keep ordering deterministic.
+
             break;
         }
     }
@@ -1578,31 +1463,29 @@ void SfmlBattleView::process_visual_event_finish() {
             break;
         }
         case VisualEvent::Type::Attack: {
-            // One-shot animation done — smoothly return attacker to idle.
+
             if (auto it = animation_controllers.find(event.attack.attacker_id); it != animation_controllers.end()) {
                 it->second.set_animation_state(AnimState::Stand, true, true);
             }
             break;
         }
         case VisualEvent::Type::Projectile: {
-            // No state to clean up — sprite stops being drawn once popped.
+
             break;
         }
         case VisualEvent::Type::Morale: {
-            // No-op; the aura sprite is drawn directly from event state.
+
             break;
         }
         case VisualEvent::Type::Hit: {
-            // Flinch done — return unit to idle (unless it will become a corpse
-            // on the next CommitRenderData, which will override this).
+
             if (auto it = animation_controllers.find(event.hit.defender_id); it != animation_controllers.end()) {
                 it->second.set_animation_state(AnimState::Stand, true, true);
             }
             break;
         }
         case VisualEvent::Type::Death: {
-            // Nothing to do: the controller is already frozen on the last death
-            // frame (freeze_on_last_frame=true set by handle_corpse_state_transition).
+
             break;
         }
         case VisualEvent::Type::CommitRenderData: {
@@ -1617,14 +1500,14 @@ void SfmlBattleView::process_visual_event_finish() {
 }
 
 sf::Vector2f SfmlBattleView::hex_to_pixel(int q, int r) const {
-    // Pointy-top axial -> pixel conversion.
+
     const float x = hex_radius * (std::sqrt(3.0f) * (static_cast<float>(q) + static_cast<float>(r) * 0.5f));
     const float y = hex_radius * (1.5f * static_cast<float>(r));
     return {grid_origin.x + x, grid_origin.y + y};
 }
 
 std::pair<int, int> SfmlBattleView::pixel_to_hex(float x, float y) const {
-    // Pixel -> axial for pointy-top layout.
+
     const float px = x - grid_origin.x;
     const float py = y - grid_origin.y;
 

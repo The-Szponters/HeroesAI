@@ -4,8 +4,6 @@
 
 namespace {
 
-// Tail offset of a 2-hex unit, identical to the convention used by
-// ActionManager / SfmlBattleView (right army faces left → tail extends right).
 std::tuple<int, int, int> tail_delta(const Unit& u) {
     if (u.is_facing_left()) return { 1, 0, -1};
     return {-1, 0,  1};
@@ -24,7 +22,7 @@ void place_unit_on_board(Board& board, const std::shared_ptr<Unit>& unit) {
     }
 }
 
-} // namespace
+} 
 
 GameManager::GameManager(Hero blue_hero, Hero red_hero)
     : blue_hero(std::move(blue_hero)), red_hero(std::move(red_hero)), round_manager(all_units_in_battle) {
@@ -47,18 +45,18 @@ GameManager::GameManager(Hero blue_hero, Hero red_hero)
 }
 
 Unit* GameManager::get_current_unit() {
-    // Detect a round rollover: if the queue was empty just before this call
-    // (no remaining units in either heap) and a new unit appears now, the
-    // RoundManager auto-restarted the round and we must bump the counter.
+
     const std::size_t before = round_manager.get_units_left_in_round().size();
     Unit* u = round_manager.get_current_unit();
     if (u != nullptr && before == 0) {
         ++round_number;
     }
-    // Roll morale exactly once per turn-start.  `last_morale_rolled_unit`
-    // dedups multiple presenter queries within the same turn; clearing it
-    // when the active unit changes (or becomes null) is what makes the
-    // unit's bonus turn re-use the existing flag without re-rolling.
+
+    if (round_number != morale_round_tracked) {
+        morale_rolled_units_this_round.clear();
+        morale_round_tracked = round_number;
+    }
+
     roll_morale_for_active(u);
     return u;
 }
@@ -70,22 +68,25 @@ void GameManager::roll_morale_for_active(Unit* unit) {
         return;
     }
     if (unit == last_morale_rolled_unit) {
-        return;   // already rolled this turn (same active unit)
+        return;   
     }
 
-    // +2 morale → 10% chance to trigger good morale (HoMM3 standard).
+    if (morale_rolled_units_this_round.count(unit) > 0) {
+        morale_triggered_this_turn = false;
+        last_morale_rolled_unit = unit;
+        return;
+    }
+
     static thread_local std::mt19937 rng{std::random_device{}()};
     std::uniform_int_distribution<int> dist(0, 99);
     morale_triggered_this_turn = (dist(rng) < 10);
     last_morale_rolled_unit = unit;
+    morale_rolled_units_this_round.insert(unit);
 }
 
 void GameManager::consume_turn_or_burn_morale_bonus() {
     if (morale_triggered_this_turn) {
-        // Bonus action used: clear the flag, do NOT advance the round queue
-        // — the same unit gets a second action this round.  Keep
-        // `last_morale_rolled_unit` latched so the bonus turn does not
-        // immediately reroll morale for the same activation.
+
         morale_triggered_this_turn = false;
         return;
     }
@@ -110,9 +111,7 @@ std::vector<const Hex*> GameManager::find_path(const Unit& unit, const Hex& dest
 }
 
 std::vector<Unit*> GameManager::peek_next_round_order() const {
-    // Snapshot what initiative order the *next* round would have if it started
-    // right now: every alive unit, ordered by descending speed (ties broken by
-    // pointer for stability).  Units that died this round are excluded.
+
     std::vector<Unit*> next;
     next.reserve(all_units_in_battle.size());
     for (Unit* u : all_units_in_battle) {
@@ -167,7 +166,7 @@ bool GameManager::are_enemies(const Unit& first, const Unit& second) const {
     const bool first_known = hero_contains_unit(blue_hero, first) || hero_contains_unit(red_hero, first);
     const bool second_known = hero_contains_unit(blue_hero, second) || hero_contains_unit(red_hero, second);
     if (!first_known || !second_known) {
-        // Preserve legacy behavior for units outside hero armies.
+
         return &first != &second;
     }
     return !are_allies(first, second);
@@ -184,7 +183,7 @@ bool GameManager::can_attack(const Unit& attacker, const Hex& target_hex) const 
         if (target == nullptr) {
             continue;
         }
-        // Accept clicks on any occupied body hex of the same enemy unit.
+
         if (clicked_target != nullptr && target == clicked_target) {
             return true;
         }
@@ -206,7 +205,7 @@ bool GameManager::can_move(const Unit& unit, const Hex& dest_hex) const {
 }
 
 void GameManager::next_turn() {
-    // Current action methods already update turn state as needed.
+
 }
 
 void GameManager::move(Unit& unit, Hex& dest_hex) {
@@ -240,8 +239,7 @@ bool GameManager::will_shoot(const Unit& attacker, const Unit& defender) const {
 }
 
 void GameManager::wait(Unit& unit) {
-    // Wait declines to act: the morale bonus is forfeit (HoMM3 behaviour —
-    // a unit that defers can't carry a +morale bonus into its later slot).
+
     morale_triggered_this_turn = false;
     last_morale_rolled_unit = nullptr;
     round_manager.wait_current_unit();

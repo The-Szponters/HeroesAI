@@ -34,7 +34,7 @@ TEST_F(UnitFactoryTest, InitSucceedsWithMockFile) {
 TEST_F(UnitFactoryTest, CreateStandardUnitFromData) {
     UnitFactory::init(test_json_path);
     auto unit = UnitFactory::create_unit(UnitID::Pikeman, 10);
-    
+
     EXPECT_NE(unit, nullptr);
     EXPECT_EQ(std::dynamic_pointer_cast<RangeUnit>(unit), nullptr);
 
@@ -52,7 +52,7 @@ TEST_F(UnitFactoryTest, CreateStandardUnitFromData) {
 TEST_F(UnitFactoryTest, CreateRangeUnitFromDataWithShootsInt) {
     UnitFactory::init(test_json_path);
     auto unit = UnitFactory::create_unit(UnitID::Archer, 5);
-    
+
     auto range_unit = std::dynamic_pointer_cast<RangeUnit>(unit);
     ASSERT_NE(range_unit, nullptr);
 
@@ -66,13 +66,11 @@ TEST_F(UnitFactoryTest, CreateRangeUnitFromDataWithShootsInt) {
 TEST_F(UnitFactoryTest, CreateThrowsOnMissingFields) {
     UnitFactory::init(test_json_path);
 
-    // 'Imp' is mocked with only 'tier' defined, missing attack, defense, etc.
     EXPECT_THROW(UnitFactory::create_unit(UnitID::Imp, 3), std::runtime_error);
 }
 
 TEST_F(UnitFactoryTest, CreateUnitNotLoadedThrowsException) {
     UnitFactory::init(test_json_path);
-    
-    // Angel was not declared in the mocked JSON file
+
     EXPECT_THROW(UnitFactory::create_unit(UnitID::Angel, 1), std::runtime_error);
 }

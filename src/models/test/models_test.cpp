@@ -26,7 +26,7 @@ TEST(HexTest, DistanceOperator) {
     Hex h1(0, 0, 0);
     Hex h2(1, 0, -1);
     Hex h3(-2, 1, 1);
-    
+
     EXPECT_EQ(h1.distance_to(h2), 1);
     EXPECT_EQ(h1.distance_to(h3), 2);
     EXPECT_EQ(h2.distance_to(h3), 3);
@@ -59,11 +59,10 @@ TEST(UnitTest, Initialization) {
     EXPECT_EQ(u.get_damage_min(), 10);
     EXPECT_EQ(u.get_damage_max(), 15);
     EXPECT_EQ(u.get_speed(), 3);
-    
+
     EXPECT_EQ(u.get_count(), 5);
     EXPECT_EQ(u.get_health_left(), 100);
-    
-    // Default position
+
     EXPECT_EQ(u.get_q(), 0);
     EXPECT_EQ(u.get_r(), 0);
     EXPECT_EQ(u.get_s(), 0);
@@ -153,12 +152,12 @@ TEST(UnitTest, BuffSystemTurnTick) {
 
 TEST(UnitTest, BuffSystemStatClamping) {
     Unit u("Warrior", 2, 10, 5, 100, 10, 15, 6, 5);
-    
+
     Buff b;
     b.type = BuffType::Defend;
     b.duration = 1;
     b.modify_defense = [](int d) { return d - 100; };
-    
+
     u.apply_buff(b);
     EXPECT_EQ(u.get_defense(), 0);
 }

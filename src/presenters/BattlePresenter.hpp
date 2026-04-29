@@ -31,10 +31,10 @@ private:
     void queue_move_visual_if_needed(std::uint64_t unit_id,
                                      const std::vector<UnitRenderData>& before,
                                      const std::vector<UnitRenderData>& after);
-    // Wraps the post-action transition: clear all stale highlights so they
-    // don't appear over the still-animating sprite, optionally append the
-    // morale aura at the actor's final position, and schedule the next
-    // refresh_ui_for_active_unit() call to fire when the visual queue drains.
+
+    void queue_move_visual_along_path(std::uint64_t unit_id,
+                                      const std::vector<std::pair<int,int>>& precomputed_path);
+
     void finalize_action_visuals(std::uint64_t actor_id, bool had_morale_bonus);
     std::vector<IBattleView::AttackOriginHex> build_attack_origins_for_target(
         const Unit& attacker,
@@ -47,26 +47,20 @@ private:
     const Hex* resolve_move_head_destination(const Unit& unit, const Hex& clicked_or_hovered_hex) const;
     void highlight_unit_body(const Unit& unit, HighlightType type) const;
 
-    // Returns the reachable approach hex (adjacent to any target-occupied hex)
-    // whose pixel center is closest to (pixel_x, pixel_y), or nullptr if none.
     Hex* find_attack_approach(const Unit& attacker, const Hex& target_hex,
                               float pixel_x, float pixel_y) const;
 
-    // Convert axial hex to screen pixel center.
     sf::Vector2f hex_to_pixel(int q, int r) const;
 
     GameManager& model;
     IBattleView& view;
     bool range_preview_active = false;
-    bool info_panel_visible = false;   // mirrors view's info panel state so we
-                                       // can close on the next click anywhere
+    bool info_panel_visible = false;   
+
     int last_cursor_px = 0;
     int last_cursor_py = 0;
     std::unordered_map<std::uint64_t, std::vector<IBattleView::AttackOriginHex>> cached_attack_origins_by_target;
 
-    // Per-turn cache populated by refresh_ui_for_active_unit.  The hover hot
-    // path queries it via O(1) hex-key lookup instead of running a fresh BFS
-    // on every MouseMoved event — a real lag source for high-speed units.
     std::vector<Hex*>          cached_destinations;
     std::unordered_set<std::int64_t> cached_destinations_set;
     bool is_destination_cached(int q, int r) const;

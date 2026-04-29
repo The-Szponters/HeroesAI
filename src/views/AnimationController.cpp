@@ -6,35 +6,29 @@
 #include <random>
 
 namespace {
-// Bottom margin (in canvas pixels) between the canvas's bottom edge and the
-// hex centre.  HoMM3 frames already have built-in foot padding inside the
-// 450×400 canvas; using a small constant here keeps creature feet exactly on
-// the hex centre regardless of how much the upper-body crop changes between
-// frames (which is what caused the Pikeman wobble).
+
 constexpr float kCanvasFootPadding = 10.0f;
 
-// Shared RNG for fidget jitter.  Static-local so it survives across calls but
-// stays inside the controller TU.
 std::mt19937& fidget_rng() {
     static std::mt19937 rng(std::random_device{}());
     return rng;
 }
-} // namespace
+} 
 
 float AnimationController::fps_for_state(AnimState state, float base_fps) {
     switch (state) {
-        case AnimState::Stand:      return base_fps * 0.85f;       // ~4.25 fps
+        case AnimState::Stand:      return base_fps * 0.85f;       
         case AnimState::Move:
         case AnimState::TakeDamage:
         case AnimState::Death:
-        case AnimState::Attack:     return base_fps * 4.0f;        // 20 fps — Phase 6 spec doubles the previous 2× tempo for snappier combat
+        case AnimState::Attack:     return base_fps * 2.0f;        
         case AnimState::Fidget:     return base_fps * 1.0f;
     }
     return base_fps;
 }
 
 void AnimationController::schedule_next_fidget() {
-    // Random idle interval between 5 and 10 seconds.
+
     std::uniform_real_distribution<float> dist(5.0f, 10.0f);
     fidget_cooldown = dist(fidget_rng());
 }
@@ -66,10 +60,7 @@ void AnimationController::set_animation_group(int new_group_id) {
 }
 
 void AnimationController::set_animation_state(AnimState state, bool should_loop, bool should_freeze_on_last_frame) {
-    // Bounce-back from Fidget completion is the only transition allowed to
-    // skip the cooldown reset; for any explicit external state change we
-    // restart the idle timer so a freshly-walking unit doesn't fidget the
-    // moment it stops.
+
     if (state == AnimState::Stand) {
         schedule_next_fidget();
     }
@@ -123,32 +114,25 @@ void AnimationController::set_fps(float new_fps) {
 }
 
 void AnimationController::maybe_trigger_fidget(sf::Time delta_time) {
-    // Only consider while the unit is in its looping Stand animation; fidget
-    // never preempts a one-shot animation in flight.
+
     if (anim_state != AnimState::Stand || !resource) return;
 
     fidget_cooldown -= delta_time.asSeconds();
     if (fidget_cooldown > 0.0f) return;
 
-    // Roll over even when no Group 11 exists, so we don't hammer the check.
     schedule_next_fidget();
 
     const auto it = resource->groups.find(static_cast<int>(AnimState::Fidget));
     if (it == resource->groups.end() || it->second.empty()) return;
 
-    // One-shot fidget; on completion it returns to Stand via the standard
-    // freeze-on-last-frame path + an external transition the View triggers
-    // when it observes is_finished() while in Fidget.
-    set_animation_state(AnimState::Fidget, /*loop=*/false, /*freeze_on_last_frame=*/true);
+    set_animation_state(AnimState::Fidget, false, true);
 }
 
 void AnimationController::update(sf::Time delta_time) {
     if (resource == nullptr) return;
 
-    // Detect Fidget→Stand transition: when a one-shot fidget completes, drop
-    // straight back into the looping idle so the unit keeps breathing.
     if (anim_state == AnimState::Fidget && finished) {
-        set_animation_state(AnimState::Stand, /*loop=*/true, /*freeze_on_last_frame=*/true);
+        set_animation_state(AnimState::Stand, true, true);
         return;
     }
 
@@ -160,13 +144,13 @@ void AnimationController::update(sf::Time delta_time) {
     if (!group || group->empty()) return;
 
     frame_accumulator += delta_time.asSeconds();
-    const float frame_duration = 1.0f / fps;   // recomputed every tick — fps may have changed
+    const float frame_duration = 1.0f / fps;   
 
     while (frame_accumulator >= frame_duration) {
         frame_accumulator -= frame_duration;
 
         if (loop) {
-            // Use total_frames = group->size() and wrap [0 .. total-1].
+
             frame_index = (frame_index + 1) % group->size();
             apply_current_frame();
             continue;
@@ -236,13 +220,6 @@ void AnimationController::apply_current_frame() {
         sprite->setTexture(frame.texture, true);
     }
 
-    // ── Canvas-fixed anchor (the Pikeman wobble fix) ────────────────────────
-    // Every frame in this DEF shares the same canvas (full_w × full_h) and the
-    // resource exposes a per-DEF `feet_y` computed from the Stand group.  By
-    // anchoring the sprite at *canvas* (canvas_w/2, feet_y) we guarantee that
-    // the creature's feet stay glued to hex_center across every frame — the
-    // upper body / weapon may extend or recoil inside the canvas without
-    // shifting the unit's apparent position.
     const float canvas_w = static_cast<float>(frame.canvas_width);
     const float canvas_h = static_cast<float>(frame.canvas_height);
     float feet_x = static_cast<float>(resource->feet_x);

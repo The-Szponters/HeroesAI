@@ -21,10 +21,10 @@ void UnitFactory::init(const std::string& filepath) {
     if (!file.is_open()) {
         throw std::runtime_error("UnitFactory: could not open " + filepath);
     }
-    
+
     nlohmann::json j;
     file >> j;
-    
+
     unit_data.clear();
     for (int i = 0; i < 42; ++i) {
         UnitID id = static_cast<UnitID>(i);
@@ -40,10 +40,10 @@ std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
     if (it == unit_data.end()) {
         throw std::runtime_error("UnitFactory: JSON data not loaded or unit not found: " + unit_id_to_string(id));
     }
-    
+
     const auto& data = it->second;
     std::string name = unit_id_to_string(id);
-    
+
     try {
         int tier = data.at("tier").get<int>();
         int attack = data.at("attack").get<int>();
@@ -56,6 +56,7 @@ std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
         int speed = data.at("speed").get<int>();
         int size  = data.value("size", 1);
         bool is_teleporter = data.value("is_teleporter", false);
+        bool is_flying = data.value("is_flying", false);
         std::string asset_filename = data.value("asset_filename", "");
         std::string description = data.value("description", "");
 
@@ -89,6 +90,7 @@ std::shared_ptr<Unit> UnitFactory::create_unit(UnitID id, int count) {
         }
         unit->set_size(size);
         unit->set_is_teleporter(is_teleporter);
+        unit->set_is_flying(is_flying);
         return unit;
     } catch (const std::exception& e) {
         throw std::runtime_error("UnitFactory: missing or invalid field for unit " + name + " (" + e.what() + ")");

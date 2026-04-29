@@ -1,7 +1,7 @@
 #pragma once
 
 enum class UnitID {
-    // Castle
+
     Pikeman, Halberdier,
     Archer, Marksman,
     Griffin, RoyalGriffin,
@@ -10,7 +10,6 @@ enum class UnitID {
     Cavalier, Champion,
     Angel, Archangel,
 
-    // Inferno
     Imp, Familiar,
     Gog, Magog,
     HellHound, Cerberus,
@@ -19,7 +18,6 @@ enum class UnitID {
     Efreet, EfreetSultan,
     Devil, ArchDevil,
 
-    // Necropolis
     Skeleton, SkeletonWarrior,
     WalkingDead, Zombie,
     Wight, Wraith,
