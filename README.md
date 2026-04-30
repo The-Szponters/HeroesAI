@@ -18,7 +18,7 @@ aplikacji* (Application Skeleton) milestone.
 | | |
 |---|---|
 | **Project Name**       | HeroesAI |
-| **Team Members**       | Dominik Sledz, [Drugi Czlonek] |
+| **Team Members**       | Dominik Śledziewski, Łukasz Szydlik |
 | **Milestone**          | Application Skeleton (Phase 1) |
 | **Build System**       | CMake (>= 3.20) with `FetchContent` |
 | **Testing Framework**  | GoogleTest (fetched at configure time) |
