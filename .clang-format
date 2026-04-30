@@ -1,0 +1,53 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: None
+IndentCaseLabels: false
+IndentPPDirectives: None
+
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+Cpp11BracedListStyle: true
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: true
+SpacesInParentheses: true
+SpacesInSquareBrackets: false
+SpaceAfterCStyleCast: true
+SpaceBeforeAssignmentOperators: true
+SpaceAfterLogicalNot: true
+
+# Line wrapping
+ColumnLimit: 100
+ReflowComments: true
+BinPackArguments: false
+BinPackParameters: false
+AlignAfterOpenBracket: Align
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+# Includes - standard library first, then project headers
+SortIncludes: CaseInsensitive
+IncludeBlocks: Preserve
+
+# Misc
+FixNamespaceComments: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+Standard: c++20
+...

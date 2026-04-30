@@ -1,0 +1,81 @@
+---
+# Naming rules per academic standard:
+#  - Types (class/struct/enum/typedef/template): PascalCase
+#  - Functions/methods: camelCase
+#  - Class members: camelCase + trailing underscore
+#  - Locals & parameters: snake_case
+#  - Enum constants & constants: UPPER_SNAKE_CASE
+#  - Namespaces: lower case
+#  - Global variables: PascalCase (and warned via cppcoreguidelines-avoid-non-const-global-variables)
+
+Checks: >
+  -*,
+  readability-identifier-naming,
+  readability-braces-around-statements,
+  readability-redundant-*,
+  readability-misleading-indentation,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+  modernize-use-using,
+  cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-pro-type-member-init,
+  cppcoreguidelines-special-member-functions,
+  bugprone-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape
+
+WarningsAsErrors: ''
+HeaderFilterRegex: 'src/.*\.(hpp|h)$'
+FormatStyle: file
+
+CheckOptions:
+  # Types
+  - { key: readability-identifier-naming.ClassCase,            value: CamelCase }
+  - { key: readability-identifier-naming.StructCase,           value: CamelCase }
+  - { key: readability-identifier-naming.EnumCase,             value: CamelCase }
+  - { key: readability-identifier-naming.UnionCase,            value: CamelCase }
+  - { key: readability-identifier-naming.TypeAliasCase,        value: CamelCase }
+  - { key: readability-identifier-naming.TypedefCase,          value: CamelCase }
+  - { key: readability-identifier-naming.TemplateParameterCase,value: CamelCase }
+
+  # Functions / methods
+  - { key: readability-identifier-naming.FunctionCase,         value: camelBack }
+  - { key: readability-identifier-naming.MethodCase,           value: camelBack }
+  - { key: readability-identifier-naming.VirtualMethodCase,    value: camelBack }
+  - { key: readability-identifier-naming.ClassMethodCase,      value: camelBack }
+
+  # Class members (trailing underscore)
+  - { key: readability-identifier-naming.PrivateMemberCase,    value: camelBack }
+  - { key: readability-identifier-naming.PrivateMemberSuffix,  value: _ }
+  - { key: readability-identifier-naming.ProtectedMemberCase,  value: camelBack }
+  - { key: readability-identifier-naming.ProtectedMemberSuffix,value: _ }
+  - { key: readability-identifier-naming.PublicMemberCase,     value: camelBack }
+  - { key: readability-identifier-naming.PublicMemberSuffix,   value: _ }
+  - { key: readability-identifier-naming.MemberCase,           value: camelBack }
+  - { key: readability-identifier-naming.MemberSuffix,         value: _ }
+
+  # Parameters & locals
+  - { key: readability-identifier-naming.ParameterCase,        value: lower_case }
+  - { key: readability-identifier-naming.VariableCase,         value: lower_case }
+  - { key: readability-identifier-naming.LocalVariableCase,    value: lower_case }
+  - { key: readability-identifier-naming.LocalConstantCase,    value: lower_case }
+
+  # Constants / enum values
+  - { key: readability-identifier-naming.EnumConstantCase,         value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstantCase,             value: UPPER_CASE }
+  - { key: readability-identifier-naming.GlobalConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.StaticConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.ClassConstantCase,        value: UPPER_CASE }
+  - { key: readability-identifier-naming.MacroDefinitionCase,      value: UPPER_CASE }
+  - { key: readability-identifier-naming.ConstexprVariableCase,    value: UPPER_CASE }
+
+  # Namespaces (lowercase, must equal subdir name)
+  - { key: readability-identifier-naming.NamespaceCase,        value: lower_case }
+  - { key: readability-identifier-naming.InlineNamespaceCase,  value: lower_case }
+
+  # Globals (PascalCase but discouraged)
+  - { key: readability-identifier-naming.GlobalVariableCase,   value: CamelCase }
+...

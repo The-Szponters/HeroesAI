@@ -26,16 +26,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 add_executable(${PROJECT_NAME}
-  src/main.cpp
-  src/models/unit_factory.cpp
-  src/core/ActionManager.cpp
-  src/core/RoundManager.cpp
-  src/core/GameManager.cpp
-  src/presenters/BattlePresenter.cpp
-  src/views/DefParser.cpp
-  src/views/DefManager.cpp
-  src/views/AnimationController.cpp
-  src/views/SfmlBattleView.cpp
+  src/Main.cc
+  src/models/UnitFactory.cc
+  src/core/ActionManager.cc
+  src/core/RoundManager.cc
+  src/core/GameManager.cc
+  src/presenters/BattlePresenter.cc
+  src/views/DefParser.cc
+  src/views/DefManager.cc
+  src/views/AnimationController.cc
+  src/views/SfmlBattleView.cc
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -45,10 +45,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   src/presenters
 )
 
-target_link_libraries(${PROJECT_NAME} 
-    sfml-graphics 
-    sfml-window 
-    sfml-system 
+target_link_libraries(${PROJECT_NAME}
+    sfml-graphics
+    sfml-window
+    sfml-system
     sfml-audio
     nlohmann_json::nlohmann_json
 )
@@ -57,7 +57,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets")
 
-    
+
 include(FetchContent)
 FetchContent_Declare(
   googletest
@@ -67,10 +67,22 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(HeroesAITests src/models/test/models_test.cpp src/models/test/unit_factory_test.cpp src/models/test/board_test.cpp src/models/test/army_test.cpp src/models/test/hero_test.cpp src/models/unit_factory.cpp src/core/RoundManager.cpp src/core/test/round_manager_test.cpp src/core/ActionManager.cpp src/core/test/action_manager_test.cpp src/core/GameManager.cpp src/core/test/game_manager_test.cpp)
+add_executable(HeroesAITests
+  src/models/test/ModelsTest.cc
+  src/models/test/UnitFactoryTest.cc
+  src/models/test/BoardTest.cc
+  src/models/test/ArmyTest.cc
+  src/models/test/HeroTest.cc
+  src/models/UnitFactory.cc
+  src/core/RoundManager.cc
+  src/core/test/RoundManagerTest.cc
+  src/core/ActionManager.cc
+  src/core/test/ActionManagerTest.cc
+  src/core/GameManager.cc
+  src/core/test/GameManagerTest.cc
+)
 target_include_directories(HeroesAITests PRIVATE src/models)
 target_link_libraries(HeroesAITests GTest::gtest_main nlohmann_json::nlohmann_json)
 
 include(GoogleTest)
 gtest_discover_tests(HeroesAITests)
-
