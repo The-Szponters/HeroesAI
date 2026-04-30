@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include "../Hex.h"
 #include "../Unit.h"
-#include "../range_Unit.h"
+#include "../RangeUnit.h"
 
 namespace test {
 
