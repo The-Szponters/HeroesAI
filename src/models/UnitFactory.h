@@ -4,11 +4,11 @@
  */
 #pragma once
 
-#include "Unit.h"
 #include "RangeUnit.h"
+#include "Unit.h"
 #include "UnitId.h"
-#include <nlohmann/json.hpp>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -23,12 +23,12 @@ namespace models {
  */
 class UnitFactory {
 public:
-    static void init(const std::string& filepath );
-    static std::shared_ptr<Unit> create_unit(UnitID id, int count );
+    static void init( const std::string& filepath );
+    static std::shared_ptr<Unit> create_unit( UnitID id, int count );
 
 private:
     static std::unordered_map<UnitID, nlohmann::json> unit_data;
-    static std::string unit_id_to_string(UnitID id );
+    static std::string unit_id_to_string( UnitID id );
 };
 
-}  // namespace models
+} // namespace models
