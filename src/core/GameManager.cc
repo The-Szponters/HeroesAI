@@ -16,144 +16,148 @@ using models::Unit;
 
 namespace {
 
-std::tuple<int, int, int> tail_delta( const Unit& u ) {
-    if ( u.is_facing_left( ) )
+std::tuple<int, int, int> tailDelta( const Unit& u ) {
+    if ( u.isFacingLeft( ) ) {
         return { 1, 0, -1 };
+}
     return { -1, 0, 1 };
 }
 
-void place_unit_on_board( Board& board, const std::shared_ptr<Unit>& unit ) {
-    if ( ! unit )
+void placeUnitOnBoard( Board& board, const std::shared_ptr<Unit>& unit ) {
+    if ( ! unit ) {
         return;
+}
     try {
-        board.get_hex( unit->get_q( ), unit->get_r( ), unit->get_s( ) ).set_unit( unit );
+        board.getHex( unit->getQ( ), unit->getR( ), unit->getS( ) ).setUnit( unit );
     } catch ( std::out_of_range& ) {}
-    if ( unit->get_size( ) == 2 ) {
-        auto [dq, dr, ds] = tail_delta( *unit );
+    if ( unit->getSize( ) == 2 ) {
+        auto [dq, dr, ds] = tailDelta( *unit );
         try {
-            board.get_hex( unit->get_q( ) + dq, unit->get_r( ) + dr, unit->get_s( ) + ds )
-                .set_unit( unit );
+            board.getHex( unit->getQ( ) + dq, unit->getR( ) + dr, unit->getS( ) + ds )
+                .setUnit( unit );
         } catch ( std::out_of_range& ) {}
     }
 }
 
 } // namespace
 
-GameManager::GameManager( Hero blue_hero, Hero red_hero )
-    : blue_hero( std::move( blue_hero ) ),
-      red_hero( std::move( red_hero ) ),
-      round_manager( all_units_in_battle ) {
-    for ( const auto& unit_ptr : this->blue_hero.get_army( ).get_units( ) ) {
+GameManager::GameManager( const Hero& blue_hero, const Hero& red_hero )
+    : blueHero_( blue_hero ),
+      redHero_( red_hero ),
+      roundManager_( allUnitsInBattle_ ) {
+    for ( const auto& unit_ptr : this->blueHero_.getArmy( ).getUnits( ) ) {
         if ( unit_ptr ) {
-            all_units_in_battle.push_back( unit_ptr.get( ) );
-            place_unit_on_board( board, unit_ptr );
+            allUnitsInBattle_.push_back( unit_ptr.get( ) );
+            placeUnitOnBoard( board_, unit_ptr );
         }
     }
 
-    for ( const auto& unit_ptr : this->red_hero.get_army( ).get_units( ) ) {
+    for ( const auto& unit_ptr : this->redHero_.getArmy( ).getUnits( ) ) {
         if ( unit_ptr ) {
-            all_units_in_battle.push_back( unit_ptr.get( ) );
-            place_unit_on_board( board, unit_ptr );
+            allUnitsInBattle_.push_back( unit_ptr.get( ) );
+            placeUnitOnBoard( board_, unit_ptr );
         }
     }
 
-    round_manager.start_round( );
+    roundManager_.startRound( );
 }
 
-Unit* GameManager::get_current_unit( ) {
-    const std::size_t before = round_manager.get_units_left_in_round( ).size( );
-    Unit* u = round_manager.get_current_unit( );
+Unit* GameManager::getCurrentUnit( ) {
+    const std::size_t before = roundManager_.getUnitsLeftInRound( ).size( );
+    Unit* u = roundManager_.getCurrentUnit( );
     if ( u != nullptr && before == 0 ) {
-        ++round_number;
+        ++roundNumber_;
     }
 
-    if ( round_number != morale_round_tracked ) {
-        morale_rolled_units_this_round.clear( );
-        morale_round_tracked = round_number;
+    if ( roundNumber_ != moraleRoundTracked_ ) {
+        moraleRolledUnitsThisRound_.clear( );
+        moraleRoundTracked_ = roundNumber_;
     }
 
-    roll_morale_for_active( u );
+    rollMoraleForActive( u );
     return u;
 }
 
-void GameManager::roll_morale_for_active( Unit* unit ) {
+void GameManager::rollMoraleForActive( Unit* unit ) {
     if ( unit == nullptr ) {
-        last_morale_rolled_unit = nullptr;
-        morale_triggered_this_turn = false;
+        lastMoraleRolledUnit_ = nullptr;
+        moraleTriggeredThisTurn_ = false;
         return;
     }
-    if ( unit == last_morale_rolled_unit ) {
+    if ( unit == lastMoraleRolledUnit_ ) {
         return;
     }
 
-    if ( morale_rolled_units_this_round.count( unit ) > 0 ) {
-        morale_triggered_this_turn = false;
-        last_morale_rolled_unit = unit;
+    if ( moraleRolledUnitsThisRound_.count( unit ) > 0 ) {
+        moraleTriggeredThisTurn_ = false;
+        lastMoraleRolledUnit_ = unit;
         return;
     }
 
     static thread_local std::mt19937 rng{ std::random_device{ }( ) };
     std::uniform_int_distribution<int> dist( 0, 99 );
-    morale_triggered_this_turn = ( dist( rng ) < 10 );
-    last_morale_rolled_unit = unit;
-    morale_rolled_units_this_round.insert( unit );
+    moraleTriggeredThisTurn_ = ( dist( rng ) < 10 );
+    lastMoraleRolledUnit_ = unit;
+    moraleRolledUnitsThisRound_.insert( unit );
 }
 
-void GameManager::consume_turn_or_burn_morale_bonus( ) {
-    if ( morale_triggered_this_turn ) {
-        morale_triggered_this_turn = false;
+void GameManager::consumeTurnOrBurnMoraleBonus( ) {
+    if ( moraleTriggeredThisTurn_ ) {
+        moraleTriggeredThisTurn_ = false;
         return;
     }
-    round_manager.end_current_unit_turn( );
-    last_morale_rolled_unit = nullptr;
+    roundManager_.endCurrentUnitTurn( );
+    lastMoraleRolledUnit_ = nullptr;
 }
 
-std::vector<Unit*> GameManager::get_units_left_in_round( ) const {
-    return round_manager.get_units_left_in_round( );
+std::vector<Unit*> GameManager::getUnitsLeftInRound( ) const {
+    return roundManager_.getUnitsLeftInRound( );
 }
 
-std::vector<Unit*> GameManager::get_unit_queue_in_round( ) const {
-    return round_manager.get_unit_queue_in_round( );
+std::vector<Unit*> GameManager::getUnitQueueInRound( ) const {
+    return roundManager_.getUnitQueueInRound( );
 }
 
-std::vector<Hex*> GameManager::get_available_destinations( const Unit& unit ) const {
-    return action_manager.get_available_destinations( unit, board );
+std::vector<Hex*> GameManager::getAvailableDestinations( const Unit& unit ) const {
+    return actionManager_.getAvailableDestinations( unit, board_ );
 }
 
-std::vector<const Hex*> GameManager::find_path( const Unit& unit, const Hex& dest_hex ) const {
-    return action_manager.find_path( unit, dest_hex, board );
+std::vector<const Hex*> GameManager::findPath( const Unit& unit, const Hex& dest_hex ) const {
+    return actionManager_.findPath( unit, dest_hex, board_ );
 }
 
-std::vector<Unit*> GameManager::peek_next_round_order( ) const {
+std::vector<Unit*> GameManager::peekNextRoundOrder( ) const {
     std::vector<Unit*> next;
-    next.reserve( all_units_in_battle.size( ) );
-    for ( Unit* u : all_units_in_battle ) {
-        if ( u != nullptr && u->get_count( ) > 0 )
+    next.reserve( allUnitsInBattle_.size( ) );
+    for ( Unit* u : allUnitsInBattle_ ) {
+        if ( u != nullptr && u->getCount( ) > 0 ) {
             next.push_back( u );
+}
     }
     std::sort( next.begin( ), next.end( ), []( const Unit* a, const Unit* b ) {
-        if ( a->get_speed( ) != b->get_speed( ) )
-            return a->get_speed( ) > b->get_speed( );
+        if ( a->getSpeed( ) != b->getSpeed( ) ) {
+            return a->getSpeed( ) > b->getSpeed( );
+}
         return a < b;
     } );
     return next;
 }
 
-std::vector<std::pair<Unit*, Hex*>> GameManager::get_available_attacks( const Unit& unit ) const {
+std::vector<std::pair<Unit*, Hex*>> GameManager::getAvailableAttacks( const Unit& unit ) const {
     std::vector<std::pair<Unit*, Hex*>> filtered;
-    for ( const auto& [target, hex] : action_manager.get_available_attacks( unit, board ) ) {
+    for ( const auto& [target, hex] : actionManager_.getAvailableAttacks( unit, board_ ) ) {
         if ( target == nullptr || hex == nullptr ) {
             continue;
         }
-        if ( are_enemies( unit, *target ) ) {
+        if ( areEnemies( unit, *target ) ) {
             filtered.push_back( { target, hex } );
         }
     }
     return filtered;
 }
 
-bool GameManager::hero_contains_unit( const Hero& hero, const Unit& unit ) const {
-    for ( const auto& candidate : hero.get_army( ).get_units( ) ) {
+bool GameManager::heroContainsUnit( const Hero& hero, const Unit& unit ) const {
+    for ( const auto& candidate : hero.getArmy( ).getUnits( ) ) {
         if ( candidate && candidate.get( ) == &unit ) {
             return true;
         }
@@ -161,15 +165,15 @@ bool GameManager::hero_contains_unit( const Hero& hero, const Unit& unit ) const
     return false;
 }
 
-bool GameManager::are_allies( const Unit& first, const Unit& second ) const {
-    const bool first_blue = hero_contains_unit( blue_hero, first );
-    const bool second_blue = hero_contains_unit( blue_hero, second );
+bool GameManager::areAllies( const Unit& first, const Unit& second ) const {
+    const bool first_blue = heroContainsUnit( blueHero_, first );
+    const bool second_blue = heroContainsUnit( blueHero_, second );
     if ( first_blue && second_blue ) {
         return true;
     }
 
-    const bool first_red = hero_contains_unit( red_hero, first );
-    const bool second_red = hero_contains_unit( red_hero, second );
+    const bool first_red = heroContainsUnit( redHero_, first );
+    const bool second_red = heroContainsUnit( redHero_, second );
     if ( first_red && second_red ) {
         return true;
     }
@@ -177,22 +181,22 @@ bool GameManager::are_allies( const Unit& first, const Unit& second ) const {
     return false;
 }
 
-bool GameManager::are_enemies( const Unit& first, const Unit& second ) const {
+bool GameManager::areEnemies( const Unit& first, const Unit& second ) const {
     const bool first_known =
-        hero_contains_unit( blue_hero, first ) || hero_contains_unit( red_hero, first );
+        heroContainsUnit( blueHero_, first ) || heroContainsUnit( redHero_, first );
     const bool second_known =
-        hero_contains_unit( blue_hero, second ) || hero_contains_unit( red_hero, second );
+        heroContainsUnit( blueHero_, second ) || heroContainsUnit( redHero_, second );
     if ( ! first_known || ! second_known ) {
         return &first != &second;
     }
-    return ! are_allies( first, second );
+    return ! areAllies( first, second );
 }
 
-bool GameManager::can_attack( const Unit& attacker, const Hex& target_hex ) const {
-    const auto attacks = get_available_attacks( attacker );
+bool GameManager::canAttack( const Unit& attacker, const Hex& target_hex ) const {
+    const auto attacks = getAvailableAttacks( attacker );
     Unit* clicked_target = nullptr;
-    if ( target_hex.has_unit( ) ) {
-        clicked_target = target_hex.get_unit( ).get( );
+    if ( target_hex.hasUnit( ) ) {
+        clicked_target = target_hex.getUnit( ).get( );
     }
 
     for ( const auto& [target, hex] : attacks ) {
@@ -210,8 +214,8 @@ bool GameManager::can_attack( const Unit& attacker, const Hex& target_hex ) cons
     return false;
 }
 
-bool GameManager::can_move( const Unit& unit, const Hex& dest_hex ) const {
-    const auto destinations = get_available_destinations( unit );
+bool GameManager::canMove( const Unit& unit, const Hex& dest_hex ) const {
+    const auto destinations = getAvailableDestinations( unit );
     for ( const Hex* hex : destinations ) {
         if ( hex == &dest_hex ) {
             return true;
@@ -220,53 +224,53 @@ bool GameManager::can_move( const Unit& unit, const Hex& dest_hex ) const {
     return false;
 }
 
-void GameManager::next_turn( ) {}
+void GameManager::nextTurn( ) {}
 
 void GameManager::move( Unit& unit, Hex& dest_hex ) {
-    action_manager.move( unit, dest_hex, board );
-    consume_turn_or_burn_morale_bonus( );
+    actionManager_.move( unit, dest_hex, board_ );
+    consumeTurnOrBurnMoraleBonus( );
 }
 
 void GameManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex ) {
     const auto enemy_predicate = [this, &attacker]( const Unit& other ) {
-        return are_enemies( attacker, other );
+        return areEnemies( attacker, other );
     };
 
     bool defender_died = false;
-    if ( action_manager.can_shoot( attacker, defender, enemy_predicate, board ) ) {
-        defender_died = action_manager.shoot( attacker, defender, board );
+    if ( actionManager_.canShoot( attacker, defender, enemy_predicate, board_ ) ) {
+        defender_died = actionManager_.shoot( attacker, defender, board_ );
     } else {
-        defender_died = action_manager.attack( attacker, defender, attack_from_hex, board );
+        defender_died = actionManager_.attack( attacker, defender, attack_from_hex, board_ );
     }
 
     if ( defender_died ) {
-        remove_dead_unit( defender );
+        removeDeadUnit( defender );
     }
-    consume_turn_or_burn_morale_bonus( );
+    consumeTurnOrBurnMoraleBonus( );
 }
 
-bool GameManager::will_shoot( const Unit& attacker, const Unit& defender ) const {
+bool GameManager::willShoot( const Unit& attacker, const Unit& defender ) const {
     const auto enemy_predicate = [this, &attacker]( const Unit& other ) {
-        return are_enemies( attacker, other );
+        return areEnemies( attacker, other );
     };
-    return action_manager.can_shoot( attacker, defender, enemy_predicate, board );
+    return actionManager_.canShoot( attacker, defender, enemy_predicate, board_ );
 }
 
 void GameManager::wait( Unit& unit ) {
-    morale_triggered_this_turn = false;
-    last_morale_rolled_unit = nullptr;
-    round_manager.wait_current_unit( );
+    moraleTriggeredThisTurn_ = false;
+    lastMoraleRolledUnit_ = nullptr;
+    roundManager_.waitCurrentUnit( );
 }
 
 void GameManager::defend( Unit& unit ) {
-    action_manager.defend( unit );
-    consume_turn_or_burn_morale_bonus( );
+    actionManager_.defend( unit );
+    consumeTurnOrBurnMoraleBonus( );
 }
 
-void GameManager::remove_dead_unit( Unit& unit ) {
-    auto it = std::find( all_units_in_battle.begin( ), all_units_in_battle.end( ), &unit );
-    if ( it != all_units_in_battle.end( ) ) {
-        all_units_in_battle.erase( it );
+void GameManager::removeDeadUnit( Unit& unit ) {
+    auto it = std::find( allUnitsInBattle_.begin( ), allUnitsInBattle_.end( ), &unit );
+    if ( it != allUnitsInBattle_.end( ) ) {
+        allUnitsInBattle_.erase( it );
     }
 }
 

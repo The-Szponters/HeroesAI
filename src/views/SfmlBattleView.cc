@@ -24,9 +24,9 @@ using models::Unit;
 using presenters::BattlePresenter;
 
 namespace {
-constexpr float kPi = 3.14159265358979323846f;
+constexpr float K_PI = 3.14159265358979323846f;
 
-std::pair<int, int> cube_round_to_axial( float fq, float fr, float fs ) {
+std::pair<int, int> cubeRoundToAxial( float fq, float fr, float fs ) {
     int rq = static_cast<int>( std::round( fq ) );
     int rr = static_cast<int>( std::round( fr ) );
     int rs = static_cast<int>( std::round( fs ) );
@@ -50,16 +50,16 @@ std::pair<int, int> cube_round_to_axial( float fq, float fr, float fs ) {
 } // namespace
 
 SfmlBattleView::SfmlBattleView( unsigned int width, unsigned int height, const std::string& title )
-    : window( sf::VideoMode( { width, height } ), title ),
-      screen_width( static_cast<float>( width ) ),
-      screen_height( static_cast<float>( height ) ),
-      battlefield_height( screen_height * 0.8f ),
-      hex_radius( 28.0f ),
+    : window_( sf::VideoMode( { width, height } ), title ),
+      screenWidth_( static_cast<float>( width ) ),
+      screenHeight_( static_cast<float>( height ) ),
+      battlefieldHeight_( screenHeight_ * 0.8f ),
+      hexRadius_( 28.0f ),
 
-      grid_origin( 300.0f, 70.0f + 28.0f * 1.5f ),
-      hud_count( 0 ),
-      hud_hp_left( 0 ) {
-    window.setFramerateLimit( 60 );
+      gridOrigin_( 300.0f, 70.0f + 28.0f * 1.5f ),
+      hudCount_( 0 ),
+      hudHpLeft_( 0 ) {
+    window_.setFramerateLimit( 60 );
 
     const std::array<const char*, 5> font_candidates = {
         "assets/font.ttf",
@@ -70,168 +70,168 @@ SfmlBattleView::SfmlBattleView( unsigned int width, unsigned int height, const s
     };
     bool font_loaded = false;
     for ( const char* path : font_candidates ) {
-        if ( font.openFromFile( path ) ) {
+        if ( font_.openFromFile( path ) ) {
             font_loaded = true;
             break;
         }
     }
     if ( ! font_loaded ) {
-        latest_message = "Warning: no font found, HUD text will not render";
+        latestMessage_ = "Warning: no font found, HUD text will not render";
     }
 
-    hud_text = std::make_unique<sf::Text>( font );
-    queue_text = std::make_unique<sf::Text>( font );
-    log_text = std::make_unique<sf::Text>( font );
-    info_panel_text = std::make_unique<sf::Text>( font );
-    unit_stack_count_text = std::make_unique<sf::Text>( font );
+    hudText_ = std::make_unique<sf::Text>( font_ );
+    queueText_ = std::make_unique<sf::Text>( font_ );
+    logText_ = std::make_unique<sf::Text>( font_ );
+    infoPanelText_ = std::make_unique<sf::Text>( font_ );
+    unitStackCountText_ = std::make_unique<sf::Text>( font_ );
 
-    hud_text->setCharacterSize( 18 );
-    hud_text->setFillColor( sf::Color::White );
-    hud_text->setPosition( { 16.0f, battlefield_height + 8.0f } );
+    hudText_->setCharacterSize( 18 );
+    hudText_->setFillColor( sf::Color::White );
+    hudText_->setPosition( { 16.0f, battlefieldHeight_ + 8.0f } );
 
-    queue_text->setCharacterSize( 16 );
-    queue_text->setFillColor( sf::Color( 230, 230, 230 ) );
-    queue_text->setPosition( { 16.0f, battlefield_height + 30.0f } );
+    queueText_->setCharacterSize( 16 );
+    queueText_->setFillColor( sf::Color( 230, 230, 230 ) );
+    queueText_->setPosition( { 16.0f, battlefieldHeight_ + 30.0f } );
 
-    log_text->setCharacterSize( 17 );
-    log_text->setFillColor( sf::Color( 220, 220, 220 ) );
-    log_text->setPosition( { 16.0f, battlefield_height + 52.0f } );
+    logText_->setCharacterSize( 17 );
+    logText_->setFillColor( sf::Color( 220, 220, 220 ) );
+    logText_->setPosition( { 16.0f, battlefieldHeight_ + 52.0f } );
 
-    def_manager.set_search_roots( {
+    defManager_.setSearchRoots( {
         "assets/units",
         "assets/ui",
     } );
 
-    if ( battlefield_texture.loadFromFile( "assets/backgrounds/CmBkGrTr.bmp" ) ) {
-        const sf::Vector2u ts = battlefield_texture.getSize( );
-        battlefield_sprite = std::make_unique<sf::Sprite>( battlefield_texture );
-        battlefield_sprite->setScale( { screen_width / static_cast<float>( ts.x ),
-                                        battlefield_height / static_cast<float>( ts.y ) } );
-        battlefield_sprite->setPosition( { 0.0f, 0.0f } );
+    if ( battlefieldTexture_.loadFromFile( "assets/backgrounds/CmBkGrTr.bmp" ) ) {
+        const sf::Vector2u ts = battlefieldTexture_.getSize( );
+        battlefieldSprite_ = std::make_unique<sf::Sprite>( battlefieldTexture_ );
+        battlefieldSprite_->setScale( { screenWidth_ / static_cast<float>( ts.x ),
+                                        battlefieldHeight_ / static_cast<float>( ts.y ) } );
+        battlefieldSprite_->setPosition( { 0.0f, 0.0f } );
     }
 
-    window.setMouseCursorVisible( false );
-    os_cursor_visible = false;
+    window_.setMouseCursorVisible( false );
+    osCursorVisible_ = false;
 
-    info_panel_text->setCharacterSize( 15 );
-    info_panel_text->setFillColor( sf::Color::White );
+    infoPanelText_->setCharacterSize( 15 );
+    infoPanelText_->setFillColor( sf::Color::White );
 
-    unit_stack_count_text->setCharacterSize( 8 );
-    unit_stack_count_text->setFillColor( sf::Color( 20, 20, 20 ) );
+    unitStackCountText_->setCharacterSize( 8 );
+    unitStackCountText_->setFillColor( sf::Color( 20, 20, 20 ) );
 
-    unit_stack_team_backer.setFillColor( sf::Color::Transparent );
-    unit_stack_team_backer.setOutlineThickness( 0.0f );
-    unit_stack_hp_back.setFillColor( sf::Color::Black );
-    unit_stack_hp_fill.setFillColor( sf::Color::Green );
+    unitStackTeamBacker_.setFillColor( sf::Color::Transparent );
+    unitStackTeamBacker_.setOutlineThickness( 0.0f );
+    unitStackHpBack_.setFillColor( sf::Color::Black );
+    unitStackHpFill_.setFillColor( sf::Color::Green );
 
-    load_action_bar_assets( );
-    load_info_panel_assets( );
-    load_unit_stack_assets( );
+    loadActionBarAssets( );
+    loadInfoPanelAssets( );
+    loadUnitStackAssets( );
 }
 
-void SfmlBattleView::load_action_bar_assets( ) {
-    constexpr float kIconW = 48.0f;
-    constexpr float kIconH = 36.0f;
-    constexpr float kPad = 8.0f;
-    const float icon_y = screen_height - kIconH - 8.0f;
+void SfmlBattleView::loadActionBarAssets( ) {
+    constexpr float K_ICON_W = 48.0f;
+    constexpr float K_ICON_H = 36.0f;
+    constexpr float K_PAD = 8.0f;
+    const float icon_y = screenHeight_ - K_ICON_H - 8.0f;
 
     auto add = [&]( ActionKind kind, const std::string& def, float x ) {
-        action_slots.push_back(
-            { kind, def, sf::FloatRect( { x, icon_y }, { kIconW, kIconH } ), 0.0f } );
+        actionSlots_.push_back(
+            { kind, def, sf::FloatRect( { x, icon_y }, { K_ICON_W, K_ICON_H } ), 0.0f } );
     };
 
-    float x = screen_width - kIconW - kPad;
+    float x = screenWidth_ - K_ICON_W - K_PAD;
     add( ActionKind::SURRENDER, "surrender_icon.def", x );
-    x -= kIconW + kPad;
+    x -= K_ICON_W + K_PAD;
     add( ActionKind::AUTO_COMBAT, "autocombat_icon.def", x );
-    x -= kIconW + kPad;
+    x -= K_ICON_W + K_PAD;
     add( ActionKind::DEFEND, "defend_icon.def", x );
-    x -= kIconW + kPad;
+    x -= K_ICON_W + K_PAD;
     add( ActionKind::WAIT, "wait_icon.def", x );
-    x -= kIconW + kPad;
+    x -= K_ICON_W + K_PAD;
     add( ActionKind::SPELLBOOK, "spellbook.def", x );
 }
 
-void SfmlBattleView::load_info_panel_assets( ) {
-    if ( info_panel_texture.loadFromFile( "assets/ui/unit_stats.bmp" ) ) {
-        info_panel_sprite = std::make_unique<sf::Sprite>( info_panel_texture );
+void SfmlBattleView::loadInfoPanelAssets( ) {
+    if ( infoPanelTexture_.loadFromFile( "assets/ui/unit_stats.bmp" ) ) {
+        infoPanelSprite_ = std::make_unique<sf::Sprite>( infoPanelTexture_ );
     }
 }
 
-void SfmlBattleView::load_unit_stack_assets( ) {
-    if ( unit_stack_box_texture.loadFromFile( "assets/ui/num_units.bmp" ) ) {
-        unit_stack_box_sprite = std::make_unique<sf::Sprite>( unit_stack_box_texture );
+void SfmlBattleView::loadUnitStackAssets( ) {
+    if ( unitStackBoxTexture_.loadFromFile( "assets/ui/num_units.bmp" ) ) {
+        unitStackBoxSprite_ = std::make_unique<sf::Sprite>( unitStackBoxTexture_ );
     }
 }
 
-bool SfmlBattleView::is_open( ) const {
-    return window.isOpen( );
+bool SfmlBattleView::isOpen( ) const {
+    return window_.isOpen( );
 }
 
-void SfmlBattleView::on_mouse_hover( int pixel_x, int pixel_y, BattlePresenter& presenter ) {
-    if ( ! is_point_in_battlefield( static_cast<float>( pixel_x ),
+void SfmlBattleView::onMouseHover( int pixel_x, int pixel_y, BattlePresenter& presenter ) {
+    if ( ! isPointInBattlefield( static_cast<float>( pixel_x ),
                                     static_cast<float>( pixel_y ) ) ) {
         if ( sf::Mouse::isButtonPressed( sf::Mouse::Button::Right ) ) {
-            presenter.on_right_click_released( );
+            presenter.onRightClickReleased( );
         }
-        set_cursor_style( CursorStyle::STANDARD_POINTER, pixel_x, pixel_y );
+        setCursorStyle( CursorStyle::STANDARD_POINTER, pixel_x, pixel_y );
         return;
     }
 
     if ( sf::Mouse::isButtonPressed( sf::Mouse::Button::Right ) ) {
-        presenter.on_right_click_pressed( pixel_x, pixel_y );
-        set_cursor_style( CursorStyle::STANDARD_POINTER, pixel_x, pixel_y );
+        presenter.onRightClickPressed( pixel_x, pixel_y );
+        setCursorStyle( CursorStyle::STANDARD_POINTER, pixel_x, pixel_y );
         return;
     }
 
     const bool shift_held = sf::Keyboard::isKeyPressed( sf::Keyboard::Key::LShift ) ||
                             sf::Keyboard::isKeyPressed( sf::Keyboard::Key::RShift );
-    presenter.on_mouse_hover( pixel_x, pixel_y, shift_held );
+    presenter.onMouseHover( pixel_x, pixel_y, shift_held );
 }
 
-void SfmlBattleView::process_events( BattlePresenter& presenter ) {
-    while ( const std::optional<sf::Event> event = window.pollEvent( ) ) {
+void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
+    while ( const std::optional<sf::Event> event = window_.pollEvent( ) ) {
         if ( event->is<sf::Event::Closed>( ) ) {
-            window.close( );
+            window_.close( );
             continue;
         }
 
-        if ( const auto* mouseMove = event->getIf<sf::Event::MouseMoved>( ) ) {
-            on_mouse_hover( mouseMove->position.x, mouseMove->position.y, presenter );
+        if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
+            onMouseHover( mouse_move->position.x, mouse_move->position.y, presenter );
             continue;
         }
 
-        if ( const auto* mousePress = event->getIf<sf::Event::MouseButtonPressed>( ) ) {
-            const float mx = static_cast<float>( mousePress->position.x );
-            const float my = static_cast<float>( mousePress->position.y );
+        if ( const auto* mouse_press = event->getIf<sf::Event::MouseButtonPressed>( ) ) {
+            const float mx = static_cast<float>( mouse_press->position.x );
+            const float my = static_cast<float>( mouse_press->position.y );
 
-            if ( mousePress->button == sf::Mouse::Button::Right ) {
-                presenter.on_right_click_pressed( mousePress->position.x, mousePress->position.y );
+            if ( mouse_press->button == sf::Mouse::Button::Right ) {
+                presenter.onRightClickPressed( mouse_press->position.x, mouse_press->position.y );
                 continue;
             }
 
-            if ( mousePress->button != sf::Mouse::Button::Left ) {
+            if ( mouse_press->button != sf::Mouse::Button::Left ) {
                 continue;
             }
 
-            if ( route_action_click( mx, my, presenter ) ) {
+            if ( routeActionClick( mx, my, presenter ) ) {
                 continue;
             }
 
-            if ( is_point_in_battlefield( mx, my ) ) {
-                const auto [q, r] = pixel_to_hex( mx, my );
+            if ( isPointInBattlefield( mx, my ) ) {
+                const auto [q, r] = pixelToHex( mx, my );
                 const bool shift_held = sf::Keyboard::isKeyPressed( sf::Keyboard::Key::LShift ) ||
                                         sf::Keyboard::isKeyPressed( sf::Keyboard::Key::RShift );
-                presenter.on_hex_clicked( q, r, shift_held );
+                presenter.onHexClicked( q, r, shift_held );
             } else {
-                presenter.on_right_click_released( );
+                presenter.onRightClickReleased( );
             }
             continue;
         }
 
-        if ( const auto* mouseRelease = event->getIf<sf::Event::MouseButtonReleased>( ) ) {
-            if ( mouseRelease->button == sf::Mouse::Button::Right ) {
-                presenter.on_right_click_released( );
+        if ( const auto* mouse_release = event->getIf<sf::Event::MouseButtonReleased>( ) ) {
+            if ( mouse_release->button == sf::Mouse::Button::Right ) {
+                presenter.onRightClickReleased( );
             }
             continue;
         }
@@ -239,63 +239,63 @@ void SfmlBattleView::process_events( BattlePresenter& presenter ) {
 }
 
 void SfmlBattleView::render( ) {
-    window.clear( sf::Color( 23, 23, 27 ) );
+    window_.clear( sf::Color( 23, 23, 27 ) );
 
-    const sf::Time dt = animation_clock.restart( );
-    update_visual_events( dt );
-    for ( auto& [key, controller] : animation_controllers ) {
+    const sf::Time dt = animationClock_.restart( );
+    updateVisualEvents( dt );
+    for ( auto& [key, controller] : animationControllers_ ) {
         (void) key;
         controller.update( dt );
     }
-    pulse_phase_seconds += dt.asSeconds( );
+    pulsePhaseSeconds_ += dt.asSeconds( );
 
-    for ( ActionSlot& slot : action_slots ) {
-        if ( slot.pressed_seconds_left > 0.0f ) {
-            slot.pressed_seconds_left =
-                std::max( 0.0f, slot.pressed_seconds_left - dt.asSeconds( ) );
+    for ( ActionSlot& slot : actionSlots_ ) {
+        if ( slot.pressedSecondsLeft_ > 0.0f ) {
+            slot.pressedSecondsLeft_ =
+                std::max( 0.0f, slot.pressedSecondsLeft_ - dt.asSeconds( ) );
         }
     }
 
-    update_hover_from_mouse( );
+    updateHoverFromMouse( );
 
-    cursor_position = window.mapPixelToCoords( sf::Mouse::getPosition( window ) );
+    cursorPosition_ = window_.mapPixelToCoords( sf::Mouse::getPosition( window_ ) );
 
-    draw_battlefield_background( );
-    draw_hex_grid( );
-    draw_units( );
-    draw_hud( );
-    draw_turn_queue( );
-    draw_unit_stack_ui( );
-    draw_info_panel( );
-    draw_cursor( );
+    drawBattlefieldBackground( );
+    drawHexGrid( );
+    drawUnits( );
+    drawHud( );
+    drawTurnQueue( );
+    drawUnitStackUi( );
+    drawInfoPanel( );
+    drawCursor( );
 
-    window.display( );
+    window_.display( );
 }
 
-void SfmlBattleView::draw_battlefield_background( ) {
-    if ( battlefield_sprite ) {
-        window.draw( *battlefield_sprite );
+void SfmlBattleView::drawBattlefieldBackground( ) {
+    if ( battlefieldSprite_ ) {
+        window_.draw( *battlefieldSprite_ );
         return;
     }
-    sf::RectangleShape battlefield_bg( { screen_width, battlefield_height } );
+    sf::RectangleShape battlefield_bg( { screenWidth_, battlefieldHeight_ } );
     battlefield_bg.setPosition( { 0.0f, 0.0f } );
     battlefield_bg.setFillColor( sf::Color( 54, 64, 51 ) );
-    window.draw( battlefield_bg );
+    window_.draw( battlefield_bg );
 }
 
-void SfmlBattleView::draw_hex_grid( ) {
+void SfmlBattleView::drawHexGrid( ) {
     for ( int row = 0; row < Board::HEIGHT; ++row ) {
         for ( int col = 0; col < Board::WIDTH; ++col ) {
             const int q = col - ( row - ( row & 1 ) ) / 2;
             const int r = row;
 
-            sf::ConvexShape hex = make_hex_shape( q, r );
+            sf::ConvexShape hex = makeHexShape( q, r );
             hex.setFillColor( sf::Color::Transparent );
             hex.setOutlineColor( sf::Color( 200, 200, 220, 70 ) );
             hex.setOutlineThickness( 1.0f );
 
-            const auto it = expanded_highlights.find( make_hex_key( q, r ) );
-            if ( it != expanded_highlights.end( ) ) {
+            const auto it = expandedHighlights_.find( makeHexKey( q, r ) );
+            if ( it != expandedHighlights_.end( ) ) {
                 switch ( it->second ) {
                 case HighlightType::ACTIVE_UNIT:
                     hex.setOutlineColor( sf::Color( 70, 130, 255, 220 ) );
@@ -318,65 +318,67 @@ void SfmlBattleView::draw_hex_grid( ) {
                     break;
                 }
             }
-            window.draw( hex );
+            window_.draw( hex );
         }
     }
 }
 
-void SfmlBattleView::draw_units( ) {
+void SfmlBattleView::drawUnits( ) {
     std::uint64_t active_unit_id_for_glow = 0;
-    if ( active_unit_highlight.has_value( ) ) {
-        for ( const UnitRenderData& u : units_to_draw ) {
-            if ( ! u.is_corpse && u.q == active_unit_highlight->q &&
-                 u.r == active_unit_highlight->r ) {
-                active_unit_id_for_glow = u.id;
+    if ( activeUnitHighlight_.has_value( ) ) {
+        for ( const UnitRenderData& u : unitsToDraw_ ) {
+            if ( ! u.isCorpse_ && u.q_ == activeUnitHighlight_->q_ &&
+                 u.r_ == activeUnitHighlight_->r_ ) {
+                active_unit_id_for_glow = u.id_;
                 break;
             }
         }
     }
 
     auto draw_active_glow = [this]( const UnitRenderData& unit ) {
-        const auto ctrl_it = animation_controllers.find( unit.id );
-        if ( ctrl_it == animation_controllers.end( ) || ! ctrl_it->second.is_ready( ) )
+        const auto ctrl_it = animationControllers_.find( unit.id_ );
+        if ( ctrl_it == animationControllers_.end( ) || ! ctrl_it->second.isReady( ) ) {
             return;
-        const sf::Sprite* base = ctrl_it->second.get_sprite( );
-        if ( base == nullptr )
+}
+        const sf::Sprite* base = ctrl_it->second.getSprite( );
+        if ( base == nullptr ) {
             return;
+}
 
-        constexpr float kPulseHz = 1.0f;
-        const float t = 0.5f + 0.5f * std::sin( pulse_phase_seconds * 2.0f * kPi * kPulseHz );
+        constexpr float K_PULSE_HZ = 1.0f;
+        const float t = 0.5f + 0.5f * std::sin( pulsePhaseSeconds_ * 2.0f * K_PI * K_PULSE_HZ );
         const float alpha_norm = 0.30f + 0.45f * t;
         const auto alpha = static_cast<std::uint8_t>( std::round( 255.0f * alpha_norm ) );
 
         sf::Sprite glow = *base;
         glow.setColor( sf::Color( 255, 215, 0, alpha ) );
         const sf::Vector2f s = base->getScale( );
-        constexpr float kGlowGrow = 1.08f;
-        glow.setScale( { s.x * kGlowGrow, s.y * kGlowGrow } );
-        window.draw( glow, sf::BlendAdd );
+        constexpr float K_GLOW_GROW = 1.08f;
+        glow.setScale( { s.x * K_GLOW_GROW, s.y * K_GLOW_GROW } );
+        window_.draw( glow, sf::BlendAdd );
     };
 
     auto draw_one = [this]( const UnitRenderData& unit ) {
-        sf::Vector2f center = unit_render_center( unit );
-        const auto override_it = visual_position_overrides.find( unit.id );
-        if ( override_it != visual_position_overrides.end( ) ) {
+        sf::Vector2f center = unitRenderCenter( unit );
+        const auto override_it = visualPositionOverrides_.find( unit.id_ );
+        if ( override_it != visualPositionOverrides_.end( ) ) {
             center = override_it->second;
         }
 
-        const auto ctrl_it = animation_controllers.find( unit.id );
-        if ( ctrl_it != animation_controllers.end( ) && ctrl_it->second.is_ready( ) ) {
-            if ( const sf::Sprite* sprite = ctrl_it->second.get_sprite( ) ) {
-                window.draw( *sprite );
+        const auto ctrl_it = animationControllers_.find( unit.id_ );
+        if ( ctrl_it != animationControllers_.end( ) && ctrl_it->second.isReady( ) ) {
+            if ( const sf::Sprite* sprite = ctrl_it->second.getSprite( ) ) {
+                window_.draw( *sprite );
                 return;
             }
         }
 
-        const float radius = hex_radius * 0.34f;
+        const float radius = hexRadius_ * 0.34f;
         sf::CircleShape body( radius );
         body.setOrigin( { radius, radius } );
         body.setPosition( center );
 
-        if ( unit.is_corpse ) {
+        if ( unit.isCorpse_ ) {
             body.setFillColor( sf::Color( 120, 120, 120, 190 ) );
             body.setOutlineColor( sf::Color( 190, 190, 190, 200 ) );
         } else {
@@ -384,193 +386,201 @@ void SfmlBattleView::draw_units( ) {
             body.setOutlineColor( sf::Color( 15, 15, 15, 220 ) );
         }
         body.setOutlineThickness( 1.5f );
-        window.draw( body );
+        window_.draw( body );
 
         sf::ConvexShape facing_marker( 3 );
-        const float dir = unit.is_facing_left ? -1.0f : 1.0f;
+        const float dir = unit.isFacingLeft_ ? -1.0f : 1.0f;
         facing_marker.setPoint( 0, { center.x + dir * 14.0f, center.y } );
         facing_marker.setPoint( 1, { center.x + dir * 6.0f, center.y - 6.0f } );
         facing_marker.setPoint( 2, { center.x + dir * 6.0f, center.y + 6.0f } );
-        facing_marker.setFillColor( unit.is_corpse ? sf::Color( 95, 95, 95 )
+        facing_marker.setFillColor( unit.isCorpse_ ? sf::Color( 95, 95, 95 )
                                                    : sf::Color( 40, 40, 40 ) );
-        window.draw( facing_marker );
+        window_.draw( facing_marker );
     };
 
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        if ( unit.is_corpse )
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        if ( unit.isCorpse_ ) {
             draw_one( unit );
+}
     }
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        if ( unit.is_corpse )
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        if ( unit.isCorpse_ ) {
             continue;
+}
 
-        if ( unit.id == active_unit_id_for_glow ) {
+        if ( unit.id_ == active_unit_id_for_glow ) {
             draw_active_glow( unit );
         }
         draw_one( unit );
     }
 
-    if ( ! visual_events.empty( ) &&
-         visual_events.front( ).type == VisualEvent::Type::PROJECTILE ) {
-        const ProjectileVisualEvent& pe = visual_events.front( ).projectile;
-        const float t = std::clamp( pe.elapsed_seconds / pe.duration_seconds, 0.0f, 1.0f );
+    if ( ! visualEvents_.empty( ) &&
+         visualEvents_.front( ).type_ == VisualEvent::Type::PROJECTILE ) {
+        const ProjectileVisualEvent& pe = visualEvents_.front( ).projectile_;
+        const float t = std::clamp( pe.elapsedSeconds_ / pe.durationSeconds_, 0.0f, 1.0f );
         const sf::Vector2f pos{
-            pe.from.x + ( pe.to.x - pe.from.x ) * t,
-            pe.from.y + ( pe.to.y - pe.from.y ) * t,
+            pe.from_.x + ( pe.to_.x - pe.from_.x ) * t,
+            pe.from_.y + ( pe.to_.y - pe.from_.y ) * t,
         };
 
         std::shared_ptr<DefResource> proj =
-            pe.projectile_asset.empty( ) ? nullptr : def_manager.get_or_load( pe.projectile_asset );
+            pe.projectileAsset_.empty( ) ? nullptr : defManager_.getOrLoad( pe.projectileAsset_ );
         const DefFrame* frame = nullptr;
         if ( proj ) {
-            for ( const auto& [gid, frames] : proj->groups ) {
+            for ( const auto& [gid, frames] : proj->groups_ ) {
                 (void) gid;
                 for ( const DefFrame& f : frames ) {
-                    if ( f.width > 0 && f.height > 0 ) {
+                    if ( f.width_ > 0 && f.height_ > 0 ) {
                         frame = &f;
                         break;
                     }
                 }
-                if ( frame )
+                if ( frame ) {
                     break;
+}
             }
         }
 
         if ( frame ) {
-            sf::Sprite spr( frame->texture );
-            const auto sz = frame->texture.getSize( );
+            sf::Sprite spr( frame->texture_ );
+            const auto sz = frame->texture_.getSize( );
             spr.setOrigin( { sz.x * 0.5f, sz.y * 0.5f } );
 
-            const float dx = pe.to.x - pe.from.x;
-            const float dy = pe.to.y - pe.from.y;
-            const float angle_deg = std::atan2( dy, dx ) * ( 180.0f / kPi );
+            const float dx = pe.to_.x - pe.from_.x;
+            const float dy = pe.to_.y - pe.from_.y;
+            const float angle_deg = std::atan2( dy, dx ) * ( 180.0f / K_PI );
             spr.setRotation( sf::degrees( angle_deg ) );
             spr.setPosition( pos );
-            window.draw( spr );
+            window_.draw( spr );
         } else {
             sf::CircleShape dot( 4.0f );
             dot.setOrigin( { 4.0f, 4.0f } );
             dot.setPosition( pos );
             dot.setFillColor( sf::Color( 255, 230, 100, 230 ) );
-            window.draw( dot );
+            window_.draw( dot );
         }
     }
 
-    if ( ! visual_events.empty( ) && visual_events.front( ).type == VisualEvent::Type::MORALE ) {
-        const MoraleVisualEvent& me = visual_events.front( ).morale;
+    if ( ! visualEvents_.empty( ) && visualEvents_.front( ).type_ == VisualEvent::Type::MORALE ) {
+        const MoraleVisualEvent& me = visualEvents_.front( ).morale_;
 
-        std::shared_ptr<DefResource> aura = def_manager.get_or_load( "morale.def" );
-        const UnitRenderData* unit = find_unit_render_data( me.unit_id );
+        std::shared_ptr<DefResource> aura = defManager_.getOrLoad( "morale.def" );
+        const UnitRenderData* unit = findUnitRenderData( me.unitId_ );
         if ( aura && unit != nullptr ) {
-            const auto group_it = aura->groups.find( 0 );
-            if ( group_it != aura->groups.end( ) && ! group_it->second.empty( ) ) {
+            const auto group_it = aura->groups_.find( 0 );
+            if ( group_it != aura->groups_.end( ) && ! group_it->second.empty( ) ) {
                 const std::vector<DefFrame>& frames = group_it->second;
                 const float t =
-                    std::clamp( me.elapsed_seconds / me.duration_seconds, 0.0f, 0.999f );
+                    std::clamp( me.elapsedSeconds_ / me.durationSeconds_, 0.0f, 0.999f );
                 const std::size_t idx = std::min<std::size_t>(
                     frames.size( ) - 1,
                     static_cast<std::size_t>( t * static_cast<float>( frames.size( ) ) ) );
                 const DefFrame& frame = frames[idx];
 
-                if ( frame.width > 0 && frame.height > 0 ) {
-                    sf::Sprite spr( frame.texture );
-                    const auto sz = frame.texture.getSize( );
-                    sf::Vector2f center = unit_render_center( *unit );
-                    if ( const auto override_it = visual_position_overrides.find( unit->id );
-                         override_it != visual_position_overrides.end( ) ) {
+                if ( frame.width_ > 0 && frame.height_ > 0 ) {
+                    sf::Sprite spr( frame.texture_ );
+                    const auto sz = frame.texture_.getSize( );
+                    sf::Vector2f center = unitRenderCenter( *unit );
+                    if ( const auto override_it = visualPositionOverrides_.find( unit->id_ );
+                         override_it != visualPositionOverrides_.end( ) ) {
                         center = override_it->second;
                     }
 
                     spr.setOrigin( { sz.x * 0.5f, static_cast<float>( sz.y ) } );
-                    spr.setPosition( { center.x, center.y - hex_radius * 1.2f } );
-                    window.draw( spr );
+                    spr.setPosition( { center.x, center.y - hexRadius_ * 1.2f } );
+                    window_.draw( spr );
                 }
             }
         }
     }
 }
 
-void SfmlBattleView::draw_hud( ) {
-    sf::RectangleShape hud_bg( { screen_width, screen_height - battlefield_height } );
-    hud_bg.setPosition( { 0.0f, battlefield_height } );
+void SfmlBattleView::drawHud( ) {
+    sf::RectangleShape hud_bg( { screenWidth_, screenHeight_ - battlefieldHeight_ } );
+    hud_bg.setPosition( { 0.0f, battlefieldHeight_ } );
     hud_bg.setFillColor( sf::Color( 36, 36, 42 ) );
-    window.draw( hud_bg );
+    window_.draw( hud_bg );
 
-    hud_text->setString( "Unit: " + hud_unit_name + " | Count: " + std::to_string( hud_count ) +
-                         " | HP Left: " + std::to_string( hud_hp_left ) );
-    log_text->setString( "Log: " + latest_message );
+    hudText_->setString( "Unit: " + hudUnitName_ + " | Count: " + std::to_string( hudCount_ ) +
+                         " | HP Left: " + std::to_string( hudHpLeft_ ) );
+    logText_->setString( "Log: " + latestMessage_ );
 
-    window.draw( *hud_text );
-    window.draw( *log_text );
+    window_.draw( *hudText_ );
+    window_.draw( *logText_ );
 
-    draw_action_bar( );
+    drawActionBar( );
 }
 
-void SfmlBattleView::draw_action_bar( ) {
-    for ( const ActionSlot& slot : action_slots ) {
-        std::shared_ptr<DefResource> res = def_manager.get_or_load( slot.def_filename );
-        if ( ! res )
+void SfmlBattleView::drawActionBar( ) {
+    for ( const ActionSlot& slot : actionSlots_ ) {
+        std::shared_ptr<DefResource> res = defManager_.getOrLoad( slot.defFilename_ );
+        if ( ! res ) {
             continue;
-        const auto group_it = res->groups.find( 0 );
-        if ( group_it == res->groups.end( ) || group_it->second.empty( ) )
+}
+        const auto group_it = res->groups_.find( 0 );
+        if ( group_it == res->groups_.end( ) || group_it->second.empty( ) ) {
             continue;
+}
 
         const std::vector<DefFrame>& frames = group_it->second;
         const std::size_t want_idx =
-            ( slot.pressed_seconds_left > 0.0f && frames.size( ) > 2 ) ? 2u : 0u;
+            ( slot.pressedSecondsLeft_ > 0.0f && frames.size( ) > 2 ) ? 2u : 0u;
         const DefFrame& frame = frames[want_idx];
-        if ( frame.width <= 0 || frame.height <= 0 )
+        if ( frame.width_ <= 0 || frame.height_ <= 0 ) {
             continue;
+}
 
-        sf::Sprite icon( frame.texture );
-        icon.setPosition( { slot.bounds.position.x, slot.bounds.position.y } );
-        window.draw( icon );
+        sf::Sprite icon( frame.texture_ );
+        icon.setPosition( { slot.bounds_.position.x, slot.bounds_.position.y } );
+        window_.draw( icon );
     }
 }
 
-void SfmlBattleView::draw_turn_queue( ) {
-    constexpr float box_w = 56.0f;
-    constexpr float box_h = 56.0f;
-    constexpr float divider_w = 36.0f;
-    constexpr float gap = 4.0f;
-    constexpr float start_x = 16.0f;
-    constexpr float kBarHeight = 44.0f;
+void SfmlBattleView::drawTurnQueue( ) {
+    constexpr float BOX_W = 56.0f;
+    constexpr float BOX_H = 56.0f;
+    constexpr float DIVIDER_W = 36.0f;
+    constexpr float GAP = 4.0f;
+    constexpr float START_X = 16.0f;
+    constexpr float K_BAR_HEIGHT = 44.0f;
 
-    const float queue_y = screen_height - kBarHeight - box_h - 6.0f;
-    const float right_limit = screen_width - 320.0f;
-    constexpr std::size_t kVisibleCapacity = 12;
+    const float queue_y = screenHeight_ - K_BAR_HEIGHT - BOX_H - 6.0f;
+    const float right_limit = screenWidth_ - 320.0f;
+    constexpr std::size_t K_VISIBLE_CAPACITY = 12;
 
-    float cursor_x = start_x;
+    float cursor_x = START_X;
     std::size_t painted = 0;
 
-    for ( const TurnQueueSlot& slot : turn_queue_slots ) {
-        if ( painted >= kVisibleCapacity )
+    for ( const TurnQueueSlot& slot : turnQueueSlots_ ) {
+        if ( painted >= K_VISIBLE_CAPACITY ) {
             break;
-        const float w = slot.is_divider ? divider_w : box_w;
-        if ( cursor_x + w > right_limit )
+}
+        const float w = slot.isDivider_ ? DIVIDER_W : BOX_W;
+        if ( cursor_x + w > right_limit ) {
             break;
+}
 
-        if ( slot.is_divider ) {
-            const float divider_h = box_h + 14.0f;
+        if ( slot.isDivider_ ) {
+            const float divider_h = BOX_H + 14.0f;
             const float divider_y = queue_y - 7.0f;
 
-            sf::RectangleShape divider( { divider_w, divider_h } );
+            sf::RectangleShape divider( { DIVIDER_W, divider_h } );
             divider.setPosition( { cursor_x, divider_y } );
             divider.setFillColor( sf::Color( 110, 70, 30 ) );
             divider.setOutlineColor( sf::Color( 255, 200, 100 ) );
             divider.setOutlineThickness( 2.5f );
-            window.draw( divider );
+            window_.draw( divider );
 
-            sf::Text round_label( font );
+            sf::Text round_label( font_ );
             round_label.setCharacterSize( 11 );
             round_label.setFillColor( sf::Color( 255, 235, 180 ) );
-            round_label.setString( "Round\n  " + std::to_string( slot.round_number ) );
+            round_label.setString( "Round\n  " + std::to_string( slot.roundNumber_ ) );
             round_label.setPosition( { cursor_x + 3.0f, divider_y + 10.0f } );
-            window.draw( round_label );
+            window_.draw( round_label );
         } else {
-            sf::RectangleShape box( { box_w, box_h } );
+            sf::RectangleShape box( { BOX_W, BOX_H } );
             box.setPosition( { cursor_x, queue_y } );
-            if ( slot.is_active ) {
+            if ( slot.isActive_ ) {
                 box.setFillColor( sf::Color( 45, 75, 130 ) );
                 box.setOutlineColor( sf::Color( 255, 215, 0 ) );
                 box.setOutlineThickness( 3.5f );
@@ -579,65 +589,66 @@ void SfmlBattleView::draw_turn_queue( ) {
                 box.setOutlineColor( sf::Color( 140, 140, 160 ) );
                 box.setOutlineThickness( 1.0f );
             }
-            window.draw( box );
+            window_.draw( box );
 
-            sf::Text name_text( font );
+            sf::Text name_text( font_ );
             name_text.setCharacterSize( 12 );
             name_text.setFillColor( sf::Color::White );
-            std::string short_name = slot.unit_name;
-            if ( short_name.size( ) > 8 )
+            std::string short_name = slot.unitName_;
+            if ( short_name.size( ) > 8 ) {
                 short_name.resize( 8 );
+}
             name_text.setString( short_name );
             name_text.setPosition( { cursor_x + 4.0f, queue_y + 6.0f } );
-            window.draw( name_text );
+            window_.draw( name_text );
 
-            if ( slot.is_active ) {
-                sf::Text active_marker( font );
+            if ( slot.isActive_ ) {
+                sf::Text active_marker( font_ );
                 active_marker.setCharacterSize( 11 );
                 active_marker.setFillColor( sf::Color( 255, 215, 0 ) );
                 active_marker.setString( "ACTIVE" );
-                active_marker.setPosition( { cursor_x + 4.0f, queue_y + box_h - 18.0f } );
-                window.draw( active_marker );
+                active_marker.setPosition( { cursor_x + 4.0f, queue_y + BOX_H - 18.0f } );
+                window_.draw( active_marker );
             }
         }
 
-        cursor_x += w + gap;
+        cursor_x += w + GAP;
         ++painted;
     }
 }
 
-void SfmlBattleView::draw_unit_stack_ui( ) {
-    constexpr float kBoxYOffsetBelow = 12.0f;
-    constexpr float kRimPad = 1.0f;
-    constexpr float kBarHeight = 3.0f;
-    constexpr float kBarGap = 0.0f;
+void SfmlBattleView::drawUnitStackUi( ) {
+    constexpr float K_BOX_Y_OFFSET_BELOW = 12.0f;
+    constexpr float K_RIM_PAD = 1.0f;
+    constexpr float K_BAR_HEIGHT = 3.0f;
+    constexpr float K_BAR_GAP = 0.0f;
 
-    const sf::Vector2u box_size_u = unit_stack_box_texture.getSize( );
+    const sf::Vector2u box_size_u = unitStackBoxTexture_.getSize( );
     const sf::Vector2f box_size{
         static_cast<float>( box_size_u.x > 0 ? box_size_u.x : 30u ),
         static_cast<float>( box_size_u.y > 0 ? box_size_u.y : 11u ),
     };
 
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        if ( unit.is_corpse || unit.count <= 0 ) {
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        if ( unit.isCorpse_ || unit.count_ <= 0 ) {
             continue;
         }
 
-        sf::Vector2f center = unit_render_center( unit );
-        if ( const auto override_it = visual_position_overrides.find( unit.id );
-             override_it != visual_position_overrides.end( ) ) {
+        sf::Vector2f center = unitRenderCenter( unit );
+        if ( const auto override_it = visualPositionOverrides_.find( unit.id_ );
+             override_it != visualPositionOverrides_.end( ) ) {
             center = override_it->second;
         }
-        if ( const auto ctrl_it = animation_controllers.find( unit.id );
-             ctrl_it != animation_controllers.end( ) && ctrl_it->second.is_ready( ) ) {
-            if ( const sf::Sprite* spr = ctrl_it->second.get_sprite( ) ) {
+        if ( const auto ctrl_it = animationControllers_.find( unit.id_ );
+             ctrl_it != animationControllers_.end( ) && ctrl_it->second.isReady( ) ) {
+            if ( const sf::Sprite* spr = ctrl_it->second.getSprite( ) ) {
                 center = spr->getPosition( );
             }
         }
 
         const sf::Vector2f box_pos{
             std::round( center.x - box_size.x * 0.5f ),
-            std::round( center.y + kBoxYOffsetBelow ),
+            std::round( center.y + K_BOX_Y_OFFSET_BELOW ),
         };
 
         const sf::Vector2f box_center{
@@ -645,88 +656,90 @@ void SfmlBattleView::draw_unit_stack_ui( ) {
             box_pos.y + box_size.y * 0.5f,
         };
 
-        const sf::Color rim_color = ( unit.owner_id == 1 )
+        const sf::Color rim_color = ( unit.ownerId_ == 1 )
                                         ? sf::Color( 30, 60, 200, 255 )
-                                        : ( unit.owner_id == 0 ? sf::Color( 190, 20, 20, 255 )
+                                        : ( unit.ownerId_ == 0 ? sf::Color( 190, 20, 20, 255 )
                                                                : sf::Color( 90, 90, 90, 255 ) );
-        const sf::Color tint_color = ( unit.owner_id == 1 )
+        const sf::Color tint_color = ( unit.ownerId_ == 1 )
                                          ? sf::Color( 0, 0, 255, 110 )
-                                         : ( unit.owner_id == 0 ? sf::Color( 255, 0, 0, 110 )
+                                         : ( unit.ownerId_ == 0 ? sf::Color( 255, 0, 0, 110 )
                                                                 : sf::Color( 120, 120, 120, 110 ) );
 
-        unit_stack_team_backer.setSize(
-            { box_size.x + kRimPad * 2.0f, box_size.y + kRimPad * 2.0f } );
-        unit_stack_team_backer.setPosition( { box_pos.x - kRimPad, box_pos.y - kRimPad } );
-        unit_stack_team_backer.setFillColor( rim_color );
-        unit_stack_team_backer.setOutlineThickness( 0.0f );
-        window.draw( unit_stack_team_backer );
+        unitStackTeamBacker_.setSize(
+            { box_size.x + K_RIM_PAD * 2.0f, box_size.y + K_RIM_PAD * 2.0f } );
+        unitStackTeamBacker_.setPosition( { box_pos.x - K_RIM_PAD, box_pos.y - K_RIM_PAD } );
+        unitStackTeamBacker_.setFillColor( rim_color );
+        unitStackTeamBacker_.setOutlineThickness( 0.0f );
+        window_.draw( unitStackTeamBacker_ );
 
-        const float hp_ratio = ( unit.max_hp_per_unit > 0 )
-                                   ? std::clamp( static_cast<float>( unit.current_top_unit_hp ) /
-                                                     static_cast<float>( unit.max_hp_per_unit ),
+        const float hp_ratio = ( unit.maxHpPerUnit_ > 0 )
+                                   ? std::clamp( static_cast<float>( unit.currentTopUnitHp_ ) /
+                                                     static_cast<float>( unit.maxHpPerUnit_ ),
                                                  0.0f,
                                                  1.0f )
                                    : 0.0f;
         sf::Color hp_color = sf::Color::Red;
-        if ( hp_ratio > 0.5f )
+        if ( hp_ratio > 0.5f ) {
             hp_color = sf::Color::Green;
-        else if ( hp_ratio > 0.2f )
+        } else if ( hp_ratio > 0.2f ) {
             hp_color = sf::Color::Yellow;
+}
 
-        unit_stack_hp_back.setSize( { box_size.x, kBarHeight } );
-        unit_stack_hp_back.setPosition( { box_pos.x, box_pos.y - kBarHeight - kBarGap } );
-        window.draw( unit_stack_hp_back );
+        unitStackHpBack_.setSize( { box_size.x, K_BAR_HEIGHT } );
+        unitStackHpBack_.setPosition( { box_pos.x, box_pos.y - K_BAR_HEIGHT - K_BAR_GAP } );
+        window_.draw( unitStackHpBack_ );
 
-        unit_stack_hp_fill.setSize( { box_size.x * hp_ratio, kBarHeight } );
-        unit_stack_hp_fill.setPosition( { box_pos.x, box_pos.y - kBarHeight - kBarGap } );
-        unit_stack_hp_fill.setFillColor( hp_color );
-        window.draw( unit_stack_hp_fill );
+        unitStackHpFill_.setSize( { box_size.x * hp_ratio, K_BAR_HEIGHT } );
+        unitStackHpFill_.setPosition( { box_pos.x, box_pos.y - K_BAR_HEIGHT - K_BAR_GAP } );
+        unitStackHpFill_.setFillColor( hp_color );
+        window_.draw( unitStackHpFill_ );
 
-        if ( unit_stack_box_sprite ) {
-            unit_stack_box_sprite->setPosition( box_pos );
-            window.draw( *unit_stack_box_sprite );
+        if ( unitStackBoxSprite_ ) {
+            unitStackBoxSprite_->setPosition( box_pos );
+            window_.draw( *unitStackBoxSprite_ );
         } else {
             sf::RectangleShape fallback( box_size );
             fallback.setPosition( box_pos );
             fallback.setFillColor( sf::Color::Transparent );
             fallback.setOutlineColor( sf::Color::White );
             fallback.setOutlineThickness( 1.0f );
-            window.draw( fallback );
+            window_.draw( fallback );
         }
 
         sf::RectangleShape tint( box_size );
         tint.setPosition( box_pos );
         tint.setFillColor( tint_color );
-        window.draw( tint );
+        window_.draw( tint );
 
-        unit_stack_count_text->setString( std::to_string( unit.count ) );
-        const sf::FloatRect text_bounds = unit_stack_count_text->getLocalBounds( );
-        unit_stack_count_text->setOrigin( {
+        unitStackCountText_->setString( std::to_string( unit.count_ ) );
+        const sf::FloatRect text_bounds = unitStackCountText_->getLocalBounds( );
+        unitStackCountText_->setOrigin( {
             std::floor( text_bounds.position.x + text_bounds.size.x * 0.5f ),
             std::floor( text_bounds.position.y + text_bounds.size.y * 0.5f ),
         } );
-        unit_stack_count_text->setPosition( box_center );
-        unit_stack_count_text->setFillColor( sf::Color::White );
-        window.draw( *unit_stack_count_text );
+        unitStackCountText_->setPosition( box_center );
+        unitStackCountText_->setFillColor( sf::Color::White );
+        window_.draw( *unitStackCountText_ );
     }
 }
 
-void SfmlBattleView::draw_info_panel( ) {
-    if ( ! info_panel_visible || ! info_panel_unit.has_value( ) )
+void SfmlBattleView::drawInfoPanel( ) {
+    if ( ! infoPanelVisible_ || ! infoPanelUnit_.has_value( ) ) {
         return;
+}
 
-    const UnitRenderData& u = *info_panel_unit;
+    const UnitRenderData& u = *infoPanelUnit_;
 
     const sf::Vector2u panel_size =
-        info_panel_sprite ? info_panel_texture.getSize( ) : sf::Vector2u{ 300u, 311u };
+        infoPanelSprite_ ? infoPanelTexture_.getSize( ) : sf::Vector2u{ 300u, 311u };
     const sf::Vector2f panel_pos{
-        ( screen_width - static_cast<float>( panel_size.x ) ) * 0.5f,
-        ( screen_height - static_cast<float>( panel_size.y ) ) * 0.5f,
+        ( screenWidth_ - static_cast<float>( panel_size.x ) ) * 0.5f,
+        ( screenHeight_ - static_cast<float>( panel_size.y ) ) * 0.5f,
     };
 
-    if ( info_panel_sprite ) {
-        info_panel_sprite->setPosition( panel_pos );
-        window.draw( *info_panel_sprite );
+    if ( infoPanelSprite_ ) {
+        infoPanelSprite_->setPosition( panel_pos );
+        window_.draw( *infoPanelSprite_ );
     } else {
         sf::RectangleShape fallback(
             { static_cast<float>( panel_size.x ), static_cast<float>( panel_size.y ) } );
@@ -734,161 +747,172 @@ void SfmlBattleView::draw_info_panel( ) {
         fallback.setFillColor( sf::Color( 20, 20, 24, 240 ) );
         fallback.setOutlineColor( sf::Color( 175, 175, 195 ) );
         fallback.setOutlineThickness( 2.0f );
-        window.draw( fallback );
+        window_.draw( fallback );
     }
 
-    constexpr float kPortraitW = 130.0f;
-    constexpr float kTextLeftPad = kPortraitW + 12.0f;
-    constexpr float kTextTopPad = 24.0f;
+    constexpr float K_PORTRAIT_W = 130.0f;
+    constexpr float K_TEXT_LEFT_PAD = K_PORTRAIT_W + 12.0f;
+    constexpr float K_TEXT_TOP_PAD = 24.0f;
 
     std::ostringstream panel;
-    panel << u.name << ( u.is_corpse ? " [Corpse]" : "" ) << "\n"
-          << "Attack: " << u.total_attack << "\n"
-          << "Defense: " << u.total_defense << "\n"
+    panel << u.name_ << ( u.isCorpse_ ? " [Corpse]" : "" ) << "\n"
+          << "Attack: " << u.totalAttack_ << "\n"
+          << "Defense: " << u.totalDefense_ << "\n"
 
-          << "Shoots left: " << ( u.is_ranged ? std::to_string( u.ammo ) : "" ) << "\n"
-          << "Damage: " << u.total_damage_min << "-" << u.total_damage_max << "\n"
-          << "Health: " << u.max_hp_per_unit << "\n"
-          << "Health left: " << u.current_top_unit_hp << "\n"
-          << "Speed: " << u.total_speed;
-    info_panel_text->setString( panel.str( ) );
-    info_panel_text->setPosition( { panel_pos.x + kTextLeftPad, panel_pos.y + kTextTopPad } );
-    window.draw( *info_panel_text );
+          << "Shoots left: " << ( u.isRanged_ ? std::to_string( u.ammo_ ) : "" ) << "\n"
+          << "Damage: " << u.totalDamageMin_ << "-" << u.totalDamageMax_ << "\n"
+          << "Health: " << u.maxHpPerUnit_ << "\n"
+          << "Health left: " << u.currentTopUnitHp_ << "\n"
+          << "Speed: " << u.totalSpeed_;
+    infoPanelText_->setString( panel.str( ) );
+    infoPanelText_->setPosition( { panel_pos.x + K_TEXT_LEFT_PAD, panel_pos.y + K_TEXT_TOP_PAD } );
+    window_.draw( *infoPanelText_ );
 }
 
-void SfmlBattleView::draw_cursor( ) {
-    if ( cursor_style == CursorStyle::DEFAULT )
+void SfmlBattleView::drawCursor( ) {
+    if ( cursorStyle_ == CursorStyle::DEFAULT ) {
         return;
+}
 
-    std::shared_ptr<DefResource> res = def_manager.get_or_load( "combat_icons.def" );
-    if ( ! res )
+    std::shared_ptr<DefResource> res = defManager_.getOrLoad( "combat_icons.def" );
+    if ( ! res ) {
         return;
+}
 
-    const auto group_it = res->groups.find( 0 );
-    if ( group_it == res->groups.end( ) )
+    const auto group_it = res->groups_.find( 0 );
+    if ( group_it == res->groups_.end( ) ) {
         return;
+}
     const std::vector<DefFrame>& frames = group_it->second;
 
-    const int frame_index = static_cast<int>( cursor_style );
-    if ( frame_index < 0 || frame_index >= static_cast<int>( frames.size( ) ) )
+    const int frame_index = static_cast<int>( cursorStyle_ );
+    if ( frame_index < 0 || frame_index >= static_cast<int>( frames.size( ) ) ) {
         return;
+}
 
     const DefFrame& frame = frames[frame_index];
-    if ( frame.width <= 0 || frame.height <= 0 )
+    if ( frame.width_ <= 0 || frame.height_ <= 0 ) {
         return;
+}
 
-    sf::Sprite sprite( frame.texture );
+    sf::Sprite sprite( frame.texture_ );
     sprite.setOrigin( { 0.0f, 0.0f } );
-    sprite.setPosition( cursor_position );
-    window.draw( sprite );
+    sprite.setPosition( cursorPosition_ );
+    window_.draw( sprite );
 }
 
-void SfmlBattleView::clear_all_highlights( ) {
-    highlights.clear( );
-    refresh_expanded_highlights( );
+void SfmlBattleView::clearAllHighlights( ) {
+    highlights_.clear( );
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::highlight_hex( int q, int r, HighlightType type ) {
-    highlights[make_hex_key( q, r )] = type;
-    refresh_expanded_highlights( );
+void SfmlBattleView::highlightHex( int q, int r, HighlightType type ) {
+    highlights_[makeHexKey( q, r )] = type;
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::update_hud( const std::string& unit_name, int count, int hp_left ) {
-    hud_unit_name = unit_name;
-    hud_count = count;
-    hud_hp_left = hp_left;
+void SfmlBattleView::updateHud( const std::string& unit_name, int count, int hp_left ) {
+    hudUnitName_ = unit_name;
+    hudCount_ = count;
+    hudHpLeft_ = hp_left;
 }
 
-void SfmlBattleView::update_turn_order( const std::vector<TurnQueueSlot>& slots ) {
-    turn_queue_slots = slots;
+void SfmlBattleView::updateTurnOrder( const std::vector<TurnQueueSlot>& slots ) {
+    turnQueueSlots_ = slots;
 }
 
-void SfmlBattleView::show_message( const std::string& msg ) {
-    latest_message = msg;
+void SfmlBattleView::showMessage( const std::string& msg ) {
+    latestMessage_ = msg;
 }
 
-void SfmlBattleView::set_active_unit_highlight( int q, int r, int size, bool is_facing_left ) {
-    active_unit_highlight = ActiveUnitHighlight{ q, r, size, is_facing_left };
-    refresh_expanded_highlights( );
+void SfmlBattleView::setActiveUnitHighlight( int q, int r, int size, bool is_facing_left ) {
+    activeUnitHighlight_ = ActiveUnitHighlight{ q, r, size, is_facing_left };
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::clear_active_unit_highlight( ) {
-    active_unit_highlight.reset( );
-    refresh_expanded_highlights( );
+void SfmlBattleView::clearActiveUnitHighlight( ) {
+    activeUnitHighlight_.reset( );
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::set_hover_destination_highlight(
+void SfmlBattleView::setHoverDestinationHighlight(
     int q, int r, bool has_tail, int tail_q, int tail_r ) {
-    hover_destination_highlight = HoverDestinationHighlight{ q, r, has_tail, tail_q, tail_r };
-    refresh_expanded_highlights( );
+    hoverDestinationHighlight_ = HoverDestinationHighlight{ q, r, has_tail, tail_q, tail_r };
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::clear_hover_destination_highlight( ) {
-    hover_destination_highlight.reset( );
-    refresh_expanded_highlights( );
+void SfmlBattleView::clearHoverDestinationHighlight( ) {
+    hoverDestinationHighlight_.reset( );
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::set_attack_origin_highlights( const std::vector<AttackOriginHex>& origins ) {
-    attack_origin_highlights = origins;
-    refresh_expanded_highlights( );
+void SfmlBattleView::setAttackOriginHighlights( const std::vector<AttackOriginHex>& origins ) {
+    attackOriginHighlights_ = origins;
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::clear_attack_origin_highlights( ) {
-    attack_origin_highlights.clear( );
-    refresh_expanded_highlights( );
+void SfmlBattleView::clearAttackOriginHighlights( ) {
+    attackOriginHighlights_.clear( );
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::set_shift_preview_active( bool active ) {
-    shift_preview_active = active;
-    if ( active && hover_destination_highlight.has_value( ) ) {
-        hover_destination_highlight.reset( );
-        refresh_expanded_highlights( );
+void SfmlBattleView::setShiftPreviewActive( bool active ) {
+    shiftPreviewActive_ = active;
+    if ( active && hoverDestinationHighlight_.has_value( ) ) {
+        hoverDestinationHighlight_.reset( );
+        refreshExpandedHighlights( );
     }
 }
 
-void SfmlBattleView::set_predicted_facings( const std::vector<PredictedFacing>& predictions ) {
-    predicted_facing_by_hex.clear( );
-    predicted_facing_by_hex.reserve( predictions.size( ) );
+void SfmlBattleView::setPredictedFacings( const std::vector<PredictedFacing>& predictions ) {
+    predictedFacingByHex_.clear( );
+    predictedFacingByHex_.reserve( predictions.size( ) );
     for ( const PredictedFacing& p : predictions ) {
-        predicted_facing_by_hex[make_hex_key( p.q, p.r )] = p.facing_left;
+        predictedFacingByHex_[makeHexKey( p.q_, p.r_ )] = p.facingLeft_;
     }
 }
 
-static float compute_scale( const DefResource& res,
+static float computeScale( const DefResource& res,
                             int unit_size,
                             float hex_radius,
                             const std::string& asset_filename ) {
     auto pick_height = []( const std::vector<DefFrame>& frames ) -> float {
         for ( const DefFrame& f : frames ) {
-            if ( f.height > 0 )
-                return static_cast<float>( f.height );
+            if ( f.height_ > 0 ) {
+                return static_cast<float>( f.height_ );
+}
         }
         return 0.0f;
     };
 
     float content_h = 0.0f;
-    if ( auto it = res.groups.find( 1 ); it != res.groups.end( ) ) {
+    if ( auto it = res.groups_.find( 1 ); it != res.groups_.end( ) ) {
         content_h = pick_height( it->second );
     }
     if ( content_h <= 0.0f ) {
-        for ( const auto& [gid, frames] : res.groups ) {
+        for ( const auto& [gid, frames] : res.groups_ ) {
             content_h = pick_height( frames );
-            if ( content_h > 0.0f )
+            if ( content_h > 0.0f ) {
                 break;
+}
         }
     }
-    if ( content_h <= 0.0f )
+    if ( content_h <= 0.0f ) {
         return 1.0f;
+}
     const float target_h = ( unit_size == 2 ) ? hex_radius * 3.5f : hex_radius * 3.0f;
     float scale = ( target_h / content_h ) * 0.8f;
 
     auto iequals = []( const std::string& a, const char* b ) {
-        if ( a.size( ) != std::strlen( b ) )
+        if ( a.size( ) != std::strlen( b ) ) {
             return false;
-        for ( std::size_t i = 0; i < a.size( ); ++i )
+}
+        for ( std::size_t i = 0; i < a.size( ); ++i ) {
             if ( std::tolower( static_cast<unsigned char>( a[i] ) ) !=
-                 std::tolower( static_cast<unsigned char>( b[i] ) ) )
+                 std::tolower( static_cast<unsigned char>( b[i] ) ) ) {
                 return false;
+}
+}
         return true;
     };
     if ( ! iequals( asset_filename, "CHHOUN.def" ) ) {
@@ -897,144 +921,145 @@ static float compute_scale( const DefResource& res,
     return scale;
 }
 
-void SfmlBattleView::sync_unit_positions( ) {
-    apply_current_render_data_to_controllers( false );
+void SfmlBattleView::syncUnitPositions( ) {
+    applyCurrentRenderDataToControllers( false );
 }
 
-void SfmlBattleView::update_render_data( const std::vector<UnitRenderData>& units ) {
-    model_units_latest = units;
-    if ( visual_events.empty( ) ) {
-        units_to_draw = model_units_latest;
-        visual_position_overrides.clear( );
-        apply_current_render_data_to_controllers( false );
+void SfmlBattleView::updateRenderData( const std::vector<UnitRenderData>& units ) {
+    modelUnitsLatest_ = units;
+    if ( visualEvents_.empty( ) ) {
+        unitsToDraw_ = modelUnitsLatest_;
+        visualPositionOverrides_.clear( );
+        applyCurrentRenderDataToControllers( false );
     }
-    refresh_expanded_highlights( );
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::queue_move_animation(
+void SfmlBattleView::queueMoveAnimation(
     std::uint64_t unit_id, int from_q, int from_r, int to_q, int to_r, float duration_seconds ) {
-    const UnitRenderData* unit = find_unit_render_data( unit_id );
+    const UnitRenderData* unit = findUnitRenderData( unit_id );
     if ( unit == nullptr ) {
         return;
     }
 
     VisualEvent event;
-    event.type = VisualEvent::Type::MOVE;
-    event.move.unit_id = unit_id;
-    event.move.from = unit_render_center( *unit, from_q, from_r );
-    event.move.to = unit_render_center( *unit, to_q, to_r );
-    event.move.duration_seconds = std::max( 0.001f, duration_seconds );
-    event.move.is_teleporter = unit->is_teleporter;
-    visual_events.push_back( event );
+    event.type_ = VisualEvent::Type::MOVE;
+    event.move_.unitId_ = unit_id;
+    event.move_.from_ = unitRenderCenter( *unit, from_q, from_r );
+    event.move_.to_ = unitRenderCenter( *unit, to_q, to_r );
+    event.move_.durationSeconds_ = std::max( 0.001f, duration_seconds );
+    event.move_.isTeleporter_ = unit->isTeleporter_;
+    visualEvents_.push_back( event );
 }
 
-void SfmlBattleView::queue_attack_animation( std::uint64_t attacker_id, float ) {
+void SfmlBattleView::queueAttackAnimation( std::uint64_t attacker_id, float ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::ATTACK;
-    event.attack.attacker_id = attacker_id;
-    visual_events.push_back( event );
+    event.type_ = VisualEvent::Type::ATTACK;
+    event.attack_.attackerId_ = attacker_id;
+    visualEvents_.push_back( event );
 }
 
-void SfmlBattleView::queue_attack_animation_facing( std::uint64_t attacker_id,
+void SfmlBattleView::queueAttackAnimationFacing( std::uint64_t attacker_id,
                                                     int target_q,
                                                     int target_r ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::ATTACK;
-    event.attack.attacker_id = attacker_id;
-    event.attack.has_target_hex = true;
-    event.attack.target_q = target_q;
-    event.attack.target_r = target_r;
-    visual_events.push_back( event );
+    event.type_ = VisualEvent::Type::ATTACK;
+    event.attack_.attackerId_ = attacker_id;
+    event.attack_.hasTargetHex_ = true;
+    event.attack_.targetQ_ = target_q;
+    event.attack_.targetR_ = target_r;
+    visualEvents_.push_back( event );
 }
 
-void SfmlBattleView::queue_projectile_animation( std::uint64_t attacker_id,
+void SfmlBattleView::queueProjectileAnimation( std::uint64_t attacker_id,
                                                  int target_q,
                                                  int target_r,
                                                  const std::string& projectile_asset,
                                                  float duration_seconds ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::PROJECTILE;
-    event.projectile.attacker_id = attacker_id;
-    event.projectile.projectile_asset = projectile_asset;
-    event.projectile.duration_seconds = std::max( 0.05f, duration_seconds );
+    event.type_ = VisualEvent::Type::PROJECTILE;
+    event.projectile_.attackerId_ = attacker_id;
+    event.projectile_.projectileAsset_ = projectile_asset;
+    event.projectile_.durationSeconds_ = std::max( 0.05f, duration_seconds );
 
     sf::Vector2f from{ 0.0f, 0.0f };
-    if ( const auto it = animation_controllers.find( attacker_id );
-         it != animation_controllers.end( ) ) {
-        if ( const sf::Sprite* s = it->second.get_sprite( ) ) {
+    if ( const auto it = animationControllers_.find( attacker_id );
+         it != animationControllers_.end( ) ) {
+        if ( const sf::Sprite* s = it->second.getSprite( ) ) {
             from = s->getPosition( );
         }
     }
-    if ( const UnitRenderData* unit = find_unit_render_data( attacker_id );
+    if ( const UnitRenderData* unit = findUnitRenderData( attacker_id );
          unit && from == sf::Vector2f{ 0.0f, 0.0f } ) {
-        from = unit_render_center( *unit );
+        from = unitRenderCenter( *unit );
     }
 
-    event.projectile.from = from;
-    event.projectile.to = hex_to_pixel( target_q, target_r );
-    visual_events.push_back( std::move( event ) );
+    event.projectile_.from_ = from;
+    event.projectile_.to_ = hexToPixel( target_q, target_r );
+    visualEvents_.push_back( std::move( event ) );
 }
 
-void SfmlBattleView::queue_morale_animation( std::uint64_t unit_id ) {
+void SfmlBattleView::queueMoraleAnimation( std::uint64_t unit_id ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::MORALE;
-    event.morale.unit_id = unit_id;
-    visual_events.push_back( std::move( event ) );
+    event.type_ = VisualEvent::Type::MORALE;
+    event.morale_.unitId_ = unit_id;
+    visualEvents_.push_back( std::move( event ) );
 }
 
-void SfmlBattleView::queue_hit_animation( std::uint64_t defender_id ) {
+void SfmlBattleView::queueHitAnimation( std::uint64_t defender_id ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::HIT;
-    event.hit.defender_id = defender_id;
-    visual_events.push_back( event );
+    event.type_ = VisualEvent::Type::HIT;
+    event.hit_.defenderId_ = defender_id;
+    visualEvents_.push_back( event );
 }
 
-void SfmlBattleView::queue_death_animation( std::uint64_t unit_id ) {
+void SfmlBattleView::queueDeathAnimation( std::uint64_t unit_id ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::DEATH;
-    event.death.unit_id = unit_id;
-    visual_events.push_back( event );
+    event.type_ = VisualEvent::Type::DEATH;
+    event.death_.unitId_ = unit_id;
+    visualEvents_.push_back( event );
 }
 
-void SfmlBattleView::queue_render_data_commit( const std::vector<UnitRenderData>& units ) {
+void SfmlBattleView::queueRenderDataCommit( const std::vector<UnitRenderData>& units ) {
     VisualEvent event;
-    event.type = VisualEvent::Type::COMMIT_RENDER_DATA;
-    event.commit.units = units;
-    visual_events.push_back( std::move( event ) );
+    event.type_ = VisualEvent::Type::COMMIT_RENDER_DATA;
+    event.commit_.units_ = units;
+    visualEvents_.push_back( std::move( event ) );
 }
 
-void SfmlBattleView::clear_visual_events( ) {
-    visual_events.clear( );
-    visual_position_overrides.clear( );
+void SfmlBattleView::clearVisualEvents( ) {
+    visualEvents_.clear( );
+    visualPositionOverrides_.clear( );
 }
 
-bool SfmlBattleView::has_pending_visual_events( ) const {
-    return ! visual_events.empty( );
+bool SfmlBattleView::hasPendingVisualEvents( ) const {
+    return ! visualEvents_.empty( );
 }
 
-void SfmlBattleView::set_idle_callback( std::function<void( )> cb ) {
-    idle_callback = std::move( cb );
+void SfmlBattleView::setIdleCallback( std::function<void( )> cb ) {
+    idleCallback_ = std::move( cb );
 }
 
-bool SfmlBattleView::route_action_click( float x, float y, BattlePresenter& presenter ) {
-    constexpr float kPressedFlashSeconds = 0.15f;
+bool SfmlBattleView::routeActionClick( float x, float y, BattlePresenter& presenter ) {
+    constexpr float K_PRESSED_FLASH_SECONDS = 0.15f;
 
-    for ( ActionSlot& slot : action_slots ) {
-        if ( ! slot.bounds.contains( { x, y } ) )
+    for ( ActionSlot& slot : actionSlots_ ) {
+        if ( ! slot.bounds_.contains( { x, y } ) ) {
             continue;
-        slot.pressed_seconds_left = kPressedFlashSeconds;
-        switch ( slot.kind ) {
+}
+        slot.pressedSecondsLeft_ = K_PRESSED_FLASH_SECONDS;
+        switch ( slot.kind_ ) {
         case ActionKind::WAIT:
-            presenter.on_wait_clicked( );
+            presenter.onWaitClicked( );
             break;
         case ActionKind::DEFEND:
-            presenter.on_defend_clicked( );
+            presenter.onDefendClicked( );
             break;
 
         case ActionKind::SPELLBOOK:
         case ActionKind::AUTO_COMBAT:
         case ActionKind::SURRENDER:
-            show_message( "Action not yet implemented" );
+            showMessage( "Action not yet implemented" );
             break;
         }
         return true;
@@ -1042,323 +1067,331 @@ bool SfmlBattleView::route_action_click( float x, float y, BattlePresenter& pres
     return false;
 }
 
-void SfmlBattleView::set_cursor_style( CursorStyle style, int pixel_x, int pixel_y ) {
-    cursor_style = style;
-    cursor_position = { static_cast<float>( pixel_x ), static_cast<float>( pixel_y ) };
+void SfmlBattleView::setCursorStyle( CursorStyle style, int pixel_x, int pixel_y ) {
+    cursorStyle_ = style;
+    cursorPosition_ = { static_cast<float>( pixel_x ), static_cast<float>( pixel_y ) };
 
     const bool want_visible = ( style == CursorStyle::DEFAULT );
-    if ( want_visible != os_cursor_visible ) {
-        window.setMouseCursorVisible( want_visible );
-        os_cursor_visible = want_visible;
+    if ( want_visible != osCursorVisible_ ) {
+        window_.setMouseCursorVisible( want_visible );
+        osCursorVisible_ = want_visible;
     }
 }
 
-void SfmlBattleView::show_unit_info_panel( const UnitRenderData& unit_data ) {
-    info_panel_visible = true;
-    info_panel_unit = unit_data;
+void SfmlBattleView::showUnitInfoPanel( const UnitRenderData& unit_data ) {
+    infoPanelVisible_ = true;
+    infoPanelUnit_ = unit_data;
 }
 
-void SfmlBattleView::hide_unit_info_panel( ) {
-    info_panel_visible = false;
-    info_panel_unit.reset( );
+void SfmlBattleView::hideUnitInfoPanel( ) {
+    infoPanelVisible_ = false;
+    infoPanelUnit_.reset( );
 }
 
-sf::Vector2f SfmlBattleView::unit_render_center( const UnitRenderData& unit ) const {
-    return unit_render_center( unit, unit.q, unit.r );
+sf::Vector2f SfmlBattleView::unitRenderCenter( const UnitRenderData& unit ) const {
+    return unitRenderCenter( unit, unit.q_, unit.r_ );
 }
 
-sf::Vector2f SfmlBattleView::unit_render_center( const UnitRenderData& unit, int q, int r ) const {
-    const sf::Vector2f head = hex_to_pixel( q, r );
+sf::Vector2f SfmlBattleView::unitRenderCenter( const UnitRenderData& unit, int q, int r ) const {
+    const sf::Vector2f head = hexToPixel( q, r );
 
     const float vertical_offset = 15.0f;
 
-    if ( unit.size != 2 )
+    if ( unit.size_ != 2 ) {
         return { head.x, head.y + vertical_offset };
+}
 
-    const int tail_dq = unit.is_facing_left ? 1 : -1;
-    const sf::Vector2f tail = hex_to_pixel( q + tail_dq, r );
+    const int tail_dq = unit.isFacingLeft_ ? 1 : -1;
+    const sf::Vector2f tail = hexToPixel( q + tail_dq, r );
     return { ( head.x + tail.x ) * 0.5f, ( head.y + tail.y ) * 0.5f + vertical_offset };
 }
 
-const UnitRenderData* SfmlBattleView::find_unit_render_data( std::uint64_t id ) const {
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        if ( unit.id == id )
+const UnitRenderData* SfmlBattleView::findUnitRenderData( std::uint64_t id ) const {
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        if ( unit.id_ == id ) {
             return &unit;
+}
     }
-    for ( const UnitRenderData& unit : model_units_latest ) {
-        if ( unit.id == id )
+    for ( const UnitRenderData& unit : modelUnitsLatest_ ) {
+        if ( unit.id_ == id ) {
             return &unit;
+}
     }
     return nullptr;
 }
 
-void SfmlBattleView::handle_corpse_state_transition( const UnitRenderData& unit,
+void SfmlBattleView::handleCorpseStateTransition( const UnitRenderData& unit,
                                                      AnimationController& controller ) {
-    if ( ! unit.is_corpse ) {
-        corpse_frozen_ids.erase( unit.id );
+    if ( ! unit.isCorpse_ ) {
+        corpseFrozenIds_.erase( unit.id_ );
         return;
     }
 
-    if ( corpse_frozen_ids.count( unit.id ) == 0 ) {
-        controller.set_animation_state( AnimState::DEATH, false, true );
-        corpse_frozen_ids.insert( unit.id );
+    if ( corpseFrozenIds_.count( unit.id_ ) == 0 ) {
+        controller.setAnimationState( AnimState::DEATH, false, true );
+        corpseFrozenIds_.insert( unit.id_ );
     }
 }
 
-void SfmlBattleView::apply_current_render_data_to_controllers( bool reset_standing_anim ) {
+void SfmlBattleView::applyCurrentRenderDataToControllers( bool reset_standing_anim ) {
     std::unordered_set<std::uint64_t> present_ids;
 
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        present_ids.insert( unit.id );
-        if ( unit.asset_filename.empty( ) ) {
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        present_ids.insert( unit.id_ );
+        if ( unit.assetFilename_.empty( ) ) {
             continue;
         }
 
-        std::shared_ptr<DefResource> resource = def_manager.get_or_load( unit.asset_filename );
+        std::shared_ptr<DefResource> resource = defManager_.getOrLoad( unit.assetFilename_ );
         if ( ! resource ) {
-            show_message( "DEF not found or failed to parse: " + unit.asset_filename );
+            showMessage( "DEF not found or failed to parse: " + unit.assetFilename_ );
             continue;
         }
 
-        sf::Vector2f center = unit_render_center( unit );
-        if ( const auto it = visual_position_overrides.find( unit.id );
-             it != visual_position_overrides.end( ) ) {
+        sf::Vector2f center = unitRenderCenter( unit );
+        if ( const auto it = visualPositionOverrides_.find( unit.id_ );
+             it != visualPositionOverrides_.end( ) ) {
             center = it->second;
         }
-        const float scale = compute_scale( *resource, unit.size, hex_radius, unit.asset_filename );
+        const float scale = computeScale( *resource, unit.size_, hexRadius_, unit.assetFilename_ );
 
-        auto ctrl_it = animation_controllers.find( unit.id );
-        if ( ctrl_it == animation_controllers.end( ) ) {
+        auto ctrl_it = animationControllers_.find( unit.id_ );
+        if ( ctrl_it == animationControllers_.end( ) ) {
             AnimationController controller( resource, static_cast<int>( AnimState::STAND ) );
-            controller.set_hex_center( center );
-            controller.set_facing_left( unit.visual_facing_left );
-            controller.set_scale( scale );
-            if ( unit.is_corpse ) {
-                controller.set_animation_state( AnimState::DEATH, false, true );
-                corpse_frozen_ids.insert( unit.id );
+            controller.setHexCenter( center );
+            controller.setFacingLeft( unit.visualFacingLeft_ );
+            controller.setScale( scale );
+            if ( unit.isCorpse_ ) {
+                controller.setAnimationState( AnimState::DEATH, false, true );
+                corpseFrozenIds_.insert( unit.id_ );
             } else {
-                controller.set_animation_state( AnimState::STAND, true, true );
+                controller.setAnimationState( AnimState::STAND, true, true );
             }
-            animation_controllers.emplace( unit.id, std::move( controller ) );
-            controller_asset_files[unit.id] = unit.asset_filename;
+            animationControllers_.emplace( unit.id_, std::move( controller ) );
+            controllerAssetFiles_[unit.id_] = unit.assetFilename_;
             continue;
         }
 
         AnimationController& controller = ctrl_it->second;
-        const auto asset_it = controller_asset_files.find( unit.id );
-        if ( asset_it == controller_asset_files.end( ) ||
-             asset_it->second != unit.asset_filename ) {
-            controller.set_resource( resource );
-            controller_asset_files[unit.id] = unit.asset_filename;
+        const auto asset_it = controllerAssetFiles_.find( unit.id_ );
+        if ( asset_it == controllerAssetFiles_.end( ) ||
+             asset_it->second != unit.assetFilename_ ) {
+            controller.setResource( resource );
+            controllerAssetFiles_[unit.id_] = unit.assetFilename_;
         }
-        controller.set_hex_center( center );
-        controller.set_facing_left( unit.visual_facing_left );
-        controller.set_scale( scale );
+        controller.setHexCenter( center );
+        controller.setFacingLeft( unit.visualFacingLeft_ );
+        controller.setScale( scale );
 
-        if ( unit.is_corpse ) {
-            handle_corpse_state_transition( unit, controller );
-        } else if ( reset_standing_anim || controller.get_animation_state( ) == AnimState::DEATH ) {
-            controller.set_animation_state( AnimState::STAND, true, true );
+        if ( unit.isCorpse_ ) {
+            handleCorpseStateTransition( unit, controller );
+        } else if ( reset_standing_anim || controller.getAnimationState( ) == AnimState::DEATH ) {
+            controller.setAnimationState( AnimState::STAND, true, true );
         }
     }
 
-    for ( auto it = animation_controllers.begin( ); it != animation_controllers.end( ); ) {
+    for ( auto it = animationControllers_.begin( ); it != animationControllers_.end( ); ) {
         if ( present_ids.count( it->first ) == 0 ) {
-            corpse_frozen_ids.erase( it->first );
-            visual_position_overrides.erase( it->first );
-            controller_asset_files.erase( it->first );
-            it = animation_controllers.erase( it );
+            corpseFrozenIds_.erase( it->first );
+            visualPositionOverrides_.erase( it->first );
+            controllerAssetFiles_.erase( it->first );
+            it = animationControllers_.erase( it );
         } else {
             ++it;
         }
     }
 }
 
-void SfmlBattleView::refresh_expanded_highlights( ) {
-    expanded_highlights = highlights;
+void SfmlBattleView::refreshExpandedHighlights( ) {
+    expandedHighlights_ = highlights_;
 
-    for ( const UnitRenderData& unit : units_to_draw ) {
-        if ( unit.size != 2 )
+    for ( const UnitRenderData& unit : unitsToDraw_ ) {
+        if ( unit.size_ != 2 ) {
             continue;
-        const std::int64_t head_key = make_hex_key( unit.q, unit.r );
-        const auto hit = highlights.find( head_key );
-        if ( hit == highlights.end( ) )
+}
+        const std::int64_t head_key = makeHexKey( unit.q_, unit.r_ );
+        const auto hit = highlights_.find( head_key );
+        if ( hit == highlights_.end( ) ) {
             continue;
-        const int tail_dq = unit.is_facing_left ? 1 : -1;
-        expanded_highlights[make_hex_key( unit.q + tail_dq, unit.r )] = hit->second;
+}
+        const int tail_dq = unit.isFacingLeft_ ? 1 : -1;
+        expandedHighlights_[makeHexKey( unit.q_ + tail_dq, unit.r_ )] = hit->second;
     }
 
-    for ( const AttackOriginHex& origin : attack_origin_highlights ) {
-        expanded_highlights[make_hex_key( origin.q, origin.r )] = HighlightType::ATTACK_ORIGIN;
-        if ( origin.has_tail ) {
-            expanded_highlights[make_hex_key( origin.tail_q, origin.tail_r )] =
+    for ( const AttackOriginHex& origin : attackOriginHighlights_ ) {
+        expandedHighlights_[makeHexKey( origin.q_, origin.r_ )] = HighlightType::ATTACK_ORIGIN;
+        if ( origin.hasTail_ ) {
+            expandedHighlights_[makeHexKey( origin.tailQ_, origin.tailR_ )] =
                 HighlightType::ATTACK_ORIGIN;
         }
     }
 
-    if ( hover_destination_highlight.has_value( ) ) {
-        const HoverDestinationHighlight& hover = *hover_destination_highlight;
-        expanded_highlights[make_hex_key( hover.q, hover.r )] = HighlightType::HOVER_DESTINATION;
-        if ( hover.has_tail ) {
-            expanded_highlights[make_hex_key( hover.tail_q, hover.tail_r )] =
+    if ( hoverDestinationHighlight_.has_value( ) ) {
+        const HoverDestinationHighlight& hover = *hoverDestinationHighlight_;
+        expandedHighlights_[makeHexKey( hover.q_, hover.r_ )] = HighlightType::HOVER_DESTINATION;
+        if ( hover.hasTail_ ) {
+            expandedHighlights_[makeHexKey( hover.tailQ_, hover.tailR_ )] =
                 HighlightType::HOVER_DESTINATION;
         }
     }
 
-    if ( active_unit_highlight.has_value( ) ) {
-        const ActiveUnitHighlight& active = *active_unit_highlight;
-        expanded_highlights[make_hex_key( active.q, active.r )] = HighlightType::ACTIVE_UNIT;
-        if ( active.size == 2 ) {
-            const int tail_dq = active.is_facing_left ? 1 : -1;
-            expanded_highlights[make_hex_key( active.q + tail_dq, active.r )] =
+    if ( activeUnitHighlight_.has_value( ) ) {
+        const ActiveUnitHighlight& active = *activeUnitHighlight_;
+        expandedHighlights_[makeHexKey( active.q_, active.r_ )] = HighlightType::ACTIVE_UNIT;
+        if ( active.size_ == 2 ) {
+            const int tail_dq = active.isFacingLeft_ ? 1 : -1;
+            expandedHighlights_[makeHexKey( active.q_ + tail_dq, active.r_ )] =
                 HighlightType::ACTIVE_UNIT;
         }
     }
 }
 
-void SfmlBattleView::update_hover_from_mouse( ) {
-    if ( ! attack_origin_highlights.empty( ) ) {
+void SfmlBattleView::updateHoverFromMouse( ) {
+    if ( ! attackOriginHighlights_.empty( ) ) {
         return;
     }
 
-    if ( shift_preview_active ) {
-        if ( hover_destination_highlight.has_value( ) ) {
-            hover_destination_highlight.reset( );
-            refresh_expanded_highlights( );
+    if ( shiftPreviewActive_ ) {
+        if ( hoverDestinationHighlight_.has_value( ) ) {
+            hoverDestinationHighlight_.reset( );
+            refreshExpandedHighlights( );
         }
         return;
     }
 
-    if ( has_pending_visual_events( ) || ! active_unit_highlight.has_value( ) ) {
-        if ( hover_destination_highlight.has_value( ) ) {
-            hover_destination_highlight.reset( );
-            refresh_expanded_highlights( );
+    if ( hasPendingVisualEvents( ) || ! activeUnitHighlight_.has_value( ) ) {
+        if ( hoverDestinationHighlight_.has_value( ) ) {
+            hoverDestinationHighlight_.reset( );
+            refreshExpandedHighlights( );
         }
         return;
     }
 
-    const auto [hover_q, hover_r] = pixel_to_hex( cursor_position.x, cursor_position.y );
-    const std::int64_t hover_key = make_hex_key( hover_q, hover_r );
+    const auto [hover_q, hover_r] = pixelToHex( cursorPosition_.x, cursorPosition_.y );
+    const std::int64_t hover_key = makeHexKey( hover_q, hover_r );
 
-    const auto hit = highlights.find( hover_key );
-    if ( hit == highlights.end( ) || hit->second != HighlightType::WALKABLE ) {
-        if ( hover_destination_highlight.has_value( ) ) {
-            hover_destination_highlight.reset( );
-            refresh_expanded_highlights( );
+    const auto hit = highlights_.find( hover_key );
+    if ( hit == highlights_.end( ) || hit->second != HighlightType::WALKABLE ) {
+        if ( hoverDestinationHighlight_.has_value( ) ) {
+            hoverDestinationHighlight_.reset( );
+            refreshExpandedHighlights( );
         }
         return;
     }
 
-    bool future_facing_left = active_unit_highlight->is_facing_left;
-    if ( const auto pf = predicted_facing_by_hex.find( hover_key );
-         pf != predicted_facing_by_hex.end( ) ) {
+    bool future_facing_left = activeUnitHighlight_->isFacingLeft_;
+    if ( const auto pf = predictedFacingByHex_.find( hover_key );
+         pf != predictedFacingByHex_.end( ) ) {
         future_facing_left = pf->second;
     } else {
         const sf::Vector2f active_px =
-            hex_to_pixel( active_unit_highlight->q, active_unit_highlight->r );
-        const sf::Vector2f dest_px = hex_to_pixel( hover_q, hover_r );
-        if ( dest_px.x < active_px.x - 1.0f )
+            hexToPixel( activeUnitHighlight_->q_, activeUnitHighlight_->r_ );
+        const sf::Vector2f dest_px = hexToPixel( hover_q, hover_r );
+        if ( dest_px.x < active_px.x - 1.0f ) {
             future_facing_left = true;
-        else if ( dest_px.x > active_px.x + 1.0f )
+        } else if ( dest_px.x > active_px.x + 1.0f ) {
             future_facing_left = false;
+}
     }
 
     HoverDestinationHighlight new_hover;
-    new_hover.q = hover_q;
-    new_hover.r = hover_r;
-    if ( active_unit_highlight->size == 2 ) {
-        new_hover.has_tail = true;
-        new_hover.tail_q = hover_q + ( future_facing_left ? 1 : -1 );
-        new_hover.tail_r = hover_r;
+    new_hover.q_ = hover_q;
+    new_hover.r_ = hover_r;
+    if ( activeUnitHighlight_->size_ == 2 ) {
+        new_hover.hasTail_ = true;
+        new_hover.tailQ_ = hover_q + ( future_facing_left ? 1 : -1 );
+        new_hover.tailR_ = hover_r;
     }
 
-    if ( hover_destination_highlight.has_value( ) &&
-         hover_destination_highlight->q == new_hover.q &&
-         hover_destination_highlight->r == new_hover.r &&
-         hover_destination_highlight->has_tail == new_hover.has_tail &&
-         hover_destination_highlight->tail_q == new_hover.tail_q &&
-         hover_destination_highlight->tail_r == new_hover.tail_r ) {
+    if ( hoverDestinationHighlight_.has_value( ) &&
+         hoverDestinationHighlight_->q_ == new_hover.q_ &&
+         hoverDestinationHighlight_->r_ == new_hover.r_ &&
+         hoverDestinationHighlight_->hasTail_ == new_hover.hasTail_ &&
+         hoverDestinationHighlight_->tailQ_ == new_hover.tailQ_ &&
+         hoverDestinationHighlight_->tailR_ == new_hover.tailR_ ) {
         return;
     }
 
-    hover_destination_highlight = new_hover;
-    refresh_expanded_highlights( );
+    hoverDestinationHighlight_ = new_hover;
+    refreshExpandedHighlights( );
 }
 
-void SfmlBattleView::update_visual_events( sf::Time dt ) {
-    if ( visual_events.empty( ) ) {
+void SfmlBattleView::updateVisualEvents( sf::Time dt ) {
+    if ( visualEvents_.empty( ) ) {
         return;
     }
 
-    VisualEvent& event = visual_events.front( );
-    if ( ! event.started ) {
-        process_visual_event_start( );
-        event.started = true;
+    VisualEvent& event = visualEvents_.front( );
+    if ( ! event.started_ ) {
+        processVisualEventStart( );
+        event.started_ = true;
     }
 
     bool finished = false;
-    switch ( event.type ) {
+    switch ( event.type_ ) {
     case VisualEvent::Type::MOVE: {
-        event.move.elapsed_seconds += dt.asSeconds( );
-        if ( ! event.move.is_teleporter ) {
+        event.move_.elapsedSeconds_ += dt.asSeconds( );
+        if ( ! event.move_.isTeleporter_ ) {
             const float t =
-                std::clamp( event.move.elapsed_seconds / event.move.duration_seconds, 0.0f, 1.0f );
+                std::clamp( event.move_.elapsedSeconds_ / event.move_.durationSeconds_, 0.0f, 1.0f );
             const sf::Vector2f pos = {
-                event.move.from.x + ( event.move.to.x - event.move.from.x ) * t,
-                event.move.from.y + ( event.move.to.y - event.move.from.y ) * t,
+                event.move_.from_.x + ( event.move_.to_.x - event.move_.from_.x ) * t,
+                event.move_.from_.y + ( event.move_.to_.y - event.move_.from_.y ) * t,
             };
-            visual_position_overrides[event.move.unit_id] = pos;
+            visualPositionOverrides_[event.move_.unitId_] = pos;
 
-            if ( auto it = animation_controllers.find( event.move.unit_id );
-                 it != animation_controllers.end( ) ) {
-                it->second.set_hex_center( pos );
+            if ( auto it = animationControllers_.find( event.move_.unitId_ );
+                 it != animationControllers_.end( ) ) {
+                it->second.setHexCenter( pos );
             }
 
             finished = t >= 1.0f;
             break;
         }
 
-        const float fade_out_seconds = std::max( 0.08f, event.move.duration_seconds * 0.25f );
-        const float hold_seconds = std::max( 0.05f, event.move.duration_seconds * 0.15f );
-        const float fade_in_seconds = std::max( 0.08f, event.move.duration_seconds * 0.25f );
+        const float fade_out_seconds = std::max( 0.08f, event.move_.durationSeconds_ * 0.25f );
+        const float hold_seconds = std::max( 0.05f, event.move_.durationSeconds_ * 0.15f );
+        const float fade_in_seconds = std::max( 0.08f, event.move_.durationSeconds_ * 0.25f );
 
-        auto ctrl_it = animation_controllers.find( event.move.unit_id );
+        auto ctrl_it = animationControllers_.find( event.move_.unitId_ );
         AnimationController* ctrl =
-            ( ctrl_it != animation_controllers.end( ) ) ? &ctrl_it->second : nullptr;
+            ( ctrl_it != animationControllers_.end( ) ) ? &ctrl_it->second : nullptr;
 
-        switch ( event.move.phase ) {
+        switch ( event.move_.phase_ ) {
         case MoveVisualEvent::Phase::TELEPORT_FADE_OUT: {
-            const float t = std::clamp( event.move.elapsed_seconds / fade_out_seconds, 0.0f, 1.0f );
+            const float t = std::clamp( event.move_.elapsedSeconds_ / fade_out_seconds, 0.0f, 1.0f );
             if ( ctrl ) {
-                ctrl->set_opacity( 1.0f - t );
-                ctrl->set_hex_center( event.move.from );
+                ctrl->setOpacity( 1.0f - t );
+                ctrl->setHexCenter( event.move_.from_ );
             }
-            visual_position_overrides[event.move.unit_id] = event.move.from;
+            visualPositionOverrides_[event.move_.unitId_] = event.move_.from_;
             if ( t >= 1.0f ) {
-                event.move.phase = MoveVisualEvent::Phase::TELEPORT_HOLD;
-                event.move.elapsed_seconds = 0.0f;
+                event.move_.phase_ = MoveVisualEvent::Phase::TELEPORT_HOLD;
+                event.move_.elapsedSeconds_ = 0.0f;
             }
             break;
         }
         case MoveVisualEvent::Phase::TELEPORT_HOLD: {
-            if ( ctrl )
-                ctrl->set_opacity( 0.0f );
-            if ( event.move.elapsed_seconds >= hold_seconds ) {
-                event.move.phase = MoveVisualEvent::Phase::TELEPORT_FADE_IN;
-                event.move.elapsed_seconds = 0.0f;
-                visual_position_overrides[event.move.unit_id] = event.move.to;
-                if ( ctrl )
-                    ctrl->set_hex_center( event.move.to );
+            if ( ctrl ) {
+                ctrl->setOpacity( 0.0f );
+}
+            if ( event.move_.elapsedSeconds_ >= hold_seconds ) {
+                event.move_.phase_ = MoveVisualEvent::Phase::TELEPORT_FADE_IN;
+                event.move_.elapsedSeconds_ = 0.0f;
+                visualPositionOverrides_[event.move_.unitId_] = event.move_.to_;
+                if ( ctrl ) {
+                    ctrl->setHexCenter( event.move_.to_ );
+}
             }
             break;
         }
         case MoveVisualEvent::Phase::TELEPORT_FADE_IN: {
-            const float t = std::clamp( event.move.elapsed_seconds / fade_in_seconds, 0.0f, 1.0f );
+            const float t = std::clamp( event.move_.elapsedSeconds_ / fade_in_seconds, 0.0f, 1.0f );
             if ( ctrl ) {
-                ctrl->set_opacity( t );
-                ctrl->set_hex_center( event.move.to );
+                ctrl->setOpacity( t );
+                ctrl->setHexCenter( event.move_.to_ );
             }
-            visual_position_overrides[event.move.unit_id] = event.move.to;
+            visualPositionOverrides_[event.move_.unitId_] = event.move_.to_;
             finished = t >= 1.0f;
             break;
         }
@@ -1369,11 +1402,11 @@ void SfmlBattleView::update_visual_events( sf::Time dt ) {
     }
 
     case VisualEvent::Type::ATTACK: {
-        event.attack.elapsed_seconds += dt.asSeconds( );
-        const auto it = animation_controllers.find( event.attack.attacker_id );
-        if ( it != animation_controllers.end( ) ) {
-            finished = it->second.is_finished( ) ||
-                       event.attack.elapsed_seconds >= event.attack.safety_timeout;
+        event.attack_.elapsedSeconds_ += dt.asSeconds( );
+        const auto it = animationControllers_.find( event.attack_.attackerId_ );
+        if ( it != animationControllers_.end( ) ) {
+            finished = it->second.isFinished( ) ||
+                       event.attack_.elapsedSeconds_ >= event.attack_.safetyTimeout_;
         } else {
             finished = true;
         }
@@ -1381,23 +1414,23 @@ void SfmlBattleView::update_visual_events( sf::Time dt ) {
     }
 
     case VisualEvent::Type::PROJECTILE: {
-        event.projectile.elapsed_seconds += dt.asSeconds( );
-        finished = event.projectile.elapsed_seconds >= event.projectile.duration_seconds;
+        event.projectile_.elapsedSeconds_ += dt.asSeconds( );
+        finished = event.projectile_.elapsedSeconds_ >= event.projectile_.durationSeconds_;
         break;
     }
 
     case VisualEvent::Type::MORALE: {
-        event.morale.elapsed_seconds += dt.asSeconds( );
-        finished = event.morale.elapsed_seconds >= event.morale.duration_seconds;
+        event.morale_.elapsedSeconds_ += dt.asSeconds( );
+        finished = event.morale_.elapsedSeconds_ >= event.morale_.durationSeconds_;
         break;
     }
 
     case VisualEvent::Type::HIT: {
-        event.hit.elapsed_seconds += dt.asSeconds( );
-        const auto it = animation_controllers.find( event.hit.defender_id );
-        if ( it != animation_controllers.end( ) ) {
+        event.hit_.elapsedSeconds_ += dt.asSeconds( );
+        const auto it = animationControllers_.find( event.hit_.defenderId_ );
+        if ( it != animationControllers_.end( ) ) {
             finished =
-                it->second.is_finished( ) || event.hit.elapsed_seconds >= event.hit.safety_timeout;
+                it->second.isFinished( ) || event.hit_.elapsedSeconds_ >= event.hit_.safetyTimeout_;
         } else {
             finished = true;
         }
@@ -1405,11 +1438,11 @@ void SfmlBattleView::update_visual_events( sf::Time dt ) {
     }
 
     case VisualEvent::Type::DEATH: {
-        event.death.elapsed_seconds += dt.asSeconds( );
-        const auto it = animation_controllers.find( event.death.unit_id );
-        if ( it != animation_controllers.end( ) ) {
-            finished = it->second.is_finished( ) ||
-                       event.death.elapsed_seconds >= event.death.safety_timeout;
+        event.death_.elapsedSeconds_ += dt.asSeconds( );
+        const auto it = animationControllers_.find( event.death_.unitId_ );
+        if ( it != animationControllers_.end( ) ) {
+            finished = it->second.isFinished( ) ||
+                       event.death_.elapsedSeconds_ >= event.death_.safetyTimeout_;
         } else {
             finished = true;
         }
@@ -1423,76 +1456,78 @@ void SfmlBattleView::update_visual_events( sf::Time dt ) {
     }
 
     if ( finished ) {
-        process_visual_event_finish( );
-        visual_events.pop_front( );
+        processVisualEventFinish( );
+        visualEvents_.pop_front( );
 
-        while ( ! visual_events.empty( ) &&
-                visual_events.front( ).type == VisualEvent::Type::COMMIT_RENDER_DATA ) {
-            process_visual_event_start( );
-            process_visual_event_finish( );
-            visual_events.pop_front( );
+        while ( ! visualEvents_.empty( ) &&
+                visualEvents_.front( ).type_ == VisualEvent::Type::COMMIT_RENDER_DATA ) {
+            processVisualEventStart( );
+            processVisualEventFinish( );
+            visualEvents_.pop_front( );
         }
 
-        if ( visual_events.empty( ) && idle_callback ) {
-            std::function<void( )> cb = std::move( idle_callback );
-            idle_callback = nullptr;
+        if ( visualEvents_.empty( ) && idleCallback_ ) {
+            std::function<void( )> cb = std::move( idleCallback_ );
+            idleCallback_ = nullptr;
             cb( );
         }
     }
 }
 
-void SfmlBattleView::process_visual_event_start( ) {
-    if ( visual_events.empty( ) )
+void SfmlBattleView::processVisualEventStart( ) {
+    if ( visualEvents_.empty( ) ) {
         return;
+}
 
-    VisualEvent& event = visual_events.front( );
-    switch ( event.type ) {
+    VisualEvent& event = visualEvents_.front( );
+    switch ( event.type_ ) {
     case VisualEvent::Type::MOVE: {
-        event.move.elapsed_seconds = 0.0f;
-        if ( auto it = animation_controllers.find( event.move.unit_id );
-             it != animation_controllers.end( ) ) {
-            if ( event.move.is_teleporter ) {
-                event.move.phase = MoveVisualEvent::Phase::TELEPORT_FADE_OUT;
-                it->second.set_animation_state( AnimState::STAND, true, true );
-                it->second.set_opacity( 1.0f );
+        event.move_.elapsedSeconds_ = 0.0f;
+        if ( auto it = animationControllers_.find( event.move_.unitId_ );
+             it != animationControllers_.end( ) ) {
+            if ( event.move_.isTeleporter_ ) {
+                event.move_.phase_ = MoveVisualEvent::Phase::TELEPORT_FADE_OUT;
+                it->second.setAnimationState( AnimState::STAND, true, true );
+                it->second.setOpacity( 1.0f );
             } else {
-                event.move.phase = MoveVisualEvent::Phase::SLIDE;
-                it->second.set_animation_state( AnimState::MOVE, true, true );
+                event.move_.phase_ = MoveVisualEvent::Phase::SLIDE;
+                it->second.setAnimationState( AnimState::MOVE, true, true );
 
-                constexpr float kFlipDeadZone = 1.0f;
-                if ( event.move.to.x < event.move.from.x - kFlipDeadZone ) {
-                    it->second.set_facing_left( true );
-                } else if ( event.move.to.x > event.move.from.x + kFlipDeadZone ) {
-                    it->second.set_facing_left( false );
+                constexpr float K_FLIP_DEAD_ZONE = 1.0f;
+                if ( event.move_.to_.x < event.move_.from_.x - K_FLIP_DEAD_ZONE ) {
+                    it->second.setFacingLeft( true );
+                } else if ( event.move_.to_.x > event.move_.from_.x + K_FLIP_DEAD_ZONE ) {
+                    it->second.setFacingLeft( false );
                 }
             }
         }
-        visual_position_overrides[event.move.unit_id] = event.move.from;
+        visualPositionOverrides_[event.move_.unitId_] = event.move_.from_;
         break;
     }
     case VisualEvent::Type::ATTACK: {
-        if ( auto it = animation_controllers.find( event.attack.attacker_id );
-             it != animation_controllers.end( ) ) {
-            if ( event.attack.has_target_hex ) {
+        if ( auto it = animationControllers_.find( event.attack_.attackerId_ );
+             it != animationControllers_.end( ) ) {
+            if ( event.attack_.hasTargetHex_ ) {
                 const sf::Vector2f tgt_px =
-                    hex_to_pixel( event.attack.target_q, event.attack.target_r );
+                    hexToPixel( event.attack_.targetQ_, event.attack_.targetR_ );
                 const sf::Vector2f own_px =
-                    it->second.get_sprite( ) ? it->second.get_sprite( )->getPosition( ) : tgt_px;
-                constexpr float kFlipDeadZone = 1.0f;
-                if ( tgt_px.x < own_px.x - kFlipDeadZone )
-                    it->second.set_facing_left( true );
-                else if ( tgt_px.x > own_px.x + kFlipDeadZone )
-                    it->second.set_facing_left( false );
+                    it->second.getSprite( ) ? it->second.getSprite( )->getPosition( ) : tgt_px;
+                constexpr float K_FLIP_DEAD_ZONE = 1.0f;
+                if ( tgt_px.x < own_px.x - K_FLIP_DEAD_ZONE ) {
+                    it->second.setFacingLeft( true );
+                } else if ( tgt_px.x > own_px.x + K_FLIP_DEAD_ZONE ) {
+                    it->second.setFacingLeft( false );
+}
             }
-            it->second.set_animation_state( AnimState::ATTACK, false, true );
+            it->second.setAnimationState( AnimState::ATTACK, false, true );
         }
         break;
     }
     case VisualEvent::Type::PROJECTILE: {
-        if ( auto it = animation_controllers.find( event.projectile.attacker_id );
-             it != animation_controllers.end( ) ) {
-            if ( const sf::Sprite* s = it->second.get_sprite( ) ) {
-                event.projectile.from = s->getPosition( );
+        if ( auto it = animationControllers_.find( event.projectile_.attackerId_ );
+             it != animationControllers_.end( ) ) {
+            if ( const sf::Sprite* s = it->second.getSprite( ) ) {
+                event.projectile_.from_ = s->getPosition( );
             }
         }
         break;
@@ -1501,9 +1536,9 @@ void SfmlBattleView::process_visual_event_start( ) {
         break;
     }
     case VisualEvent::Type::HIT: {
-        if ( auto it = animation_controllers.find( event.hit.defender_id );
-             it != animation_controllers.end( ) ) {
-            it->second.set_animation_state( AnimState::TAKE_DAMAGE, false, true );
+        if ( auto it = animationControllers_.find( event.hit_.defenderId_ );
+             it != animationControllers_.end( ) ) {
+            it->second.setAnimationState( AnimState::TAKE_DAMAGE, false, true );
         }
         break;
     }
@@ -1516,26 +1551,27 @@ void SfmlBattleView::process_visual_event_start( ) {
     }
 }
 
-void SfmlBattleView::process_visual_event_finish( ) {
-    if ( visual_events.empty( ) )
+void SfmlBattleView::processVisualEventFinish( ) {
+    if ( visualEvents_.empty( ) ) {
         return;
+}
 
-    VisualEvent& event = visual_events.front( );
-    switch ( event.type ) {
+    VisualEvent& event = visualEvents_.front( );
+    switch ( event.type_ ) {
     case VisualEvent::Type::MOVE: {
-        visual_position_overrides[event.move.unit_id] = event.move.to;
-        if ( auto it = animation_controllers.find( event.move.unit_id );
-             it != animation_controllers.end( ) ) {
-            it->second.set_opacity( 1.0f );
-            it->second.set_hex_center( event.move.to );
-            it->second.set_animation_state( AnimState::STAND, true, true );
+        visualPositionOverrides_[event.move_.unitId_] = event.move_.to_;
+        if ( auto it = animationControllers_.find( event.move_.unitId_ );
+             it != animationControllers_.end( ) ) {
+            it->second.setOpacity( 1.0f );
+            it->second.setHexCenter( event.move_.to_ );
+            it->second.setAnimationState( AnimState::STAND, true, true );
         }
         break;
     }
     case VisualEvent::Type::ATTACK: {
-        if ( auto it = animation_controllers.find( event.attack.attacker_id );
-             it != animation_controllers.end( ) ) {
-            it->second.set_animation_state( AnimState::STAND, true, true );
+        if ( auto it = animationControllers_.find( event.attack_.attackerId_ );
+             it != animationControllers_.end( ) ) {
+            it->second.setAnimationState( AnimState::STAND, true, true );
         }
         break;
     }
@@ -1546,9 +1582,9 @@ void SfmlBattleView::process_visual_event_finish( ) {
         break;
     }
     case VisualEvent::Type::HIT: {
-        if ( auto it = animation_controllers.find( event.hit.defender_id );
-             it != animation_controllers.end( ) ) {
-            it->second.set_animation_state( AnimState::STAND, true, true );
+        if ( auto it = animationControllers_.find( event.hit_.defenderId_ );
+             it != animationControllers_.end( ) ) {
+            it->second.setAnimationState( AnimState::STAND, true, true );
         }
         break;
     }
@@ -1556,55 +1592,55 @@ void SfmlBattleView::process_visual_event_finish( ) {
         break;
     }
     case VisualEvent::Type::COMMIT_RENDER_DATA: {
-        units_to_draw = event.commit.units;
-        model_units_latest = event.commit.units;
-        visual_position_overrides.clear( );
-        apply_current_render_data_to_controllers( false );
-        refresh_expanded_highlights( );
+        unitsToDraw_ = event.commit_.units_;
+        modelUnitsLatest_ = event.commit_.units_;
+        visualPositionOverrides_.clear( );
+        applyCurrentRenderDataToControllers( false );
+        refreshExpandedHighlights( );
         break;
     }
     }
 }
 
-sf::Vector2f SfmlBattleView::hex_to_pixel( int q, int r ) const {
-    const float x = hex_radius * ( std::sqrt( 3.0f ) *
+sf::Vector2f SfmlBattleView::hexToPixel( int q, int r ) const {
+    const float x = hexRadius_ * ( std::sqrt( 3.0f ) *
                                    ( static_cast<float>( q ) + static_cast<float>( r ) * 0.5f ) );
-    const float y = hex_radius * ( 1.5f * static_cast<float>( r ) );
-    return { grid_origin.x + x, grid_origin.y + y };
+    const float y = hexRadius_ * ( 1.5f * static_cast<float>( r ) );
+    return { gridOrigin_.x + x, gridOrigin_.y + y };
 }
 
-std::pair<int, int> SfmlBattleView::pixel_to_hex( float x, float y ) const {
-    const float px = x - grid_origin.x;
-    const float py = y - grid_origin.y;
+std::pair<int, int> SfmlBattleView::pixelToHex( float x, float y ) const {
+    const float px = x - gridOrigin_.x;
+    const float py = y - gridOrigin_.y;
 
-    const float fq = ( std::sqrt( 3.0f ) / 3.0f * px - 1.0f / 3.0f * py ) / hex_radius;
-    const float fr = ( 2.0f / 3.0f * py ) / hex_radius;
+    const float fq = ( std::sqrt( 3.0f ) / 3.0f * px - 1.0f / 3.0f * py ) / hexRadius_;
+    const float fr = ( 2.0f / 3.0f * py ) / hexRadius_;
     const float fs = -fq - fr;
 
-    return cube_round_to_axial( fq, fr, fs );
+    return cubeRoundToAxial( fq, fr, fs );
 }
 
-sf::ConvexShape SfmlBattleView::make_hex_shape( int q, int r ) const {
+sf::ConvexShape SfmlBattleView::makeHexShape( int q, int r ) const {
     sf::ConvexShape shape( 6 );
 
-    const sf::Vector2f center = hex_to_pixel( q, r );
+    const sf::Vector2f center = hexToPixel( q, r );
     for ( int i = 0; i < 6; ++i ) {
-        const float angle = ( 60.0f * static_cast<float>( i ) - 30.0f ) * ( kPi / 180.0f );
-        const float vx = center.x + hex_radius * std::cos( angle );
-        const float vy = center.y + hex_radius * std::sin( angle );
+        const float angle = ( 60.0f * static_cast<float>( i ) - 30.0f ) * ( K_PI / 180.0f );
+        const float vx = center.x + hexRadius_ * std::cos( angle );
+        const float vy = center.y + hexRadius_ * std::sin( angle );
         shape.setPoint( i, { vx, vy } );
     }
 
     return shape;
 }
 
-std::int64_t SfmlBattleView::make_hex_key( int q, int r ) {
+std::int64_t SfmlBattleView::makeHexKey( int q, int r ) {
     return ( static_cast<std::int64_t>( q ) << 32 ) ^
            ( static_cast<std::int64_t>( r ) & 0xffffffffLL );
 }
 
-bool SfmlBattleView::is_point_in_battlefield( float x, float y ) const {
-    return x >= 0.0f && x <= screen_width && y >= 0.0f && y < battlefield_height;
+bool SfmlBattleView::isPointInBattlefield( float x, float y ) const {
+    return x >= 0.0f && x <= screenWidth_ && y >= 0.0f && y < battlefieldHeight_;
 }
 
 } // namespace views

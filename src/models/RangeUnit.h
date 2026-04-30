@@ -31,7 +31,7 @@ public:
                int speed,
                int count,
                int shoots,
-               std::string asset_filename = "",
+               const const std::string&& asset_filename = "",
                std::string description = "" )
         : Unit( std::move( name ),
                 tier,
@@ -44,51 +44,65 @@ public:
                 count,
                 asset_filename,
                 std::move( description ) ),
-          max_ammo( shoots ),
-          ammo( shoots ),
-          projectile_asset( infer_projectile_asset( asset_filename ) ) {}
+          maxAmmo_( shoots ),
+          ammo_( shoots ),
+          projectileAsset_( inferProjectileAsset( asset_filename ) ) {}
     ~RangeUnit( ) override = default;
 
-    bool is_ranged( ) const override { return true; }
-    int get_ammo( ) const override { return ammo; }
-    int get_max_ammo( ) const override { return max_ammo; }
-    int get_max_range_damage( ) const override { return get_base_damage_max( ); }
-    void decrement_ammo( ) override {
-        if ( ammo > 0 )
-            --ammo;
+    bool isRanged( ) const override { return true; }
+    int getAmmo( ) const override { return ammo_; }
+    int getMaxAmmo( ) const override { return maxAmmo_; }
+    int getMaxRangeDamage( ) const override { return getBaseDamageMax( ); }
+    void decrementAmmo( ) override {
+        if ( ammo_ > 0 ) { {
+            --ammo_;
+}
+}
     }
-    const std::string& get_projectile_asset( ) const override { return projectile_asset; }
+    const std::string& getProjectileAsset( ) const override { return projectileAsset_; }
 
-    int get_shoots( ) const { return max_ammo; }
+    int getShoots( ) const { return maxAmmo_; }
 
 private:
-    static std::string infer_projectile_asset( const std::string& unit_asset ) {
+    static std::string inferProjectileAsset( const std::string& unit_asset ) {
         auto iequals = []( const std::string& a, const char* b ) {
             const std::size_t n = std::char_traits<char>::length( b );
-            if ( a.size( ) != n )
+            if ( a.size( ) != n ) { {
                 return false;
+}
+}
             for ( std::size_t i = 0; i < n; ++i ) {
                 if ( std::tolower( static_cast<unsigned char>( a[i] ) ) !=
-                     std::tolower( static_cast<unsigned char>( b[i] ) ) )
+                     std::tolower( static_cast<unsigned char>( b[i] ) ) ) { {
                     return false;
+}
+}
             }
             return true;
         };
 
-        if ( iequals( unit_asset, "CLCBOW.def" ) || iequals( unit_asset, "CHCBOW.def" ) )
+        if ( iequals( unit_asset, "CLCBOW.def" ) || iequals( unit_asset, "CHCBOW.def" ) ) { {
             return "archer_shoot.def";
-        if ( iequals( unit_asset, "Cmonkk.def" ) || iequals( unit_asset, "Czealt.def" ) )
+}
+}
+        if ( iequals( unit_asset, "Cmonkk.def" ) || iequals( unit_asset, "Czealt.def" ) ) { {
             return "zealot_shoot.def";
-        if ( iequals( unit_asset, "CGOG.def" ) || iequals( unit_asset, "CMAGOG.def" ) )
+}
+}
+        if ( iequals( unit_asset, "CGOG.def" ) || iequals( unit_asset, "CMAGOG.def" ) ) { {
             return "gog_shoot.def";
-        if ( iequals( unit_asset, "CLICH.def" ) || iequals( unit_asset, "CPLICH.def" ) )
+}
+}
+        if ( iequals( unit_asset, "CLICH.def" ) || iequals( unit_asset, "CPLICH.def" ) ) { {
             return "lich_shoot.def";
+}
+}
         return { };
     }
 
-    int max_ammo = 0;
-    int ammo = 0;
-    std::string projectile_asset;
+    int maxAmmo_ = 0;
+    int ammo_ = 0;
+    std::string projectileAsset_;
 };
 
 } // namespace models

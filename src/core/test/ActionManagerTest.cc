@@ -20,34 +20,36 @@ using models::Unit;
  */
 class ActionManagerTest : public ::testing::Test {
 protected:
-    Board board;
-    ActionManager am;
-    std::shared_ptr<Unit> u1;
-    std::shared_ptr<Unit> u2;
+    Board board_;
+    ActionManager am_;
+    std::shared_ptr<Unit> u1_;
+    std::shared_ptr<Unit> u2_;
 
     void SetUp( ) override {
-        u1 = std::make_shared<Unit>( "HeroUnit", 1, 10, 5, 50, 5, 10, 2, 1 );
-        u1->set_position( 0, 0, 0 );
-        board.get_hex( 0, 0, 0 ).set_unit( u1 );
+        u1_ = std::make_shared<Unit>( "HeroUnit", 1, 10, 5, 50, 5, 10, 2, 1 );
+        u1_->setPosition( 0, 0, 0 );
+        board_.getHex( 0, 0, 0 ).setUnit( u1_ );
 
-        u2 = std::make_shared<Unit>( "Enemy", 1, 5, 5, 50, 2, 5, 1, 1 );
-        u2->set_position( 1, 0, -1 );
-        board.get_hex( 1, 0, -1 ).set_unit( u2 );
+        u2_ = std::make_shared<Unit>( "Enemy", 1, 5, 5, 50, 2, 5, 1, 1 );
+        u2_->setPosition( 1, 0, -1 );
+        board_.getHex( 1, 0, -1 ).setUnit( u2_ );
     }
 };
 
 TEST_F( ActionManagerTest, GetAvailableDestinations ) {
-    std::vector<Hex*> dests = am.get_available_destinations( *u1, board );
+    std::vector<Hex*> dests = am_.getAvailableDestinations( *u1_, board_ );
 
     EXPECT_GT( dests.size( ), 0 );
 
     bool found_start = false;
     bool found_blocked = false;
     for ( Hex* h : dests ) {
-        if ( h->get_q( ) == 0 && h->get_r( ) == 0 && h->get_s( ) == 0 )
+        if ( h->getQ( ) == 0 && h->getR( ) == 0 && h->getS( ) == 0 ) {
             found_start = true;
-        if ( h->get_q( ) == 1 && h->get_r( ) == 0 && h->get_s( ) == -1 )
+}
+        if ( h->getQ( ) == 1 && h->getR( ) == 0 && h->getS( ) == -1 ) {
             found_blocked = true;
+}
     }
 
     EXPECT_FALSE( found_start );
@@ -55,54 +57,54 @@ TEST_F( ActionManagerTest, GetAvailableDestinations ) {
 }
 
 TEST_F( ActionManagerTest, GetAvailableAttacks ) {
-    auto attacks = am.get_available_attacks( *u1, board );
+    auto attacks = am_.getAvailableAttacks( *u1_, board_ );
     ASSERT_EQ( attacks.size( ), 1 );
-    EXPECT_EQ( attacks[0].first->get_name( ), "Enemy" );
-    EXPECT_EQ( attacks[0].second->get_q( ), 1 );
+    EXPECT_EQ( attacks[0].first->getName( ), "Enemy" );
+    EXPECT_EQ( attacks[0].second->getQ( ), 1 );
 }
 
 TEST_F( ActionManagerTest, MoveAction ) {
-    Hex& dest = board.get_hex( 0, 1, -1 );
+    Hex& dest = board_.getHex( 0, 1, -1 );
 
-    EXPECT_TRUE( board.get_hex( 0, 0, 0 ).has_unit( ) );
+    EXPECT_TRUE( board_.getHex( 0, 0, 0 ).hasUnit( ) );
 
-    am.move( *u1, dest, board );
+    am_.move( *u1_, dest, board_ );
 
-    EXPECT_EQ( u1->get_q( ), 0 );
-    EXPECT_EQ( u1->get_r( ), 1 );
-    EXPECT_EQ( u1->get_s( ), -1 );
+    EXPECT_EQ( u1_->getQ( ), 0 );
+    EXPECT_EQ( u1_->getR( ), 1 );
+    EXPECT_EQ( u1_->getS( ), -1 );
 
-    EXPECT_FALSE( board.get_hex( 0, 0, 0 ).has_unit( ) );
-    EXPECT_TRUE( dest.has_unit( ) );
-    EXPECT_EQ( dest.get_unit( ), u1 );
+    EXPECT_FALSE( board_.getHex( 0, 0, 0 ).hasUnit( ) );
+    EXPECT_TRUE( dest.hasUnit( ) );
+    EXPECT_EQ( dest.getUnit( ), u1_ );
 }
 
 TEST_F( ActionManagerTest, MoveActionThrowsOnOccupiedHex ) {
-    Hex& dest = board.get_hex( 1, 0, -1 );
+    Hex& dest = board_.getHex( 1, 0, -1 );
 
-    EXPECT_TRUE( dest.has_unit( ) );
+    EXPECT_TRUE( dest.hasUnit( ) );
 
-    EXPECT_THROW( am.move( *u1, dest, board ), std::runtime_error );
+    EXPECT_THROW( am_.move( *u1_, dest, board_ ), std::runtime_error );
 
-    EXPECT_EQ( u1->get_q( ), 0 );
-    EXPECT_EQ( u1->get_r( ), 0 );
-    EXPECT_EQ( u1->get_s( ), 0 );
+    EXPECT_EQ( u1_->getQ( ), 0 );
+    EXPECT_EQ( u1_->getR( ), 0 );
+    EXPECT_EQ( u1_->getS( ), 0 );
 }
 
 TEST_F( ActionManagerTest, DefendActionAppliesBuff ) {
-    EXPECT_EQ( u1->get_defense( ), 5 );
-    am.defend( *u1 );
-    EXPECT_EQ( u1->get_defense( ), 10 );
+    EXPECT_EQ( u1_->getDefense( ), 5 );
+    am_.defend( *u1_ );
+    EXPECT_EQ( u1_->getDefense( ), 10 );
 
-    u1->on_turn_start( );
-    EXPECT_EQ( u1->get_defense( ), 5 );
+    u1_->onTurnStart( );
+    EXPECT_EQ( u1_->getDefense( ), 5 );
 }
 
 TEST_F( ActionManagerTest, CalculateDamageEqualStats ) {
     Unit attacker( "Attacker", 1, 10, 10, 100, 5, 5, 5, 10 );
     Unit defender( "Defender", 1, 10, 10, 100, 5, 5, 5, 10 );
 
-    int damage = am.calculate_damage( attacker, defender );
+    int damage = am_.calculateDamage( attacker, defender );
     EXPECT_EQ( damage, 50 );
 }
 
@@ -110,7 +112,7 @@ TEST_F( ActionManagerTest, CalculateDamageAttackAdvantage ) {
     Unit attacker( "Attacker", 1, 20, 10, 100, 5, 5, 5, 10 );
     Unit defender( "Defender", 1, 10, 10, 100, 5, 5, 5, 10 );
 
-    int damage = am.calculate_damage( attacker, defender );
+    int damage = am_.calculateDamage( attacker, defender );
     EXPECT_EQ( damage, 75 );
 }
 
@@ -118,90 +120,90 @@ TEST_F( ActionManagerTest, CalculateDamageDefenseAdvantage ) {
     Unit attacker( "Attacker", 1, 10, 10, 100, 5, 5, 5, 10 );
     Unit defender( "Defender", 1, 10, 20, 100, 5, 5, 5, 10 );
 
-    int damage = am.calculate_damage( attacker, defender );
+    int damage = am_.calculateDamage( attacker, defender );
     EXPECT_EQ( damage, 37 );
 }
 
 TEST_F( ActionManagerTest, CalculateDamageMaxCaps ) {
     Unit attacker( "Attacker", 1, 100, 10, 100, 5, 5, 5, 10 );
     Unit defender( "Defender", 1, 10, 10, 100, 5, 5, 5, 10 );
-    EXPECT_EQ( am.calculate_damage( attacker, defender ), 200 );
+    EXPECT_EQ( am_.calculateDamage( attacker, defender ), 200 );
 
     Unit attacker2( "Attacker", 1, 10, 10, 100, 10, 10, 5, 10 );
     Unit defender2( "Defender", 1, 10, 100, 100, 10, 10, 5, 10 );
-    EXPECT_EQ( am.calculate_damage( attacker2, defender2 ), 30 );
+    EXPECT_EQ( am_.calculateDamage( attacker2, defender2 ), 30 );
 }
 
 TEST_F( ActionManagerTest, AttackActionAppliesDamageAndMoves ) {
-    board.get_hex( 0, 0, 0 ).remove_unit( );
-    board.get_hex( 1, 0, -1 ).remove_unit( );
+    board_.getHex( 0, 0, 0 ).removeUnit( );
+    board_.getHex( 1, 0, -1 ).removeUnit( );
 
     auto att = std::make_shared<Unit>( "Attacker", 1, 10, 10, 100, 5, 5, 5, 1 );
-    att->set_position( 0, 0, 0 );
-    board.get_hex( 0, 0, 0 ).set_unit( att );
+    att->setPosition( 0, 0, 0 );
+    board_.getHex( 0, 0, 0 ).setUnit( att );
 
     auto def = std::make_shared<Unit>( "Defender", 1, 10, 10, 100, 5, 5, 5, 1 );
-    def->set_position( 2, 0, -2 );
-    board.get_hex( 2, 0, -2 ).set_unit( def );
+    def->setPosition( 2, 0, -2 );
+    board_.getHex( 2, 0, -2 ).setUnit( def );
 
-    Hex& attack_hex = board.get_hex( 1, 0, -1 );
-    bool is_dead = am.attack( *att, *def, attack_hex, board );
+    Hex& attack_hex = board_.getHex( 1, 0, -1 );
+    bool is_dead = am_.attack( *att, *def, attack_hex, board_ );
 
     EXPECT_FALSE( is_dead );
-    EXPECT_EQ( att->get_q( ), 1 );
-    EXPECT_EQ( att->get_r( ), 0 );
-    EXPECT_EQ( att->get_s( ), -1 );
+    EXPECT_EQ( att->getQ( ), 1 );
+    EXPECT_EQ( att->getR( ), 0 );
+    EXPECT_EQ( att->getS( ), -1 );
 
-    EXPECT_EQ( def->get_health_left( ), 95 );
-    EXPECT_TRUE( board.get_hex( 2, 0, -2 ).has_unit( ) );
+    EXPECT_EQ( def->getHealthLeft( ), 95 );
+    EXPECT_TRUE( board_.getHex( 2, 0, -2 ).hasUnit( ) );
 }
 
 TEST_F( ActionManagerTest, AttackActionKillsUnitAndMovesToDeadUnits ) {
-    board.get_hex( 0, 0, 0 ).remove_unit( );
-    board.get_hex( 1, 0, -1 ).remove_unit( );
+    board_.getHex( 0, 0, 0 ).removeUnit( );
+    board_.getHex( 1, 0, -1 ).removeUnit( );
 
     auto att = std::make_shared<Unit>( "Attacker", 1, 200, 10, 100, 1000, 1000, 5, 1 );
-    att->set_position( 0, 0, 0 );
-    board.get_hex( 0, 0, 0 ).set_unit( att );
+    att->setPosition( 0, 0, 0 );
+    board_.getHex( 0, 0, 0 ).setUnit( att );
 
     auto def = std::make_shared<Unit>( "Defender", 1, 10, 10, 100, 5, 5, 5, 1 );
-    def->set_position( 2, 0, -2 );
-    board.get_hex( 2, 0, -2 ).set_unit( def );
+    def->setPosition( 2, 0, -2 );
+    board_.getHex( 2, 0, -2 ).setUnit( def );
 
-    Hex& attack_hex = board.get_hex( 1, 0, -1 );
-    bool is_dead = am.attack( *att, *def, attack_hex, board );
+    Hex& attack_hex = board_.getHex( 1, 0, -1 );
+    bool is_dead = am_.attack( *att, *def, attack_hex, board_ );
 
     EXPECT_TRUE( is_dead );
-    EXPECT_EQ( def->get_count( ), 0 );
+    EXPECT_EQ( def->getCount( ), 0 );
 
-    Hex& def_hex = board.get_hex( 2, 0, -2 );
-    EXPECT_FALSE( def_hex.has_unit( ) );
-    EXPECT_EQ( def_hex.get_dead_units( ).size( ), 1 );
+    Hex& def_hex = board_.getHex( 2, 0, -2 );
+    EXPECT_FALSE( def_hex.hasUnit( ) );
+    EXPECT_EQ( def_hex.getDeadUnits( ).size( ), 1 );
 
-    auto dead_unit_ptr = def_hex.get_dead_units( )[0].lock( );
+    auto dead_unit_ptr = def_hex.getDeadUnits( )[0].lock( );
     ASSERT_NE( dead_unit_ptr, nullptr );
-    EXPECT_EQ( dead_unit_ptr->get_name( ), "Defender" );
+    EXPECT_EQ( dead_unit_ptr->getName( ), "Defender" );
 }
 
 TEST_F( ActionManagerTest, AttackActionThrowsWhenOccupiedByAnother ) {
-    board.get_hex( 0, 0, 0 ).remove_unit( );
-    board.get_hex( 1, 0, -1 ).remove_unit( );
-    board.get_hex( 2, 0, -2 ).remove_unit( );
+    board_.getHex( 0, 0, 0 ).removeUnit( );
+    board_.getHex( 1, 0, -1 ).removeUnit( );
+    board_.getHex( 2, 0, -2 ).removeUnit( );
 
     auto att = std::make_shared<Unit>( "Attacker", 1, 10, 10, 100, 5, 5, 5, 1 );
-    att->set_position( 0, 0, 0 );
-    board.get_hex( 0, 0, 0 ).set_unit( att );
+    att->setPosition( 0, 0, 0 );
+    board_.getHex( 0, 0, 0 ).setUnit( att );
 
     auto blocker = std::make_shared<Unit>( "Blocker", 1, 10, 10, 100, 5, 5, 5, 1 );
-    blocker->set_position( 1, 0, -1 );
-    board.get_hex( 1, 0, -1 ).set_unit( blocker );
+    blocker->setPosition( 1, 0, -1 );
+    board_.getHex( 1, 0, -1 ).setUnit( blocker );
 
     auto def = std::make_shared<Unit>( "Defender", 1, 10, 10, 100, 5, 5, 5, 1 );
-    def->set_position( 2, 0, -2 );
-    board.get_hex( 2, 0, -2 ).set_unit( def );
+    def->setPosition( 2, 0, -2 );
+    board_.getHex( 2, 0, -2 ).setUnit( def );
 
-    Hex& attack_hex = board.get_hex( 1, 0, -1 );
-    EXPECT_THROW( am.attack( *att, *def, attack_hex, board ), std::runtime_error );
+    Hex& attack_hex = board_.getHex( 1, 0, -1 );
+    EXPECT_THROW( am_.attack( *att, *def, attack_hex, board_ ), std::runtime_error );
 }
 
 } // namespace test

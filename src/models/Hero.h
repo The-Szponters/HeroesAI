@@ -20,31 +20,31 @@ public:
     Hero( ) = default;
 
     Hero( std::string name, int attack, int defense, int power, int knowledge )
-        : name( std::move( name ) ),
-          attack( attack ),
-          defense( defense ),
-          power( power ),
-          knowledge( knowledge ) {}
+        : name_( std::move( name ) ),
+          attack_( attack ),
+          defense_( defense ),
+          power_( power ),
+          knowledge_( knowledge ) {}
 
     ~Hero( ) = default;
 
-    const std::string& get_name( ) const { return name; }
-    int get_attack( ) const { return attack; }
-    int get_defense( ) const { return defense; }
-    int get_power( ) const { return power; }
-    int get_knowledge( ) const { return knowledge; }
+    const std::string& getName( ) const { return name_; }
+    int getAttack( ) const { return attack_; }
+    int getDefense( ) const { return defense_; }
+    int getPower( ) const { return power_; }
+    int getKnowledge( ) const { return knowledge_; }
 
-    Army& get_army( ) { return army; }
-    const Army& get_army( ) const { return army; }
+    Army& getArmy( ) { return army_; }
+    const Army& getArmy( ) const { return army_; }
 
 private:
-    std::string name;
-    int attack = 0;
-    int defense = 0;
-    int power = 0;
-    int knowledge = 0;
+    std::string name_;
+    int attack_ = 0;
+    int defense_ = 0;
+    int power_ = 0;
+    int knowledge_ = 0;
 
-    Army army;
+    Army army_;
 };
 
 } // namespace models

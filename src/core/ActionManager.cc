@@ -20,62 +20,69 @@ using models::Unit;
 
 namespace {
 
-std::tuple<int, int, int> tail_delta( const Unit& u ) {
-    if ( u.is_facing_left( ) )
+std::tuple<int, int, int> tailDelta( const Unit& u ) {
+    if ( u.isFacingLeft( ) ) {
         return { 1, 0, -1 };
+}
     return { -1, 0, 1 };
 }
 
-bool is_self_hex( const Unit& u, int q, int r, int s ) {
-    if ( q == u.get_q( ) && r == u.get_r( ) && s == u.get_s( ) )
+bool isSelfHex( const Unit& u, int q, int r, int s ) {
+    if ( q == u.getQ( ) && r == u.getR( ) && s == u.getS( ) ) {
         return true;
-    if ( u.get_size( ) == 2 ) {
-        auto [dq, dr, ds] = tail_delta( u );
-        if ( q == u.get_q( ) + dq && r == u.get_r( ) + dr && s == u.get_s( ) + ds )
+}
+    if ( u.getSize( ) == 2 ) {
+        auto [dq, dr, ds] = tailDelta( u );
+        if ( q == u.getQ( ) + dq && r == u.getR( ) + dr && s == u.getS( ) + ds ) {
             return true;
+}
     }
     return false;
 }
 
-bool can_occupy( const Unit& mover, int q, int r, int s, const Board& board ) {
+bool canOccupy( const Unit& mover, int q, int r, int s, const Board& board ) {
     auto check = [&]( int hq, int hr, int hs ) {
         try {
-            const Hex& h = board.get_hex( hq, hr, hs );
-            if ( h.has_unit( ) && ! is_self_hex( mover, hq, hr, hs ) )
+            const Hex& h = board.getHex( hq, hr, hs );
+            if ( h.hasUnit( ) && ! isSelfHex( mover, hq, hr, hs ) ) {
                 return false;
+}
             return true;
         } catch ( const std::out_of_range& ) {
             return false;
         }
     };
 
-    if ( ! check( q, r, s ) )
+    if ( ! check( q, r, s ) ) {
         return false;
-    if ( mover.get_size( ) == 2 ) {
-        auto [dq, dr, ds] = tail_delta( mover );
-        if ( ! check( q + dq, r + dr, s + ds ) )
+}
+    if ( mover.getSize( ) == 2 ) {
+        auto [dq, dr, ds] = tailDelta( mover );
+        if ( ! check( q + dq, r + dr, s + ds ) ) {
             return false;
+}
     }
     return true;
 }
 
-std::vector<std::tuple<int, int, int>> body_hexes( const Unit& u ) {
+std::vector<std::tuple<int, int, int>> bodyHexes( const Unit& u ) {
     std::vector<std::tuple<int, int, int>> v;
-    v.emplace_back( u.get_q( ), u.get_r( ), u.get_s( ) );
-    if ( u.get_size( ) == 2 ) {
-        auto [dq, dr, ds] = tail_delta( u );
-        v.emplace_back( u.get_q( ) + dq, u.get_r( ) + dr, u.get_s( ) + ds );
+    v.emplace_back( u.getQ( ), u.getR( ), u.getS( ) );
+    if ( u.getSize( ) == 2 ) {
+        auto [dq, dr, ds] = tailDelta( u );
+        v.emplace_back( u.getQ( ) + dq, u.getR( ) + dr, u.getS( ) + ds );
     }
     return v;
 }
 
-bool are_units_adjacent( const Unit& a, const Unit& b ) {
-    for ( const auto& [aq, ar, as] : body_hexes( a ) ) {
-        for ( const auto& [bq, br, bs] : body_hexes( b ) ) {
+bool areUnitsAdjacent( const Unit& a, const Unit& b ) {
+    for ( const auto& [aq, ar, as] : bodyHexes( a ) ) {
+        for ( const auto& [bq, br, bs] : bodyHexes( b ) ) {
             const int d =
                 std::max( { std::abs( aq - bq ), std::abs( ar - br ), std::abs( as - bs ) } );
-            if ( d == 1 )
+            if ( d == 1 ) {
                 return true;
+}
         }
     }
     return false;
@@ -83,78 +90,85 @@ bool are_units_adjacent( const Unit& a, const Unit& b ) {
 
 } // namespace
 
-int ActionManager::hex_distance( const Unit& a, const Unit& b ) {
+int ActionManager::hexDistance( const Unit& a, const Unit& b ) {
     int best = std::numeric_limits<int>::max( );
-    for ( const auto& [aq, ar, as] : body_hexes( a ) ) {
-        for ( const auto& [bq, br, bs] : body_hexes( b ) ) {
+    for ( const auto& [aq, ar, as] : bodyHexes( a ) ) {
+        for ( const auto& [bq, br, bs] : bodyHexes( b ) ) {
             const int d =
                 std::max( { std::abs( aq - bq ), std::abs( ar - br ), std::abs( as - bs ) } );
-            if ( d < best )
+            if ( d < best ) {
                 best = d;
+}
         }
     }
     return best;
 }
 
-bool ActionManager::is_blocked_by_adjacent_enemy( const Unit& unit,
+bool ActionManager::isBlockedByAdjacentEnemy( const Unit& unit,
                                                   const EnemyPredicate& is_enemy,
                                                   const Board& board ) const {
-    static constexpr int dq[] = { 1, 1, 0, -1, -1, 0 };
-    static constexpr int dr[] = { 0, -1, -1, 0, 1, 1 };
-    static constexpr int ds[] = { -1, 0, 1, 1, 0, -1 };
+    static constexpr int DQ[] = { 1, 1, 0, -1, -1, 0 };
+    static constexpr int DR[] = { 0, -1, -1, 0, 1, 1 };
+    static constexpr int DS[] = { -1, 0, 1, 1, 0, -1 };
 
-    for ( const auto& [oq, orr, os] : body_hexes( unit ) ) {
+    for ( const auto& [oq, orr, os] : bodyHexes( unit ) ) {
         for ( int i = 0; i < 6; ++i ) {
             try {
-                const Hex& nhex = board.get_hex( oq + dq[i], orr + dr[i], os + ds[i] );
-                if ( ! nhex.has_unit( ) )
+                const Hex& nhex = board.getHex( oq + DQ[i], orr + DR[i], os + DS[i] );
+                if ( ! nhex.hasUnit( ) ) {
                     continue;
-                const std::shared_ptr<Unit>& neighbour = nhex.get_unit( );
-                if ( neighbour.get( ) == &unit )
+}
+                const std::shared_ptr<Unit>& neighbour = nhex.getUnit( );
+                if ( neighbour.get( ) == &unit ) {
                     continue;
-                if ( is_enemy && is_enemy( *neighbour ) )
+}
+                if ( is_enemy && is_enemy( *neighbour ) ) {
                     return true;
+}
             } catch ( const std::out_of_range& ) {}
         }
     }
     return false;
 }
 
-bool ActionManager::can_shoot( const Unit& attacker,
+bool ActionManager::canShoot( const Unit& attacker,
                                const Unit& defender,
                                const EnemyPredicate& is_enemy,
                                const Board& board ) const {
-    if ( ! attacker.is_ranged( ) || attacker.get_ammo( ) <= 0 )
+    if ( ! attacker.isRanged( ) || attacker.getAmmo( ) <= 0 ) {
         return false;
-    if ( are_units_adjacent( attacker, defender ) )
+}
+    if ( areUnitsAdjacent( attacker, defender ) ) {
         return false;
-    if ( is_blocked_by_adjacent_enemy( attacker, is_enemy, board ) )
+}
+    if ( isBlockedByAdjacentEnemy( attacker, is_enemy, board ) ) {
         return false;
+}
     return true;
 }
 
 std::vector<const Hex*>
-ActionManager::find_path( const Unit& unit, const Hex& dest_hex, const Board& board ) const {
+ActionManager::findPath( const Unit& unit, const Hex& dest_hex, const Board& board ) const {
     using Coord = std::tuple<int, int, int>;
-    const Coord start{ unit.get_q( ), unit.get_r( ), unit.get_s( ) };
-    const Coord goal{ dest_hex.get_q( ), dest_hex.get_r( ), dest_hex.get_s( ) };
+    const Coord start{ unit.getQ( ), unit.getR( ), unit.getS( ) };
+    const Coord goal{ dest_hex.getQ( ), dest_hex.getR( ), dest_hex.getS( ) };
 
     if ( start == goal ) {
         try {
             const Hex& s =
-                board.get_hex( std::get<0>( start ), std::get<1>( start ), std::get<2>( start ) );
+                board.getHex( std::get<0>( start ), std::get<1>( start ), std::get<2>( start ) );
             return { &s };
         } catch ( const std::out_of_range& ) {
             return { };
         }
     }
 
-    if ( unit.ignores_path_blockers( ) ) {
+    if ( unit.ignoresPathBlockers( ) ) {
         try {
             const Hex& s =
-                board.get_hex( std::get<0>( start ), std::get<1>( start ), std::get<2>( start ) );
+                board.getHex( std::get<0>( start ), std::get<1>( start ), std::get<2>( start ) );
             const Hex& d =
-                board.get_hex( std::get<0>( goal ), std::get<1>( goal ), std::get<2>( goal ) );
+                board.getHex( std::get<0>( goal ), std::get<1>( goal ), std::get<2>( goal ) );
             return { &s, &d };
         } catch ( const std::out_of_range& ) {
             return { };
@@ -167,27 +181,30 @@ ActionManager::find_path( const Unit& unit, const Hex& dest_hex, const Board& bo
     q.push( start );
     dist[start] = 0;
 
-    static constexpr int dq[] = { 1, 1, 0, -1, -1, 0 };
-    static constexpr int dr[] = { 0, -1, -1, 0, 1, 1 };
-    static constexpr int ds[] = { -1, 0, 1, 1, 0, -1 };
+    static constexpr int DQ[] = { 1, 1, 0, -1, -1, 0 };
+    static constexpr int DR[] = { 0, -1, -1, 0, 1, 1 };
+    static constexpr int DS[] = { -1, 0, 1, 1, 0, -1 };
 
     bool found = false;
     while ( ! q.empty( ) && ! found ) {
         const Coord cur = q.front( );
         q.pop( );
         const int d = dist[cur];
-        if ( d >= unit.get_speed( ) )
+        if ( d >= unit.getSpeed( ) ) {
             continue;
+}
 
         for ( int i = 0; i < 6; ++i ) {
-            const int nq = std::get<0>( cur ) + dq[i];
-            const int nr = std::get<1>( cur ) + dr[i];
-            const int ns = std::get<2>( cur ) + ds[i];
+            const int nq = std::get<0>( cur ) + DQ[i];
+            const int nr = std::get<1>( cur ) + DR[i];
+            const int ns = std::get<2>( cur ) + DS[i];
             const Coord next{ nq, nr, ns };
-            if ( dist.count( next ) )
+            if ( dist.count( next ) ) {
                 continue;
-            if ( ! can_occupy( unit, nq, nr, ns, board ) )
+}
+            if ( ! canOccupy( unit, nq, nr, ns, board ) ) {
                 continue;
+}
 
             dist[next] = d + 1;
             parent[next] = cur;
@@ -199,50 +216,56 @@ ActionManager::find_path( const Unit& unit, const Hex& dest_hex, const Board& bo
         }
     }
 
-    if ( ! found )
+    if ( ! found ) {
         return { };
+}
 
     std::vector<const Hex*> chain;
     Coord cur = goal;
     while ( true ) {
         try {
             chain.push_back(
-                &board.get_hex( std::get<0>( cur ), std::get<1>( cur ), std::get<2>( cur ) ) );
+                &board.getHex( std::get<0>( cur ), std::get<1>( cur ), std::get<2>( cur ) ) );
         } catch ( const std::out_of_range& ) {
             return { };
         }
-        if ( cur == start )
+        if ( cur == start ) {
             break;
+}
         const auto it = parent.find( cur );
-        if ( it == parent.end( ) )
+        if ( it == parent.end( ) ) {
             return { };
+}
         cur = it->second;
     }
     std::reverse( chain.begin( ), chain.end( ) );
     return chain;
 }
 
-std::vector<Hex*> ActionManager::get_available_destinations( const Unit& unit,
+std::vector<Hex*> ActionManager::getAvailableDestinations( const Unit& unit,
                                                              const Board& board ) const {
     std::vector<Hex*> destinations;
 
-    if ( unit.ignores_path_blockers( ) ) {
-        const int sq = unit.get_q( );
-        const int sr = unit.get_r( );
-        const int ss = unit.get_s( );
-        const int range = unit.get_speed( );
-        for ( const Hex& hex : board.get_grid( ) ) {
-            const int hq = hex.get_q( );
-            const int hr = hex.get_r( );
-            const int hs = hex.get_s( );
-            if ( hq == sq && hr == sr && hs == ss )
+    if ( unit.ignoresPathBlockers( ) ) {
+        const int sq = unit.getQ( );
+        const int sr = unit.getR( );
+        const int ss = unit.getS( );
+        const int range = unit.getSpeed( );
+        for ( const Hex& hex : board.getGrid( ) ) {
+            const int hq = hex.getQ( );
+            const int hr = hex.getR( );
+            const int hs = hex.getS( );
+            if ( hq == sq && hr == sr && hs == ss ) {
                 continue;
+}
             const int d =
                 std::max( { std::abs( hq - sq ), std::abs( hr - sr ), std::abs( hs - ss ) } );
-            if ( d > range )
+            if ( d > range ) {
                 continue;
-            if ( ! can_occupy( unit, hq, hr, hs, board ) )
+}
+            if ( ! canOccupy( unit, hq, hr, hs, board ) ) {
                 continue;
+}
             destinations.push_back( const_cast<Hex*>( &hex ) );
         }
         return destinations;
@@ -252,10 +275,10 @@ std::vector<Hex*> ActionManager::get_available_destinations( const Unit& unit,
     std::queue<std::pair<std::tuple<int, int, int>, int>> q;
 
     try {
-        const Hex& start_hex = board.get_hex( unit.get_q( ), unit.get_r( ), unit.get_s( ) );
+        const Hex& start_hex = board.getHex( unit.getQ( ), unit.getR( ), unit.getS( ) );
         q.push(
-            { { start_hex.get_q( ), start_hex.get_r( ), start_hex.get_s( ) }, unit.get_speed( ) } );
-        visited.insert( { start_hex.get_q( ), start_hex.get_r( ), start_hex.get_s( ) } );
+            { { start_hex.getQ( ), start_hex.getR( ), start_hex.getS( ) }, unit.getSpeed( ) } );
+        visited.insert( { start_hex.getQ( ), start_hex.getR( ), start_hex.getS( ) } );
     } catch ( const std::out_of_range& ) {
         return destinations;
     }
@@ -272,12 +295,12 @@ std::vector<Hex*> ActionManager::get_available_destinations( const Unit& unit,
         int cs = std::get<2>( current_coords );
 
         try {
-            const Hex& hex = board.get_hex( cq, cr, cs );
+            const Hex& hex = board.getHex( cq, cr, cs );
 
             const bool at_start =
-                ( cq == unit.get_q( ) && cr == unit.get_r( ) && cs == unit.get_s( ) );
+                ( cq == unit.getQ( ) && cr == unit.getR( ) && cs == unit.getS( ) );
 
-            const bool valid_stand = at_start || can_occupy( unit, cq, cr, cs, board );
+            const bool valid_stand = at_start || canOccupy( unit, cq, cr, cs, board );
 
             if ( valid_stand ) {
                 if ( ! at_start ) {
@@ -290,16 +313,18 @@ std::vector<Hex*> ActionManager::get_available_destinations( const Unit& unit,
                         int nr = cr + dr[i];
                         int ns = cs + ds[i];
 
-                        if ( visited.find( { nq, nr, ns } ) != visited.end( ) )
+                        if ( visited.find( { nq, nr, ns } ) != visited.end( ) ) {
                             continue;
+}
                         try {
-                            (void) board.get_hex( nq, nr, ns );
+                            (void) board.getHex( nq, nr, ns );
                         } catch ( const std::out_of_range& ) {
                             continue;
                         }
 
-                        if ( ! can_occupy( unit, nq, nr, ns, board ) )
+                        if ( ! canOccupy( unit, nq, nr, ns, board ) ) {
                             continue;
+}
 
                         visited.insert( { nq, nr, ns } );
                         q.push( { { nq, nr, ns }, current_speed - 1 } );
@@ -313,7 +338,7 @@ std::vector<Hex*> ActionManager::get_available_destinations( const Unit& unit,
 }
 
 std::vector<std::pair<Unit*, Hex*>>
-ActionManager::get_available_attacks( const Unit& unit, const Board& board ) const {
+ActionManager::getAvailableAttacks( const Unit& unit, const Board& board ) const {
     std::vector<std::pair<Unit*, Hex*>> attacks;
 
     const int dq[] = { 1, 1, 0, -1, -1, 0 };
@@ -321,10 +346,10 @@ ActionManager::get_available_attacks( const Unit& unit, const Board& board ) con
     const int ds[] = { -1, 0, 1, 1, 0, -1 };
 
     std::vector<std::tuple<int, int, int>> origins;
-    origins.emplace_back( unit.get_q( ), unit.get_r( ), unit.get_s( ) );
-    if ( unit.get_size( ) == 2 ) {
-        auto [tdq, tdr, tds] = tail_delta( unit );
-        origins.emplace_back( unit.get_q( ) + tdq, unit.get_r( ) + tdr, unit.get_s( ) + tds );
+    origins.emplace_back( unit.getQ( ), unit.getR( ), unit.getS( ) );
+    if ( unit.getSize( ) == 2 ) {
+        auto [tdq, tdr, tds] = tailDelta( unit );
+        origins.emplace_back( unit.getQ( ) + tdq, unit.getR( ) + tdr, unit.getS( ) + tds );
     }
 
     std::set<Unit*> seen;
@@ -334,12 +359,14 @@ ActionManager::get_available_attacks( const Unit& unit, const Board& board ) con
             int nr = orr + dr[i];
             int ns = os + ds[i];
             try {
-                const Hex& hex = board.get_hex( nq, nr, ns );
-                if ( ! hex.has_unit( ) )
+                const Hex& hex = board.getHex( nq, nr, ns );
+                if ( ! hex.hasUnit( ) ) {
                     continue;
-                std::shared_ptr<Unit> target = hex.get_unit( );
-                if ( target.get( ) == &unit )
+}
+                std::shared_ptr<Unit> target = hex.getUnit( );
+                if ( target.get( ) == &unit ) {
                     continue;
+}
                 if ( seen.insert( target.get( ) ).second ) {
                     attacks.push_back( { target.get( ), const_cast<Hex*>( &hex ) } );
                 }
@@ -350,109 +377,110 @@ ActionManager::get_available_attacks( const Unit& unit, const Board& board ) con
 }
 
 void ActionManager::move( Unit& unit, Hex& dest_hex, Board& board ) {
-    Hex& start_hex = board.get_hex( unit.get_q( ), unit.get_r( ), unit.get_s( ) );
-    std::shared_ptr<Unit> unit_ptr = start_hex.get_unit( );
+    Hex& start_hex = board.getHex( unit.getQ( ), unit.getR( ), unit.getS( ) );
+    std::shared_ptr<Unit> unit_ptr = start_hex.getUnit( );
     if ( ! unit_ptr || unit_ptr.get( ) != &unit ) {
         throw std::logic_error( "Unit coordinates and Board state are out of sync" );
     }
 
-    if ( unit.get_size( ) == 2 ) {
-        auto [dq, dr, ds] = tail_delta( unit );
+    if ( unit.getSize( ) == 2 ) {
+        auto [dq, dr, ds] = tailDelta( unit );
 
         try {
-            Hex& start_tail = board.get_hex(
-                start_hex.get_q( ) + dq, start_hex.get_r( ) + dr, start_hex.get_s( ) + ds );
-            start_tail.remove_unit( );
+            Hex& start_tail = board.getHex(
+                start_hex.getQ( ) + dq, start_hex.getR( ) + dr, start_hex.getS( ) + ds );
+            start_tail.removeUnit( );
         } catch ( const std::out_of_range& ) {}
 
         Hex& dest_tail =
-            board.get_hex( dest_hex.get_q( ) + dq, dest_hex.get_r( ) + dr, dest_hex.get_s( ) + ds );
+            board.getHex( dest_hex.getQ( ) + dq, dest_hex.getR( ) + dr, dest_hex.getS( ) + ds );
 
-        const bool dest_blocked = dest_hex.has_unit( ) && dest_hex.get_unit( ).get( ) != &unit;
-        const bool tail_blocked = dest_tail.has_unit( ) && dest_tail.get_unit( ).get( ) != &unit;
+        const bool dest_blocked = dest_hex.hasUnit( ) && dest_hex.getUnit( ).get( ) != &unit;
+        const bool tail_blocked = dest_tail.hasUnit( ) && dest_tail.getUnit( ).get( ) != &unit;
         if ( dest_blocked || tail_blocked ) {
             throw std::runtime_error( "Destination hex already has a unit" );
         }
 
-        start_hex.remove_unit( );
-        dest_hex.set_unit( unit_ptr );
-        dest_tail.set_unit( unit_ptr );
-        unit.set_position( dest_hex.get_q( ), dest_hex.get_r( ), dest_hex.get_s( ) );
+        start_hex.removeUnit( );
+        dest_hex.setUnit( unit_ptr );
+        dest_tail.setUnit( unit_ptr );
+        unit.setPosition( dest_hex.getQ( ), dest_hex.getR( ), dest_hex.getS( ) );
         return;
     }
 
-    if ( dest_hex.has_unit( ) ) {
+    if ( dest_hex.hasUnit( ) ) {
         throw std::runtime_error( "Destination hex already has a unit" );
     }
-    dest_hex.set_unit( unit_ptr );
-    start_hex.remove_unit( );
-    unit.set_position( dest_hex.get_q( ), dest_hex.get_r( ), dest_hex.get_s( ) );
+    dest_hex.setUnit( unit_ptr );
+    start_hex.removeUnit( );
+    unit.setPosition( dest_hex.getQ( ), dest_hex.getR( ), dest_hex.getS( ) );
 }
 
 bool ActionManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex, Board& board ) {
-    if ( attack_from_hex.has_unit( ) && attack_from_hex.get_unit( ).get( ) != &attacker ) {
+    if ( attack_from_hex.hasUnit( ) && attack_from_hex.getUnit( ).get( ) != &attacker ) {
         throw std::runtime_error( "Attack hex already has a unit" );
     }
 
     try {
-        Hex& current = board.get_hex( attacker.get_q( ), attacker.get_r( ), attacker.get_s( ) );
+        Hex& current = board.getHex( attacker.getQ( ), attacker.getR( ), attacker.getS( ) );
         if ( &current != &attack_from_hex ) {
             move( attacker, attack_from_hex, board );
         }
     } catch ( std::out_of_range& ) {}
 
-    if ( attacker.get_q( ) < defender.get_q( ) ) {
-        defender.set_visual_facing_left( true );
-    } else if ( attacker.get_q( ) > defender.get_q( ) ) {
-        defender.set_visual_facing_left( false );
+    if ( attacker.getQ( ) < defender.getQ( ) ) {
+        defender.setVisualFacingLeft( true );
+    } else if ( attacker.getQ( ) > defender.getQ( ) ) {
+        defender.setVisualFacingLeft( false );
     }
 
-    int damage = calculate_damage( attacker, defender );
-    if ( attacker.is_ranged( ) )
+    int damage = calculateDamage( attacker, defender );
+    if ( attacker.isRanged( ) ) {
         damage /= 2;
-    defender.take_damage( damage );
+}
+    defender.takeDamage( damage );
 
-    if ( defender.get_count( ) == 0 ) {
+    if ( defender.getCount( ) == 0 ) {
         try {
-            Hex& def_hex = board.get_hex( defender.get_q( ), defender.get_r( ), defender.get_s( ) );
-            def_hex.unit_died( );
-            if ( defender.get_size( ) == 2 ) {
-                auto [dq, dr, ds] = tail_delta( defender );
+            Hex& def_hex = board.getHex( defender.getQ( ), defender.getR( ), defender.getS( ) );
+            def_hex.unitDied( );
+            if ( defender.getSize( ) == 2 ) {
+                auto [dq, dr, ds] = tailDelta( defender );
                 try {
-                    Hex& def_tail = board.get_hex(
-                        defender.get_q( ) + dq, defender.get_r( ) + dr, defender.get_s( ) + ds );
+                    Hex& def_tail = board.getHex(
+                        defender.getQ( ) + dq, defender.getR( ) + dr, defender.getS( ) + ds );
 
-                    def_tail.unit_died( );
+                    def_tail.unitDied( );
                 } catch ( std::out_of_range& ) {}
             }
         } catch ( std::out_of_range& ) {}
         return true;
     }
 
-    if ( ! defender.has_retaliated_this_round( ) && are_units_adjacent( attacker, defender ) ) {
-        if ( defender.get_q( ) < attacker.get_q( ) ) {
-            attacker.set_visual_facing_left( true );
-        } else if ( defender.get_q( ) > attacker.get_q( ) ) {
-            attacker.set_visual_facing_left( false );
+    if ( ! defender.hasRetaliatedThisRound( ) && areUnitsAdjacent( attacker, defender ) ) {
+        if ( defender.getQ( ) < attacker.getQ( ) ) {
+            attacker.setVisualFacingLeft( true );
+        } else if ( defender.getQ( ) > attacker.getQ( ) ) {
+            attacker.setVisualFacingLeft( false );
         }
 
-        const int counter = calculate_damage( defender, attacker );
-        attacker.take_damage( counter );
-        defender.set_retaliated( true );
+        const int counter = calculateDamage( defender, attacker );
+        attacker.takeDamage( counter );
+        defender.setRetaliated( true );
 
-        if ( attacker.get_count( ) == 0 ) {
+        if ( attacker.getCount( ) == 0 ) {
             try {
                 Hex& atk_hex =
-                    board.get_hex( attacker.get_q( ), attacker.get_r( ), attacker.get_s( ) );
-                atk_hex.unit_died( );
-                if ( attacker.get_size( ) == 2 ) {
-                    auto [dq, dr, ds] = tail_delta( attacker );
+                    board.getHex( attacker.getQ( ), attacker.getR( ), attacker.getS( ) );
+                atk_hex.unitDied( );
+                if ( attacker.getSize( ) == 2 ) {
+                    auto [dq, dr, ds] = tailDelta( attacker );
                     try {
-                        Hex& atk_tail = board.get_hex( attacker.get_q( ) + dq,
-                                                       attacker.get_r( ) + dr,
-                                                       attacker.get_s( ) + ds );
+                        Hex& atk_tail = board.getHex( attacker.getQ( ) + dq,
+                                                       attacker.getR( ) + dr,
+                                                       attacker.getS( ) + ds );
 
-                        atk_tail.unit_died( );
+                        atk_tail.unitDied( );
                     } catch ( std::out_of_range& ) {}
                 }
             } catch ( std::out_of_range& ) {}
@@ -463,68 +491,71 @@ bool ActionManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex
 }
 
 void ActionManager::defend( Unit& unit ) {
-    unit.apply_buff( BuffFactory::create_defend_buff( ) );
+    unit.applyBuff( BuffFactory::createDefendBuff( ) );
 }
 
-int ActionManager::calculate_damage( const Unit& attacker, const Unit& defender ) const {
-    if ( attacker.get_count( ) <= 0 )
+int ActionManager::calculateDamage( const Unit& attacker, const Unit& defender ) const {
+    if ( attacker.getCount( ) <= 0 ) {
         return 0;
+}
 
     int total_base_damage = 0;
     std::random_device rd;
     std::mt19937 gen( rd( ) );
-    std::uniform_int_distribution<> distrib( attacker.get_damage_min( ),
-                                             attacker.get_damage_max( ) );
+    std::uniform_int_distribution<> distrib( attacker.getDamageMin( ),
+                                             attacker.getDamageMax( ) );
 
-    for ( int i = 0; i < attacker.get_count( ); ++i ) {
+    for ( int i = 0; i < attacker.getCount( ); ++i ) {
         total_base_damage += distrib( gen );
     }
 
     double modifier = 1.0;
-    int attack_stat = attacker.get_attack( );
-    int defense_stat = defender.get_defense( );
+    int attack_stat = attacker.getAttack( );
+    int defense_stat = defender.getDefense( );
 
     if ( attack_stat > defense_stat ) {
         modifier += 0.05 * ( attack_stat - defense_stat );
-        if ( modifier > 4.0 )
+        if ( modifier > 4.0 ) {
             modifier = 4.0;
+}
     } else if ( attack_stat < defense_stat ) {
         modifier -= 0.025 * ( defense_stat - attack_stat );
-        if ( modifier < 0.3 )
+        if ( modifier < 0.3 ) {
             modifier = 0.3;
+}
     }
 
     return static_cast<int>( total_base_damage * modifier );
 }
 
 bool ActionManager::shoot( Unit& attacker, Unit& defender, Board& board ) {
-    if ( ! attacker.is_ranged( ) || attacker.get_ammo( ) <= 0 ) {
+    if ( ! attacker.isRanged( ) || attacker.getAmmo( ) <= 0 ) {
         throw std::logic_error( "shoot() called on a unit that cannot shoot" );
     }
 
-    if ( attacker.get_q( ) < defender.get_q( ) ) {
-        attacker.set_visual_facing_left( false );
-    } else if ( attacker.get_q( ) > defender.get_q( ) ) {
-        attacker.set_visual_facing_left( true );
+    if ( attacker.getQ( ) < defender.getQ( ) ) {
+        attacker.setVisualFacingLeft( false );
+    } else if ( attacker.getQ( ) > defender.getQ( ) ) {
+        attacker.setVisualFacingLeft( true );
     }
 
-    int damage = calculate_damage( attacker, defender );
-    if ( hex_distance( attacker, defender ) > 10 ) {
+    int damage = calculateDamage( attacker, defender );
+    if ( hexDistance( attacker, defender ) > 10 ) {
         damage /= 2;
     }
-    defender.take_damage( damage );
-    attacker.decrement_ammo( );
+    defender.takeDamage( damage );
+    attacker.decrementAmmo( );
 
-    if ( defender.get_count( ) == 0 ) {
+    if ( defender.getCount( ) == 0 ) {
         try {
-            Hex& def_hex = board.get_hex( defender.get_q( ), defender.get_r( ), defender.get_s( ) );
-            def_hex.unit_died( );
-            if ( defender.get_size( ) == 2 ) {
-                auto [dq, dr, ds] = tail_delta( defender );
+            Hex& def_hex = board.getHex( defender.getQ( ), defender.getR( ), defender.getS( ) );
+            def_hex.unitDied( );
+            if ( defender.getSize( ) == 2 ) {
+                auto [dq, dr, ds] = tailDelta( defender );
                 try {
-                    Hex& def_tail = board.get_hex(
-                        defender.get_q( ) + dq, defender.get_r( ) + dr, defender.get_s( ) + ds );
-                    def_tail.unit_died( );
+                    Hex& def_tail = board.getHex(
+                        defender.getQ( ) + dq, defender.getR( ) + dr, defender.getS( ) + ds );
+                    def_tail.unitDied( );
                 } catch ( std::out_of_range& ) {}
             }
         } catch ( std::out_of_range& ) {}

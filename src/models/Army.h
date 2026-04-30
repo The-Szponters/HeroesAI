@@ -21,24 +21,24 @@ public:
     Army( ) = default;
     ~Army( ) = default;
 
-    bool add_unit( std::shared_ptr<Unit> unit ) {
-        if ( units.size( ) < 7 && unit != nullptr ) {
-            units.push_back( std::move( unit ) );
+    bool addUnit( std::shared_ptr<Unit> unit ) {
+        if ( units_.size( ) < 7 && unit != nullptr ) {
+            units_.push_back( std::move( unit ) );
             return true;
         }
         return false;
     }
 
-    void remove_unit( size_t index ) {
-        if ( index < units.size( ) ) {
-            units.erase( units.begin( ) + index );
+    void removeUnit( size_t index ) {
+        if ( index < units_.size( ) ) {
+            units_.erase( units_.begin( ) + index );
         }
     }
 
-    const std::vector<std::shared_ptr<Unit>>& get_units( ) const { return units; }
+    const std::vector<std::shared_ptr<Unit>>& getUnits( ) const { return units_; }
 
 private:
-    std::vector<std::shared_ptr<Unit>> units;
+    std::vector<std::shared_ptr<Unit>> units_;
 };
 
 } // namespace models

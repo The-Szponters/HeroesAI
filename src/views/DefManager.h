@@ -25,25 +25,25 @@ class DefManager {
 public:
     DefManager( ) = default;
 
-    void set_search_roots( std::vector<std::filesystem::path> roots );
+    void setSearchRoots( std::vector<std::filesystem::path> roots );
 
-    void add_search_root( std::filesystem::path root );
+    void addSearchRoot( std::filesystem::path root );
 
-    [[nodiscard]] std::shared_ptr<DefResource> get_or_load( const std::string& asset_filename );
+    [[nodiscard]] std::shared_ptr<DefResource> getOrLoad( const std::string& asset_filename );
 
-    void clear_cache( );
+    void clearCache( );
 
 private:
-    static std::string normalize_filename( const std::string& filename );
-    void build_lookup( );
+    static std::string normalizeFilename( const std::string& filename );
+    void buildLookup( );
 
-    std::vector<std::filesystem::path> search_roots;
-    bool lookup_built = false;
+    std::vector<std::filesystem::path> searchRoots_;
+    bool lookupBuilt_ = false;
 
-    std::unordered_map<std::string, std::filesystem::path> filename_to_path;
-    std::unordered_map<std::string, std::shared_ptr<DefResource>> resource_cache;
+    std::unordered_map<std::string, std::filesystem::path> filenameToPath_;
+    std::unordered_map<std::string, std::shared_ptr<DefResource>> resourceCache_;
 
-    DefParser parser;
+    DefParser parser_;
 };
 
 } // namespace views

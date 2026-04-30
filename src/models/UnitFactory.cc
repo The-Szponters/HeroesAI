@@ -8,9 +8,9 @@
 
 namespace models {
 
-std::unordered_map<UnitID, nlohmann::json> UnitFactory::unit_data;
+std::unordered_map<UnitID, nlohmann::Json> UnitFactory::UnitData;
 
-std::string UnitFactory::unit_id_to_string( UnitID id ) {
+std::string UnitFactory::unitIdToString( UnitID id ) {
     static const char* unit_names[] = {
         "Pikeman",      "Halberdier",  "Archer",    "Marksman",    "Griffin",
         "RoyalGriffin", "Swordsman",   "Crusader",  "Monk",        "Zealot",
@@ -34,28 +34,28 @@ void UnitFactory::init( const std::string& filepath ) {
         throw std::runtime_error( "UnitFactory: could not open " + filepath );
     }
 
-    nlohmann::json j;
+    nlohmann::Json j;
     file >> j;
 
-    unit_data.clear( );
+    UnitData.clear( );
     for ( int i = 0; i < 42; ++i ) {
         UnitID id = static_cast<UnitID>( i );
-        std::string key = unit_id_to_string( id );
+        std::string key = unitIdToString( id );
         if ( j.contains( key ) ) {
-            unit_data[id] = j[key];
+            UnitData[id] = j[key];
         }
     }
 }
 
-std::shared_ptr<Unit> UnitFactory::create_unit( UnitID id, int count ) {
-    auto it = unit_data.find( id );
-    if ( it == unit_data.end( ) ) {
+std::shared_ptr<Unit> UnitFactory::createUnit( UnitID id, int count ) {
+    auto it = UnitData.find( id );
+    if ( it == UnitData.end( ) ) {
         throw std::runtime_error( "UnitFactory: JSON data not loaded or unit not found: " +
-                                  unit_id_to_string( id ) );
+                                  unitIdToString( id ) );
     }
 
     const auto& data = it->second;
-    std::string name = unit_id_to_string( id );
+    std::string name = unitIdToString( id );
 
     try {
         int tier = data.at( "tier" ).get<int>( );
@@ -101,9 +101,9 @@ std::shared_ptr<Unit> UnitFactory::create_unit( UnitID id, int count ) {
                                            asset_filename,
                                            description );
         }
-        unit->set_size( size );
-        unit->set_is_teleporter( is_teleporter );
-        unit->set_is_flying( is_flying );
+        unit->setSize( size );
+        unit->setIsTeleporter( is_teleporter );
+        unit->setIsFlying( is_flying );
         return unit;
     } catch ( const std::exception& e ) {
         throw std::runtime_error( "UnitFactory: missing or invalid field for unit " + name + " (" +

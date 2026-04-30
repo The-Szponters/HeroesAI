@@ -24,12 +24,12 @@ public:
 
     using EnemyPredicate = std::function<bool( const models::Unit& )>;
 
-    std::vector<models::Hex*> get_available_destinations( const models::Unit& unit,
+    std::vector<models::Hex*> getAvailableDestinations( const models::Unit& unit,
                                                           const models::Board& board ) const;
     std::vector<std::pair<models::Unit*, models::Hex*>>
-    get_available_attacks( const models::Unit& unit, const models::Board& board ) const;
+    getAvailableAttacks( const models::Unit& unit, const models::Board& board ) const;
 
-    std::vector<const models::Hex*> find_path( const models::Unit& unit,
+    std::vector<const models::Hex*> findPath( const models::Unit& unit,
                                                const models::Hex& dest_hex,
                                                const models::Board& board ) const;
 
@@ -42,19 +42,19 @@ public:
 
     bool shoot( models::Unit& attacker, models::Unit& defender, models::Board& board );
 
-    bool can_shoot( const models::Unit& attacker,
+    bool canShoot( const models::Unit& attacker,
                     const models::Unit& defender,
                     const EnemyPredicate& is_enemy,
                     const models::Board& board ) const;
 
-    bool is_blocked_by_adjacent_enemy( const models::Unit& unit,
+    bool isBlockedByAdjacentEnemy( const models::Unit& unit,
                                        const EnemyPredicate& is_enemy,
                                        const models::Board& board ) const;
 
-    static int hex_distance( const models::Unit& a, const models::Unit& b );
+    static int hexDistance( const models::Unit& a, const models::Unit& b );
 
     void defend( models::Unit& unit );
-    int calculate_damage( const models::Unit& attacker, const models::Unit& defender ) const;
+    int calculateDamage( const models::Unit& attacker, const models::Unit& defender ) const;
 };
 
 } // namespace core

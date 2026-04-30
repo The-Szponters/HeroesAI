@@ -24,66 +24,66 @@ namespace core {
  */
 class GameManager {
 public:
-    GameManager( ) : round_manager( all_units_in_battle ) {}
-    GameManager( models::Hero blue_hero, models::Hero red_hero );
+    GameManager( ) : roundManager_( allUnitsInBattle_ ) {}
+    GameManager( const models::Hero& blue_hero, const models::Hero& red_hero );
 
-    models::Unit* get_current_unit( );
+    models::Unit* getCurrentUnit( );
 
-    std::vector<models::Unit*> get_units_left_in_round( ) const;
-    std::vector<models::Unit*> get_unit_queue_in_round( ) const;
+    std::vector<models::Unit*> getUnitsLeftInRound( ) const;
+    std::vector<models::Unit*> getUnitQueueInRound( ) const;
 
-    std::vector<models::Hex*> get_available_destinations( const models::Unit& unit ) const;
+    std::vector<models::Hex*> getAvailableDestinations( const models::Unit& unit ) const;
     std::vector<std::pair<models::Unit*, models::Hex*>>
-    get_available_attacks( const models::Unit& unit ) const;
+    getAvailableAttacks( const models::Unit& unit ) const;
 
-    std::vector<const models::Hex*> find_path( const models::Unit& unit,
+    std::vector<const models::Hex*> findPath( const models::Unit& unit,
                                                const models::Hex& dest_hex ) const;
 
-    int get_round_number( ) const { return round_number; }
-    std::vector<models::Unit*> peek_next_round_order( ) const;
+    int getRoundNumber( ) const { return roundNumber_; }
+    std::vector<models::Unit*> peekNextRoundOrder( ) const;
 
-    models::Board& get_board( ) { return board; }
-    const models::Board& get_board( ) const { return board; }
-    bool are_allies( const models::Unit& first, const models::Unit& second ) const;
-    bool are_enemies( const models::Unit& first, const models::Unit& second ) const;
-    bool can_attack( const models::Unit& attacker, const models::Hex& target_hex ) const;
-    bool can_move( const models::Unit& unit, const models::Hex& dest_hex ) const;
+    models::Board& getBoard( ) { return board_; }
+    const models::Board& getBoard( ) const { return board_; }
+    bool areAllies( const models::Unit& first, const models::Unit& second ) const;
+    bool areEnemies( const models::Unit& first, const models::Unit& second ) const;
+    bool canAttack( const models::Unit& attacker, const models::Hex& target_hex ) const;
+    bool canMove( const models::Unit& unit, const models::Hex& dest_hex ) const;
 
-    bool will_shoot( const models::Unit& attacker, const models::Unit& defender ) const;
+    bool willShoot( const models::Unit& attacker, const models::Unit& defender ) const;
 
-    bool active_unit_has_morale_bonus( ) const { return morale_triggered_this_turn; }
+    bool activeUnitHasMoraleBonus( ) const { return moraleTriggeredThisTurn_; }
 
-    void next_turn( );
+    void nextTurn( );
 
     void move( models::Unit& unit, models::Hex& dest_hex );
     void attack( models::Unit& attacker, models::Unit& defender, models::Hex& attack_from_hex );
     void wait( models::Unit& unit );
     void defend( models::Unit& unit );
 
-    const models::Hero& get_blue_hero( ) const { return blue_hero; }
-    const models::Hero& get_red_hero( ) const { return red_hero; }
+    const models::Hero& getBlueHero( ) const { return blueHero_; }
+    const models::Hero& getRedHero( ) const { return redHero_; }
 
 private:
-    void remove_dead_unit( models::Unit& unit );
-    bool hero_contains_unit( const models::Hero& hero, const models::Unit& unit ) const;
+    void removeDeadUnit( models::Unit& unit );
+    bool heroContainsUnit( const models::Hero& hero, const models::Unit& unit ) const;
 
-    void consume_turn_or_burn_morale_bonus( );
+    void consumeTurnOrBurnMoraleBonus( );
 
-    void roll_morale_for_active( models::Unit* unit );
+    void rollMoraleForActive( models::Unit* unit );
 
-    models::Hero blue_hero;
-    models::Hero red_hero;
-    std::vector<models::Unit*> all_units_in_battle;
-    int round_number = 1;
+    models::Hero blueHero_;
+    models::Hero redHero_;
+    std::vector<models::Unit*> allUnitsInBattle_;
+    int roundNumber_ = 1;
 
-    models::Unit* last_morale_rolled_unit = nullptr;
-    bool morale_triggered_this_turn = false;
-    int morale_round_tracked = 1;
-    std::unordered_set<models::Unit*> morale_rolled_units_this_round;
+    models::Unit* lastMoraleRolledUnit_ = nullptr;
+    bool moraleTriggeredThisTurn_ = false;
+    int moraleRoundTracked_ = 1;
+    std::unordered_set<models::Unit*> moraleRolledUnitsThisRound_;
 
-    ActionManager action_manager;
-    RoundManager round_manager;
-    models::Board board;
+    ActionManager actionManager_;
+    RoundManager roundManager_;
+    models::Board board_;
 };
 
 } // namespace core

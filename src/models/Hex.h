@@ -19,26 +19,26 @@ namespace models {
  */
 class Hex {
 public:
-    Hex( int q, int r, int s ) : q( q ), r( r ), s( s ) {
-        if ( ! is_valid( ) ) {
+    Hex( int q, int r, int s ) : Q( q ), R( r ), S( s ) {
+        if ( ! isValid( ) ) {
             throw std::invalid_argument( "q + r + s must sum to 0" );
         }
     }
     Hex( int q, int r, int s, std::weak_ptr<Unit> unit )
-        : q( q ), r( r ), s( s ), unit( std::move( unit ) ) {
-        if ( ! is_valid( ) ) {
+        : Q( q ), R( r ), S( s ), unit_( std::move( unit ) ) {
+        if ( ! isValid( ) ) {
             throw std::invalid_argument( "q + r + s must sum to 0" );
         }
     }
     Hex( const Hex& other ) = default;
     ~Hex( ) = default;
 
-    const int get_q( ) const { return q; }
-    const int get_r( ) const { return r; }
-    const int get_s( ) const { return s; }
+    const int getQ( ) const { return Q; }
+    const int getR( ) const { return R; }
+    const int getS( ) const { return S; }
 
-    std::shared_ptr<Unit> get_unit( ) const {
-        auto shared_unit = unit.lock( );
+    std::shared_ptr<Unit> getUnit( ) const {
+        auto shared_unit = unit_.lock( );
         if ( ! shared_unit ) {
             throw std::runtime_error( "Hex does not contain a unit" );
         }
@@ -46,35 +46,35 @@ public:
     }
 
     bool operator==( const Hex& other ) const {
-        return q == other.q && r == other.r && s == other.s;
+        return Q == other.Q && R == other.R && S == other.S;
     }
-    const int distance_to( const Hex& other ) const {
+    const int distanceTo( const Hex& other ) const {
         return std::max(
-            { std::abs( q - other.q ), std::abs( r - other.r ), std::abs( s - other.s ) } );
+            { std::abs( Q - other.Q ), std::abs( R - other.R ), std::abs( S - other.S ) } );
     }
 
-    bool has_unit( ) const { return ! unit.expired( ); }
+    bool hasUnit( ) const { return ! unit_.expired( ); }
 
-    void set_unit( std::weak_ptr<Unit> new_unit ) { unit = std::move( new_unit ); }
+    void setUnit( std::weak_ptr<Unit> new_unit ) { unit_ = std::move( new_unit ); }
 
-    void remove_unit( ) { unit.reset( ); }
+    void removeUnit( ) { unit_.reset( ); }
 
-    void unit_died( ) {
-        if ( ! unit.expired( ) ) {
-            dead_units.push_back( unit );
-            unit.reset( );
+    void unitDied( ) {
+        if ( ! unit_.expired( ) ) {
+            deadUnits_.push_back( unit_ );
+            unit_.reset( );
         }
     }
 
-    const std::vector<std::weak_ptr<Unit>>& get_dead_units( ) const { return dead_units; }
+    const std::vector<std::weak_ptr<Unit>>& getDeadUnits( ) const { return deadUnits_; }
 
 private:
-    const int q;
-    const int r;
-    const int s;
-    std::weak_ptr<Unit> unit;
-    std::vector<std::weak_ptr<Unit>> dead_units;
-    bool is_valid( ) const { return q + r + s == 0; }
+    const int Q;
+    const int R;
+    const int S;
+    std::weak_ptr<Unit> unit_;
+    std::vector<std::weak_ptr<Unit>> deadUnits_;
+    bool isValid( ) const { return Q + R + S == 0; }
 };
 
 } // namespace models

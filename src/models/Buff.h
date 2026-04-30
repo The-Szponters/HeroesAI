@@ -16,14 +16,14 @@ enum class BuffType { DEFEND, SLOW, BLIND };
  * @brief Value object describing a temporary stat modifier.
  */
 struct Buff {
-    BuffType type;
-    int duration;
+    BuffType type_;
+    int duration_{}{}{}{}{}{};
 
-    std::function<int( int )> modify_attack = []( int x ) { return x; };
-    std::function<int( int )> modify_defense = []( int x ) { return x; };
-    std::function<int( int )> modify_speed = []( int x ) { return x; };
-    std::function<int( int )> modify_damage_min = []( int x ) { return x; };
-    std::function<int( int )> modify_damage_max = []( int x ) { return x; };
+    std::function<int( int )> modifyAttack_ = []( int x ) { return x; };
+    std::function<int( int )> modifyDefense_ = []( int x ) { return x; };
+    std::function<int( int )> modifySpeed_ = []( int x ) { return x; };
+    std::function<int( int )> modifyDamageMin_ = []( int x ) { return x; };
+    std::function<int( int )> modifyDamageMax_ = []( int x ) { return x; };
 };
 
 /**
@@ -34,27 +34,27 @@ struct Buff {
  */
 class BuffFactory {
 public:
-    static Buff create_defend_buff( ) {
+    static Buff createDefendBuff( ) {
         Buff b;
-        b.type = BuffType::DEFEND;
-        b.duration = 1;
-        b.modify_defense = []( int def ) { return def + 5; };
+        b.type_ = BuffType::DEFEND;
+        b.duration_ = 1;
+        b.modifyDefense_ = []( int def ) { return def + 5; };
         return b;
     }
 
-    static Buff create_slow_buff( ) {
+    static Buff createSlowBuff( ) {
         Buff b;
-        b.type = BuffType::SLOW;
-        b.duration = 3;
-        b.modify_speed = []( int spd ) { return spd / 2; };
+        b.type_ = BuffType::SLOW;
+        b.duration_ = 3;
+        b.modifySpeed_ = []( int spd ) { return spd / 2; };
         return b;
     }
 
-    static Buff create_blind_buff( ) {
+    static Buff createBlindBuff( ) {
         Buff b;
-        b.type = BuffType::BLIND;
-        b.duration = 3;
-        b.modify_speed = []( int spd ) { return 0; };
+        b.type_ = BuffType::BLIND;
+        b.duration_ = 3;
+        b.modifySpeed_ = []( int spd ) { return 0; };
         return b;
     }
 };

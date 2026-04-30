@@ -18,15 +18,15 @@ namespace core {
  */
 class RoundManager {
 public:
-    RoundManager( const std::vector<models::Unit*>& all_units ) : all_units( all_units ) {}
+    RoundManager( const std::vector<models::Unit*>& all_units ) : allUnits_( all_units ) {}
 
-    void start_round( );
-    models::Unit* get_current_unit( );
-    void end_current_unit_turn( );
-    void wait_current_unit( );
+    void startRound( );
+    models::Unit* getCurrentUnit( );
+    void endCurrentUnitTurn( );
+    void waitCurrentUnit( );
 
-    std::vector<models::Unit*> get_units_left_in_round( ) const;
-    std::vector<models::Unit*> get_unit_queue_in_round( ) const;
+    std::vector<models::Unit*> getUnitsLeftInRound( ) const;
+    std::vector<models::Unit*> getUnitQueueInRound( ) const;
 
 private:
     /**
@@ -34,7 +34,7 @@ private:
      */
     struct MaxHeapComparator {
         bool operator( )( const models::Unit* a, const models::Unit* b ) const {
-            return a->get_speed( ) < b->get_speed( );
+            return a->getSpeed( ) < b->getSpeed( );
         }
     };
 
@@ -43,17 +43,17 @@ private:
      */
     struct MinHeapComparator {
         bool operator( )( const models::Unit* a, const models::Unit* b ) const {
-            return a->get_speed( ) > b->get_speed( );
+            return a->getSpeed( ) > b->getSpeed( );
         }
     };
 
-    const std::vector<models::Unit*>& all_units;
+    const std::vector<models::Unit*>& allUnits_;
 
     std::priority_queue<models::Unit*, std::vector<models::Unit*>, MaxHeapComparator>
-        unactivated_units;
-    std::priority_queue<models::Unit*, std::vector<models::Unit*>, MinHeapComparator> waited_units;
+        unactivatedUnits_;
+    std::priority_queue<models::Unit*, std::vector<models::Unit*>, MinHeapComparator> waitedUnits_;
 
-    models::Unit* current_unit = nullptr;
+    models::Unit* currentUnit_ = nullptr;
 };
 
 } // namespace core

@@ -37,51 +37,51 @@ public:
     AnimationController( ) = default;
     AnimationController( std::shared_ptr<DefResource> resource, int initial_group = 1 );
 
-    void set_resource( std::shared_ptr<DefResource> resource );
-    void set_animation_group( int group_id );
-    void set_animation_state( AnimState state, bool loop = true, bool freeze_on_last_frame = true );
-    void set_hex_center( const sf::Vector2f& center );
-    void set_facing_left( bool facing_left );
-    void set_scale( float scale );
-    void set_opacity( float alpha_0_to_1 );
-    void reset_to_first_frame( );
-    void set_fps( float new_fps );
+    void setResource( std::shared_ptr<DefResource> resource );
+    void setAnimationGroup( int group_id );
+    void setAnimationState( AnimState state, bool loop = true, bool freeze_on_last_frame = true );
+    void setHexCenter( const sf::Vector2f& center );
+    void setFacingLeft( bool facing_left );
+    void setScale( float scale );
+    void setOpacity( float alpha_0_to_1 );
+    void resetToFirstFrame( );
+    void setFps( float new_fps );
 
     void update( sf::Time delta_time );
 
-    [[nodiscard]] const sf::Sprite* get_sprite( ) const;
-    [[nodiscard]] bool is_ready( ) const;
-    [[nodiscard]] bool is_finished( ) const;
-    [[nodiscard]] AnimState get_animation_state( ) const;
-    [[nodiscard]] int get_group_id( ) const;
+    [[nodiscard]] const sf::Sprite* getSprite( ) const;
+    [[nodiscard]] bool isReady( ) const;
+    [[nodiscard]] bool isFinished( ) const;
+    [[nodiscard]] AnimState getAnimationState( ) const;
+    [[nodiscard]] int getGroupId( ) const;
 
 private:
-    void apply_current_frame( );
-    [[nodiscard]] const std::vector<DefFrame>* find_group( ) const;
-    [[nodiscard]] static float fps_for_state( AnimState state, float base_fps );
-    void schedule_next_fidget( );
-    void maybe_trigger_fidget( sf::Time delta_time );
+    void applyCurrentFrame( );
+    [[nodiscard]] const std::vector<DefFrame>* findGroup( ) const;
+    [[nodiscard]] static float fpsForState( AnimState state, float base_fps );
+    void scheduleNextFidget( );
+    void maybeTriggerFidget( sf::Time delta_time );
 
-    std::shared_ptr<DefResource> resource;
-    int group_id = 1;
-    std::size_t frame_index = 0;
-    float frame_accumulator = 0.0f;
+    std::shared_ptr<DefResource> resource_;
+    int groupId_ = 1;
+    std::size_t frameIndex_ = 0;
+    float frameAccumulator_ = 0.0f;
 
-    float base_fps = 5.0f;
-    float fps = 5.0f;
-    float scale = 1.0f;
-    AnimState anim_state = AnimState::STAND;
-    bool loop = true;
-    bool freeze_on_last_frame = true;
-    bool finished = false;
+    float baseFps_ = 5.0f;
+    float fps_ = 5.0f;
+    float scale_ = 1.0f;
+    AnimState animState_ = AnimState::STAND;
+    bool loop_ = true;
+    bool freezeOnLastFrame_ = true;
+    bool finished_ = false;
 
-    float fidget_cooldown = 0.0f;
+    float fidgetCooldown_ = 0.0f;
 
-    sf::Vector2f hex_center = { 0.0f, 0.0f };
-    bool facing_left = false;
-    float opacity = 1.0f;
+    sf::Vector2f hexCenter_ = { 0.0f, 0.0f };
+    bool facingLeft_ = false;
+    float opacity_ = 1.0f;
 
-    std::unique_ptr<sf::Sprite> sprite;
+    std::unique_ptr<sf::Sprite> sprite_;
 };
 
 } // namespace views

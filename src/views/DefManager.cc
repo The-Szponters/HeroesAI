@@ -10,19 +10,19 @@
 
 namespace views {
 
-void DefManager::set_search_roots( std::vector<std::filesystem::path> roots ) {
-    search_roots = std::move( roots );
-    lookup_built = false;
-    filename_to_path.clear( );
+void DefManager::setSearchRoots( std::vector<std::filesystem::path> roots ) {
+    searchRoots_ = std::move( roots );
+    lookupBuilt_ = false;
+    filenameToPath_.clear( );
 }
 
-void DefManager::add_search_root( std::filesystem::path root ) {
-    search_roots.push_back( std::move( root ) );
-    lookup_built = false;
-    filename_to_path.clear( );
+void DefManager::addSearchRoot( std::filesystem::path root ) {
+    searchRoots_.push_back( std::move( root ) );
+    lookupBuilt_ = false;
+    filenameToPath_.clear( );
 }
 
-std::string DefManager::normalize_filename( const std::string& filename ) {
+std::string DefManager::normalizeFilename( const std::string& filename ) {
     std::string normalized = filename;
     std::transform( normalized.begin( ),
                     normalized.end( ),
@@ -31,56 +31,59 @@ std::string DefManager::normalize_filename( const std::string& filename ) {
     return normalized;
 }
 
-void DefManager::build_lookup( ) {
-    filename_to_path.clear( );
+void DefManager::buildLookup( ) {
+    filenameToPath_.clear( );
 
-    for ( const auto& root : search_roots ) {
+    for ( const auto& root : searchRoots_ ) {
         if ( root.empty( ) || ! std::filesystem::exists( root ) ) {
             continue;
         }
         for ( const auto& entry : std::filesystem::recursive_directory_iterator( root ) ) {
-            if ( ! entry.is_regular_file( ) )
+            if ( ! entry.is_regular_file( ) ) {
                 continue;
+}
 
             const std::string lower_name =
-                normalize_filename( entry.path( ).filename( ).string( ) );
+                normalizeFilename( entry.path( ).filename( ).string( ) );
 
-            filename_to_path.try_emplace( lower_name, entry.path( ) );
+            filenameToPath_.try_emplace( lower_name, entry.path( ) );
         }
     }
 
-    lookup_built = true;
+    lookupBuilt_ = true;
 }
 
-std::shared_ptr<DefResource> DefManager::get_or_load( const std::string& asset_filename ) {
-    if ( asset_filename.empty( ) )
+std::shared_ptr<DefResource> DefManager::getOrLoad( const std::string& asset_filename ) {
+    if ( asset_filename.empty( ) ) {
         return nullptr;
+}
 
-    if ( ! lookup_built )
-        build_lookup( );
+    if ( ! lookupBuilt_ ) {
+        buildLookup( );
+}
 
-    const std::string key = normalize_filename( asset_filename );
+    const std::string key = normalizeFilename( asset_filename );
 
-    if ( const auto cached = resource_cache.find( key ); cached != resource_cache.end( ) ) {
+    if ( const auto cached = resourceCache_.find( key ); cached != resourceCache_.end( ) ) {
         return cached->second;
     }
 
-    const auto path_it = filename_to_path.find( key );
-    if ( path_it == filename_to_path.end( ) ) {
+    const auto path_it = filenameToPath_.find( key );
+    if ( path_it == filenameToPath_.end( ) ) {
         return nullptr;
     }
 
     try {
-        auto shared = std::make_shared<DefResource>( parser.parse_file( path_it->second ) );
-        resource_cache.emplace( key, shared );
+        auto shared = std::make_shared<DefResource>( parser_.parseFile( path_it->second ) );
+        resourceCache_.emplace( key, shared );
         return shared;
     } catch ( const std::exception& ) {
         return nullptr;
     }
 }
 
-void DefManager::clear_cache( ) {
-    resource_cache.clear( );
+void DefManager::clearCache( ) {
+    resourceCache_.clear( );
 }
 
 } // namespace views

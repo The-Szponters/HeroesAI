@@ -29,11 +29,11 @@ namespace src {
  * @brief Axial coordinates with derived cube component.
  */
 struct Axial {
-    int q;
-    int r;
-    int s;
+    int q_;
+    int r_;
+    int s_;
 };
-Axial offset_to_axial( int col, int row ) {
+Axial offsetToAxial( int col, int row ) {
     const int q = col - ( row - ( row & 1 ) ) / 2;
     const int r = row;
     return { q, r, -q - r };
@@ -43,10 +43,10 @@ Axial offset_to_axial( int col, int row ) {
  * @brief Static unit placement data for initial army layouts.
  */
 struct Placement {
-    UnitID id;
-    int count;
-    int col;
-    int row;
+    UnitID id_;
+    int count_;
+    int col_;
+    int row_;
 };
 
 } // namespace src
@@ -67,10 +67,10 @@ int main( ) {
         { UnitID::ARCHANGEL, 1, 1, 5 },
     };
     for ( const auto& p : blue_roster ) {
-        auto unit = UnitFactory::create_unit( p.id, p.count );
-        const src::Axial a = src::offset_to_axial( p.col, p.row );
-        unit->set_position( a.q, a.r, a.s );
-        blue_hero.get_army( ).add_unit( unit );
+        auto unit = UnitFactory::createUnit( p.id_, p.count_ );
+        const src::Axial a = src::offsetToAxial( p.col_, p.row_ );
+        unit->setPosition( a.q_, a.r_, a.s_ );
+        blue_hero.getArmy( ).addUnit( unit );
     }
 
     const src::Placement red_roster[] = {
@@ -83,22 +83,22 @@ int main( ) {
         { UnitID::DEVIL, 1, 13, 5 },
     };
     for ( const auto& p : red_roster ) {
-        auto unit = UnitFactory::create_unit( p.id, p.count );
-        const src::Axial a = src::offset_to_axial( p.col, p.row );
-        unit->set_position( a.q, a.r, a.s );
-        red_hero.get_army( ).add_unit( unit );
+        auto unit = UnitFactory::createUnit( p.id_, p.count_ );
+        const src::Axial a = src::offsetToAxial( p.col_, p.row_ );
+        unit->setPosition( a.q_, a.r_, a.s_ );
+        red_hero.getArmy( ).addUnit( unit );
     }
 
     GameManager model( blue_hero, red_hero );
     SfmlBattleView view( 1280, 960, "HeroesAI - Battle" );
     BattlePresenter presenter( model, view );
 
-    presenter.start_battle( );
+    presenter.startBattle( );
     view.render( );
 
-    while ( view.is_open( ) ) {
+    while ( view.isOpen( ) ) {
         try {
-            view.process_events( presenter );
+            view.processEvents( presenter );
         } catch ( const std::exception& e ) {
             (void) e;
         }

@@ -32,188 +32,194 @@ public:
           int count,
           std::string asset_filename = "",
           std::string description = "" )
-        : name( std::move( name ) ),
-          tier( tier ),
-          attack( attack ),
-          defense( defense ),
-          health( health ),
-          damage_min( damage_min ),
-          damage_max( damage_max ),
-          speed( speed ),
-          count( count ),
-          health_left( health ),
-          total_attack( attack ),
-          total_defense( defense ),
-          total_damage_min( damage_min ),
-          total_damage_max( damage_max ),
-          total_speed( speed ),
-          asset_filename( std::move( asset_filename ) ),
-          description( std::move( description ) ) {}
+        : name_( std::move( name ) ),
+          tier_( tier ),
+          attack_( attack ),
+          defense_( defense ),
+          health_( health ),
+          damageMin_( damage_min ),
+          damageMax_( damage_max ),
+          speed_( speed ),
+          count_( count ),
+          healthLeft_( health ),
+          totalAttack_( attack ),
+          totalDefense_( defense ),
+          totalDamageMin_( damage_min ),
+          totalDamageMax_( damage_max ),
+          totalSpeed_( speed ),
+          assetFilename_( std::move( asset_filename ) ),
+          description_( std::move( description ) ) {}
     virtual ~Unit( ) = default;
 
-    const std::string& get_name( ) const { return name; }
-    int get_tier( ) const { return tier; }
-    int get_attack( ) const { return total_attack; }
-    int get_defense( ) const { return total_defense; }
-    int get_health( ) const { return health; }
-    int get_damage_min( ) const { return total_damage_min; }
-    int get_damage_max( ) const { return total_damage_max; }
-    int get_speed( ) const { return total_speed; }
-    int get_count( ) const { return count; }
-    int get_health_left( ) const { return health_left; }
-    int get_q( ) const { return q; }
-    int get_r( ) const { return r; }
-    int get_s( ) const { return s; }
+    const std::string& getName( ) const { return name_; }
+    int getTier( ) const { return tier_; }
+    int getAttack( ) const { return totalAttack_; }
+    int getDefense( ) const { return totalDefense_; }
+    int getHealth( ) const { return health_; }
+    int getDamageMin( ) const { return totalDamageMin_; }
+    int getDamageMax( ) const { return totalDamageMax_; }
+    int getSpeed( ) const { return totalSpeed_; }
+    int getCount( ) const { return count_; }
+    int getHealthLeft( ) const { return healthLeft_; }
+    int getQ( ) const { return q_; }
+    int getR( ) const { return r_; }
+    int getS( ) const { return s_; }
 
-    int get_base_attack( ) const { return attack; }
-    int get_base_defense( ) const { return defense; }
-    int get_base_speed( ) const { return speed; }
-    int get_base_damage_min( ) const { return damage_min; }
-    int get_base_damage_max( ) const { return damage_max; }
-    const std::string& get_asset_filename( ) const { return asset_filename; }
-    const std::string& get_description( ) const { return description; }
+    int getBaseAttack( ) const { return attack_; }
+    int getBaseDefense( ) const { return defense_; }
+    int getBaseSpeed( ) const { return speed_; }
+    int getBaseDamageMin( ) const { return damageMin_; }
+    int getBaseDamageMax( ) const { return damageMax_; }
+    const std::string& getAssetFilename( ) const { return assetFilename_; }
+    const std::string& getDescription( ) const { return description_; }
 
-    int get_size( ) const { return size; }
-    void set_size( int s ) { size = ( s == 2 ? 2 : 1 ); }
-    bool is_teleporter_unit( ) const { return is_teleporter; }
-    void set_is_teleporter( bool value ) { is_teleporter = value; }
-    bool is_flying_unit( ) const { return is_flying; }
-    void set_is_flying( bool value ) { is_flying = value; }
+    int getSize( ) const { return size_; }
+    void setSize( int s ) { size_ = ( s == 2 ? 2 : 1 ); }
+    bool isTeleporterUnit( ) const { return isTeleporter_; }
+    void setIsTeleporter( bool value ) { isTeleporter_ = value; }
+    bool isFlyingUnit( ) const { return isFlying_; }
+    void setIsFlying( bool value ) { isFlying_ = value; }
 
-    bool ignores_path_blockers( ) const { return is_flying || is_teleporter; }
+    bool ignoresPathBlockers( ) const { return isFlying_ || isTeleporter_; }
 
-    bool has_retaliated_this_round( ) const { return has_retaliated; }
-    void set_retaliated( bool v ) { has_retaliated = v; }
+    bool hasRetaliatedThisRound( ) const { return hasRetaliated_; }
+    void setRetaliated( bool v ) { hasRetaliated_ = v; }
 
-    virtual bool is_ranged( ) const { return false; }
-    virtual int get_ammo( ) const { return 0; }
-    virtual int get_max_ammo( ) const { return 0; }
-    virtual int get_max_range_damage( ) const { return 0; }
-    virtual void decrement_ammo( ) {}
+    virtual bool isRanged( ) const { return false; }
+    virtual int getAmmo( ) const { return 0; }
+    virtual int getMaxAmmo( ) const { return 0; }
+    virtual int getMaxRangeDamage( ) const { return 0; }
+    virtual void decrementAmmo( ) {}
 
-    virtual const std::string& get_projectile_asset( ) const {
-        static const std::string empty;
-        return empty;
+    virtual const std::string& getProjectileAsset( ) const {
+        static const std::string EMPTY;
+        return EMPTY;
     }
 
-    bool is_facing_left( ) const { return logical_facing_left; }
+    bool isFacingLeft( ) const { return logicalFacingLeft_; }
 
-    bool get_visual_facing_left( ) const { return visual_facing_left; }
-    void set_visual_facing_left( bool value ) { visual_facing_left = value; }
+    bool getVisualFacingLeft( ) const { return visualFacingLeft_; }
+    void setVisualFacingLeft( bool value ) { visualFacingLeft_ = value; }
 
-    void set_position( int new_q, int new_r, int new_s ) {
-        if ( ! position_initialized ) {
-            logical_facing_left = ( new_q >= 7 );
-            visual_facing_left = ( new_q >= 7 );
-            position_initialized = true;
-        } else if ( new_q != q ) {
-            visual_facing_left = ( new_q < q );
+    void setPosition( int new_q, int new_r, int new_s ) {
+        if ( ! positionInitialized_ ) {
+            logicalFacingLeft_ = ( new_q >= 7 );
+            visualFacingLeft_ = ( new_q >= 7 );
+            positionInitialized_ = true;
+        } else if ( new_q != q_ ) {
+            visualFacingLeft_ = ( new_q < q_ );
         }
-        q = new_q;
-        r = new_r;
-        s = new_s;
+        q_ = new_q;
+        r_ = new_r;
+        s_ = new_s;
     }
 
-    void take_damage( int damage ) {
-        int total_health = health_left + ( count - 1 ) * health;
+    void takeDamage( int damage ) {
+        int total_health = healthLeft_ + ( count_ - 1 ) * health_;
         total_health -= damage;
-        if ( total_health < 0 )
+        if ( total_health < 0 ) { { { { { {
             total_health = 0;
+}
+}
+}
+}
+}
+}
 
-        count = ( total_health + health - 1 ) / health;
-        health_left = total_health % health;
-        if ( health_left == 0 && count > 0 ) {
-            health_left = health;
+        count_ = ( total_health + health_ - 1 ) / health_;
+        healthLeft_ = total_health % health_;
+        if ( healthLeft_ == 0 && count_ > 0 ) {
+            healthLeft_ = health_;
         }
     }
 
-    void apply_buff( const Buff& buff ) {
-        auto it = std::find_if( active_buffs.begin( ),
-                                active_buffs.end( ),
-                                [&buff]( const Buff& b ) { return b.type == buff.type; } );
-        if ( it != active_buffs.end( ) ) {
+    void applyBuff( const Buff& buff ) {
+        auto it = std::find_if( activeBuffs_.begin( ),
+                                activeBuffs_.end( ),
+                                [&buff]( const Buff& b ) { return b.type_ == buff.type_; } );
+        if ( it != activeBuffs_.end( ) ) {
             *it = buff;
         } else {
-            active_buffs.push_back( buff );
+            activeBuffs_.push_back( buff );
         }
-        recalculate_stats( );
+        recalculateStats( );
     }
 
-    void remove_buff( BuffType type ) {
-        std::erase_if( active_buffs, [type]( const Buff& b ) { return b.type == type; } );
-        recalculate_stats( );
+    void removeBuff( BuffType type ) {
+        std::erase_if( activeBuffs_, [type]( const Buff& b ) { return b.type_ == type; } );
+        recalculateStats( );
     }
 
-    void recalculate_stats( ) {
-        total_attack = attack;
-        total_defense = defense;
-        total_damage_min = damage_min;
-        total_damage_max = damage_max;
-        total_speed = speed;
+    void recalculateStats( ) {
+        totalAttack_ = attack_;
+        totalDefense_ = defense_;
+        totalDamageMin_ = damageMin_;
+        totalDamageMax_ = damageMax_;
+        totalSpeed_ = speed_;
 
-        for ( const auto& buff : active_buffs ) {
-            total_attack = buff.modify_attack( total_attack );
-            total_defense = buff.modify_defense( total_defense );
-            total_damage_min = buff.modify_damage_min( total_damage_min );
-            total_damage_max = buff.modify_damage_max( total_damage_max );
-            total_speed = buff.modify_speed( total_speed );
+        for ( const auto& buff : activeBuffs_ ) {
+            totalAttack_ = buff.modifyAttack_( totalAttack_ );
+            totalDefense_ = buff.modifyDefense_( totalDefense_ );
+            totalDamageMin_ = buff.modifyDamageMin_( totalDamageMin_ );
+            totalDamageMax_ = buff.modifyDamageMax_( totalDamageMax_ );
+            totalSpeed_ = buff.modifySpeed_( totalSpeed_ );
         }
 
-        total_attack = std::max( 0, total_attack );
-        total_defense = std::max( 0, total_defense );
-        total_damage_min = std::max( 0, total_damage_min );
-        total_damage_max = std::max( 0, total_damage_max );
-        total_speed = std::max( 0, total_speed );
+        totalAttack_ = std::max( 0, totalAttack_ );
+        totalDefense_ = std::max( 0, totalDefense_ );
+        totalDamageMin_ = std::max( 0, totalDamageMin_ );
+        totalDamageMax_ = std::max( 0, totalDamageMax_ );
+        totalSpeed_ = std::max( 0, totalSpeed_ );
     }
 
-    void on_turn_start( ) {
-        has_retaliated = false;
+    void onTurnStart( ) {
+        hasRetaliated_ = false;
         bool removed = false;
-        for ( auto& buff : active_buffs ) {
-            buff.duration--;
-            if ( buff.duration <= 0 ) {
+        for ( auto& buff : activeBuffs_ ) {
+            buff.duration_--;
+            if ( buff.duration_ <= 0 ) {
                 removed = true;
             }
         }
         if ( removed ) {
-            std::erase_if( active_buffs, []( const Buff& b ) { return b.duration <= 0; } );
-            recalculate_stats( );
+            std::erase_if( activeBuffs_, []( const Buff& b ) { return b.duration_ <= 0; } );
+            recalculateStats( );
         }
     }
 
 private:
-    std::string name;
-    int tier = 1;
-    int attack = 1;
-    int defense = 1;
-    int health = 1;
-    int health_left = 1;
-    int damage_min = 1;
-    int damage_max = 1;
-    int speed = 1;
-    int count = 1;
-    int q = 0;
-    int r = 0;
-    int s = 0;
+    std::string name_;
+    int tier_ = 1;
+    int attack_ = 1;
+    int defense_ = 1;
+    int health_ = 1;
+    int healthLeft_ = 1;
+    int damageMin_ = 1;
+    int damageMax_ = 1;
+    int speed_ = 1;
+    int count_ = 1;
+    int q_ = 0;
+    int r_ = 0;
+    int s_ = 0;
 
-    int total_attack = 1;
-    int total_defense = 1;
-    int total_damage_min = 1;
-    int total_damage_max = 1;
-    int total_speed = 1;
+    int totalAttack_ = 1;
+    int totalDefense_ = 1;
+    int totalDamageMin_ = 1;
+    int totalDamageMax_ = 1;
+    int totalSpeed_ = 1;
 
-    int size = 1;
-    bool is_teleporter = false;
-    bool is_flying = false;
-    bool has_retaliated = false;
-    bool logical_facing_left = false;
-    bool visual_facing_left = false;
-    bool position_initialized = false;
+    int size_ = 1;
+    bool isTeleporter_ = false;
+    bool isFlying_ = false;
+    bool hasRetaliated_ = false;
+    bool logicalFacingLeft_ = false;
+    bool visualFacingLeft_ = false;
+    bool positionInitialized_ = false;
 
-    std::string asset_filename;
-    std::string description;
+    std::string assetFilename_;
+    std::string description_;
 
-    std::vector<Buff> active_buffs;
+    std::vector<Buff> activeBuffs_;
 };
 
 } // namespace models

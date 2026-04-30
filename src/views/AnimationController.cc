@@ -13,15 +13,15 @@ namespace views {
 
 namespace {
 
-constexpr float kCanvasFootPadding = 10.0f;
+constexpr float K_CANVAS_FOOT_PADDING = 10.0f;
 
-std::mt19937& fidget_rng( ) {
+std::mt19937& fidgetRng( ) {
     static std::mt19937 rng( std::random_device{ }( ) );
     return rng;
 }
 } // namespace
 
-float AnimationController::fps_for_state( AnimState state, float base_fps ) {
+float AnimationController::fpsForState( AnimState state, float base_fps ) {
     switch ( state ) {
     case AnimState::STAND:
         return base_fps * 0.85f;
@@ -36,227 +36,243 @@ float AnimationController::fps_for_state( AnimState state, float base_fps ) {
     return base_fps;
 }
 
-void AnimationController::schedule_next_fidget( ) {
+void AnimationController::scheduleNextFidget( ) {
     std::uniform_real_distribution<float> dist( 5.0f, 10.0f );
-    fidget_cooldown = dist( fidget_rng( ) );
+    fidgetCooldown_ = dist( fidgetRng( ) );
 }
 
 AnimationController::AnimationController( std::shared_ptr<DefResource> resource,
                                           int initial_group ) {
-    set_resource( std::move( resource ) );
-    set_animation_group( initial_group );
+    setResource( std::move( resource ) );
+    setAnimationGroup( initial_group );
 }
 
-void AnimationController::set_resource( std::shared_ptr<DefResource> new_resource ) {
-    resource = std::move( new_resource );
-    frame_index = 0;
-    frame_accumulator = 0.0f;
-    finished = false;
-    schedule_next_fidget( );
-    apply_current_frame( );
+void AnimationController::setResource( std::shared_ptr<DefResource> new_resource ) {
+    resource_ = std::move( new_resource );
+    frameIndex_ = 0;
+    frameAccumulator_ = 0.0f;
+    finished_ = false;
+    scheduleNextFidget( );
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_animation_group( int new_group_id ) {
-    group_id = new_group_id;
-    anim_state = static_cast<AnimState>( new_group_id );
-    frame_index = 0;
-    frame_accumulator = 0.0f;
-    finished = false;
-    loop = true;
-    freeze_on_last_frame = true;
-    fps = fps_for_state( anim_state, base_fps );
-    apply_current_frame( );
+void AnimationController::setAnimationGroup( int new_group_id ) {
+    groupId_ = new_group_id;
+    animState_ = static_cast<AnimState>( new_group_id );
+    frameIndex_ = 0;
+    frameAccumulator_ = 0.0f;
+    finished_ = false;
+    loop_ = true;
+    freezeOnLastFrame_ = true;
+    fps_ = fpsForState( animState_, baseFps_ );
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_animation_state( AnimState state,
+void AnimationController::setAnimationState( AnimState state,
                                                bool should_loop,
                                                bool should_freeze_on_last_frame ) {
     if ( state == AnimState::STAND ) {
-        schedule_next_fidget( );
+        scheduleNextFidget( );
     }
 
-    anim_state = state;
-    group_id = static_cast<int>( state );
-    loop = should_loop;
-    freeze_on_last_frame = should_freeze_on_last_frame;
-    frame_index = 0;
-    frame_accumulator = 0.0f;
-    finished = false;
-    fps = fps_for_state( anim_state, base_fps );
-    apply_current_frame( );
+    animState_ = state;
+    groupId_ = static_cast<int>( state );
+    loop_ = should_loop;
+    freezeOnLastFrame_ = should_freeze_on_last_frame;
+    frameIndex_ = 0;
+    frameAccumulator_ = 0.0f;
+    finished_ = false;
+    fps_ = fpsForState( animState_, baseFps_ );
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_hex_center( const sf::Vector2f& center ) {
-    hex_center = center;
-    apply_current_frame( );
+void AnimationController::setHexCenter( const sf::Vector2f& center ) {
+    hexCenter_ = center;
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_facing_left( bool left ) {
-    facing_left = left;
-    apply_current_frame( );
+void AnimationController::setFacingLeft( bool left ) {
+    facingLeft_ = left;
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_scale( float s ) {
-    scale = s;
-    apply_current_frame( );
+void AnimationController::setScale( float s ) {
+    scale_ = s;
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_opacity( float alpha_0_to_1 ) {
-    opacity = std::clamp( alpha_0_to_1, 0.0f, 1.0f );
-    if ( sprite ) {
-        const auto alpha = static_cast<std::uint8_t>( std::round( 255.0f * opacity ) );
-        sprite->setColor( sf::Color( 255, 255, 255, alpha ) );
+void AnimationController::setOpacity( float alpha_0_to_1 ) {
+    opacity_ = std::clamp( alpha_0_to_1, 0.0f, 1.0f );
+    if ( sprite_ ) {
+        const auto alpha = static_cast<std::uint8_t>( std::round( 255.0f * opacity_ ) );
+        sprite_->setColor( sf::Color( 255, 255, 255, alpha ) );
     }
 }
 
-void AnimationController::reset_to_first_frame( ) {
-    frame_index = 0;
-    frame_accumulator = 0.0f;
-    finished = false;
-    apply_current_frame( );
+void AnimationController::resetToFirstFrame( ) {
+    frameIndex_ = 0;
+    frameAccumulator_ = 0.0f;
+    finished_ = false;
+    applyCurrentFrame( );
 }
 
-void AnimationController::set_fps( float new_fps ) {
+void AnimationController::setFps( float new_fps ) {
     if ( new_fps > 0.0f ) {
-        base_fps = new_fps;
-        fps = fps_for_state( anim_state, base_fps );
+        baseFps_ = new_fps;
+        fps_ = fpsForState( animState_, baseFps_ );
     }
 }
 
-void AnimationController::maybe_trigger_fidget( sf::Time delta_time ) {
-    if ( anim_state != AnimState::STAND || ! resource )
+void AnimationController::maybeTriggerFidget( sf::Time delta_time ) {
+    if ( animState_ != AnimState::STAND || ! resource_ ) {
         return;
+}
 
-    fidget_cooldown -= delta_time.asSeconds( );
-    if ( fidget_cooldown > 0.0f )
+    fidgetCooldown_ -= delta_time.asSeconds( );
+    if ( fidgetCooldown_ > 0.0f ) {
         return;
+}
 
-    schedule_next_fidget( );
+    scheduleNextFidget( );
 
-    const auto it = resource->groups.find( static_cast<int>( AnimState::FIDGET ) );
-    if ( it == resource->groups.end( ) || it->second.empty( ) )
+    const auto it = resource_->groups_.find( static_cast<int>( AnimState::FIDGET ) );
+    if ( it == resource_->groups_.end( ) || it->second.empty( ) ) {
         return;
+}
 
-    set_animation_state( AnimState::FIDGET, false, true );
+    setAnimationState( AnimState::FIDGET, false, true );
 }
 
 void AnimationController::update( sf::Time delta_time ) {
-    if ( resource == nullptr )
+    if ( resource_ == nullptr ) {
         return;
+}
 
-    if ( anim_state == AnimState::FIDGET && finished ) {
-        set_animation_state( AnimState::STAND, true, true );
+    if ( animState_ == AnimState::FIDGET && finished_ ) {
+        setAnimationState( AnimState::STAND, true, true );
         return;
     }
 
-    maybe_trigger_fidget( delta_time );
+    maybeTriggerFidget( delta_time );
 
-    if ( finished )
+    if ( finished_ ) {
         return;
+}
 
-    const auto* group = find_group( );
-    if ( ! group || group->empty( ) )
+    const auto* group = findGroup( );
+    if ( ! group || group->empty( ) ) {
         return;
+}
 
-    frame_accumulator += delta_time.asSeconds( );
-    const float frame_duration = 1.0f / fps;
+    frameAccumulator_ += delta_time.asSeconds( );
+    const float frame_duration = 1.0f / fps_;
 
-    while ( frame_accumulator >= frame_duration ) {
-        frame_accumulator -= frame_duration;
+    while ( frameAccumulator_ >= frame_duration ) {
+        frameAccumulator_ -= frame_duration;
 
-        if ( loop ) {
-            frame_index = ( frame_index + 1 ) % group->size( );
-            apply_current_frame( );
+        if ( loop_ ) {
+            frameIndex_ = ( frameIndex_ + 1 ) % group->size( );
+            applyCurrentFrame( );
             continue;
         }
 
-        if ( frame_index + 1 < group->size( ) ) {
-            ++frame_index;
-            apply_current_frame( );
+        if ( frameIndex_ + 1 < group->size( ) ) {
+            ++frameIndex_;
+            applyCurrentFrame( );
             continue;
         }
 
-        finished = true;
-        if ( freeze_on_last_frame ) {
-            frame_index = group->size( ) - 1;
-            apply_current_frame( );
+        finished_ = true;
+        if ( freezeOnLastFrame_ ) {
+            frameIndex_ = group->size( ) - 1;
+            applyCurrentFrame( );
         }
         break;
     }
 }
 
-const sf::Sprite* AnimationController::get_sprite( ) const {
-    return sprite.get( );
+const sf::Sprite* AnimationController::getSprite( ) const {
+    return sprite_.get( );
 }
 
-bool AnimationController::is_ready( ) const {
-    if ( resource == nullptr )
+bool AnimationController::isReady( ) const {
+    if ( resource_ == nullptr ) {
         return false;
-    const auto* group = find_group( );
+}
+    const auto* group = findGroup( );
     return group != nullptr && ! group->empty( );
 }
 
-bool AnimationController::is_finished( ) const {
-    return finished;
+bool AnimationController::isFinished( ) const {
+    return finished_;
 }
 
-AnimState AnimationController::get_animation_state( ) const {
-    return anim_state;
+AnimState AnimationController::getAnimationState( ) const {
+    return animState_;
 }
 
-int AnimationController::get_group_id( ) const {
-    return group_id;
+int AnimationController::getGroupId( ) const {
+    return groupId_;
 }
 
-const std::vector<DefFrame>* AnimationController::find_group( ) const {
-    if ( ! resource )
+const std::vector<DefFrame>* AnimationController::findGroup( ) const {
+    if ( ! resource_ ) {
         return nullptr;
-    auto it = resource->groups.find( group_id );
-    if ( it != resource->groups.end( ) && ! it->second.empty( ) )
+}
+    auto it = resource_->groups_.find( groupId_ );
+    if ( it != resource_->groups_.end( ) && ! it->second.empty( ) ) {
         return &it->second;
+}
     for ( int fallback : { 1, 0 } ) {
-        auto fb = resource->groups.find( fallback );
-        if ( fb != resource->groups.end( ) && ! fb->second.empty( ) )
+        auto fb = resource_->groups_.find( fallback );
+        if ( fb != resource_->groups_.end( ) && ! fb->second.empty( ) ) {
             return &fb->second;
+}
     }
-    if ( ! resource->groups.empty( ) )
-        return &resource->groups.begin( )->second;
+    if ( ! resource_->groups_.empty( ) ) {
+        return &resource_->groups_.begin( )->second;
+}
     return nullptr;
 }
 
-void AnimationController::apply_current_frame( ) {
-    if ( resource == nullptr )
+void AnimationController::applyCurrentFrame( ) {
+    if ( resource_ == nullptr ) {
         return;
+}
 
-    const auto* group = find_group( );
-    if ( ! group || group->empty( ) )
+    const auto* group = findGroup( );
+    if ( ! group || group->empty( ) ) {
         return;
+}
 
-    const DefFrame& frame = ( *group )[frame_index % group->size( )];
-    if ( frame.canvas_width == 0 || frame.canvas_height == 0 )
+    const DefFrame& frame = ( *group )[frameIndex_ % group->size( )];
+    if ( frame.canvasWidth_ == 0 || frame.canvasHeight_ == 0 ) {
         return;
+}
 
-    if ( ! sprite ) {
-        sprite = std::make_unique<sf::Sprite>( frame.texture );
+    if ( ! sprite_ ) {
+        sprite_ = std::make_unique<sf::Sprite>( frame.texture_ );
     } else {
-        sprite->setTexture( frame.texture, true );
+        sprite_->setTexture( frame.texture_, true );
     }
 
-    const float canvas_w = static_cast<float>( frame.canvas_width );
-    const float canvas_h = static_cast<float>( frame.canvas_height );
-    float feet_x = static_cast<float>( resource->feet_x );
-    float feet_y = static_cast<float>( resource->feet_y );
-    if ( feet_x <= 0.0f || feet_x > canvas_w )
+    const float canvas_w = static_cast<float>( frame.canvasWidth_ );
+    const float canvas_h = static_cast<float>( frame.canvasHeight_ );
+    float feet_x = static_cast<float>( resource_->feetX_ );
+    float feet_y = static_cast<float>( resource_->feetY_ );
+    if ( feet_x <= 0.0f || feet_x > canvas_w ) {
         feet_x = canvas_w * 0.5f;
-    if ( feet_y <= 0.0f || feet_y > canvas_h )
-        feet_y = canvas_h - kCanvasFootPadding;
-    sprite->setOrigin( { feet_x, feet_y } );
-    sprite->setPosition( hex_center );
+}
+    if ( feet_y <= 0.0f || feet_y > canvas_h ) {
+        feet_y = canvas_h - K_CANVAS_FOOT_PADDING;
+}
+    sprite_->setOrigin( { feet_x, feet_y } );
+    sprite_->setPosition( hexCenter_ );
 
-    const float sx = facing_left ? -scale : scale;
-    sprite->setScale( { sx, scale } );
-    const auto alpha = static_cast<std::uint8_t>( std::round( 255.0f * opacity ) );
-    sprite->setColor( sf::Color( 255, 255, 255, alpha ) );
+    const float sx = facingLeft_ ? -scale_ : scale_;
+    sprite_->setScale( { sx, scale_ } );
+    const auto alpha = static_cast<std::uint8_t>( std::round( 255.0f * opacity_ ) );
+    sprite_->setColor( sf::Color( 255, 255, 255, alpha ) );
 }
 
 } // namespace views
