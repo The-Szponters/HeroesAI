@@ -1,6 +1,7 @@
 /**
  * @file Buff.h
  * @brief Temporary stat-modifying effects applied to units.
+ * @author Dominik Śledziewski
  */
 #pragma once
 #include <functional>
@@ -17,7 +18,7 @@ enum class BuffType { DEFEND, SLOW, BLIND };
  */
 struct Buff {
     BuffType type_;
-    int duration_{}{}{}{}{}{};
+    int duration_ = 0;
 
     std::function<int( int )> modifyAttack_ = []( int x ) { return x; };
     std::function<int( int )> modifyDefense_ = []( int x ) { return x; };

@@ -1,12 +1,8 @@
 /**
  * @file SfmlBattleView.cc
  * @brief Implementation of the SFML-backed battle renderer.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
-#include "SfmlBattleView.h"
-
-#include "../models/Board.h"
-#include "../presenters/BattlePresenter.h"
-
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -15,6 +11,10 @@
 #include <cstring>
 #include <sstream>
 #include <unordered_set>
+
+#include "../models/Board.h"
+#include "../presenters/BattlePresenter.h"
+#include "SfmlBattleView.h"
 
 namespace views {
 
@@ -61,12 +61,21 @@ SfmlBattleView::SfmlBattleView( unsigned int width, unsigned int height, const s
       hudHpLeft_( 0 ) {
     window_.setFramerateLimit( 60 );
 
-    const std::array<const char*, 5> font_candidates = {
+    const std::array<const char*, 11> font_candidates = {
         "assets/font.ttf",
+        // Linux
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
         "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        // macOS
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial.ttf",
+        "/System/Library/Fonts/SFNS.ttf",
+        // Windows
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
     };
     bool font_loaded = false;
     for ( const char* path : font_candidates ) {

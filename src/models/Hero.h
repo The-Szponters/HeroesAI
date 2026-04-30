@@ -1,11 +1,13 @@
 /**
  * @file Hero.h
  * @brief Hero entity that owns an army and provides primary stats.
+ * @author Łukasz Szydlik
  */
 #pragma once
-#include "Army.h"
 #include <string>
 #include <utility>
+
+#include "Army.h"
 
 namespace models {
 

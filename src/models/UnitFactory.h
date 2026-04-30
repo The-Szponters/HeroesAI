@@ -1,16 +1,18 @@
 /**
  * @file UnitFactory.h
  * @brief Factory that builds Unit / RangeUnit instances from JSON data.
+ * @author Łukasz Szydlik
  */
 #pragma once
 
-#include "RangeUnit.h"
-#include "Unit.h"
-#include "UnitId.h"
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
+
+#include "RangeUnit.h"
+#include "Unit.h"
+#include "UnitId.h"
 
 namespace models {
 
@@ -27,7 +29,7 @@ public:
     static std::shared_ptr<Unit> createUnit( UnitID id, int count );
 
 private:
-    static std::unordered_map<UnitID, nlohmann::Json> UnitData;
+    static std::unordered_map<UnitID, nlohmann::json> UnitData;
     static std::string unitIdToString( UnitID id );
 };
 

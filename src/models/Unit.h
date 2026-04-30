@@ -1,12 +1,14 @@
 /**
  * @file Unit.h
  * @brief Stack of identical creatures that fights as a single entity.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
 #pragma once
-#include "Buff.h"
 #include <algorithm>
 #include <string>
 #include <vector>
+
+#include "Buff.h"
 
 namespace models {
 
@@ -117,14 +119,9 @@ public:
     void takeDamage( int damage ) {
         int total_health = healthLeft_ + ( count_ - 1 ) * health_;
         total_health -= damage;
-        if ( total_health < 0 ) { { { { { {
+        if ( total_health < 0 ) {
             total_health = 0;
-}
-}
-}
-}
-}
-}
+        }
 
         count_ = ( total_health + health_ - 1 ) / health_;
         healthLeft_ = total_health % health_;

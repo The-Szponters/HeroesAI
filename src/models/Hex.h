@@ -1,12 +1,14 @@
 /**
  * @file Hex.h
  * @brief Single battlefield cell using cube (q, r, s) coordinates.
+ * @author Dominik Śledziewski
  */
 #pragma once
-#include "Unit.h"
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
+
+#include "Unit.h"
 
 namespace models {
 

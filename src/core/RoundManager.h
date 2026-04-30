@@ -1,11 +1,13 @@
 /**
  * @file RoundManager.h
  * @brief Per-round turn ordering for all units in a battle.
+ * @author Dominik Śledziewski
  */
 #pragma once
-#include "Unit.h"
 #include <queue>
 #include <vector>
+
+#include "Unit.h"
 
 namespace core {
 

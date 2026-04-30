@@ -1,6 +1,7 @@
-build/
+build
 out/
 cmake-build-*/
+_deps
 
 .vscode/
 .idea/

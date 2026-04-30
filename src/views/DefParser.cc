@@ -1,11 +1,12 @@
 /**
  * @file DefParser.cc
  * @brief Implementation of the legacy DEF binary format parser.
+ * @author Dominik Śledziewski
  */
-#include "DefParser.h"
-
 #include <cstddef>
 #include <iostream>
+
+#include "DefParser.h"
 
 namespace views {
 
@@ -120,15 +121,15 @@ DefResource DefParser::parseFile( const std::filesystem::path& filepath ) const 
                     line_offsets[y] = readBinary<std::uint32_t>( file, "line_offset" );
 }
 
-                std::vector<std::uint8_t> indexed( static_cast<size_type>(crop_w * crop_h), 0 );
+                std::vector<std::uint8_t> indexed( static_cast<std::size_t>( crop_w * crop_h ), 0 );
                 for ( std::uint32_t y = 0; y < crop_h; ++y ) {
                     const std::streamoff pos = static_cast<std::streamoff>( frame_offsets[f] ) +
                                                32 + static_cast<std::streamoff>( line_offsets[y] );
                     file.seekg( pos, std::ios::beg );
-                    decodeRleLine( file, &indexed[static_cast<size_type>(y * crop_w)], crop_w );
+                    decodeRleLine( file, &indexed[static_cast<std::size_t>( y * crop_w )], crop_w );
                 }
 
-                std::vector<std::uint8_t> rgba( static_cast<size_type>(full_w * full_h * 4u), 0 );
+                std::vector<std::uint8_t> rgba( static_cast<std::size_t>( full_w * full_h * 4u ), 0 );
                 for ( std::uint32_t y = 0; y < crop_h; ++y ) {
                     const std::int32_t dy = tmargin + static_cast<std::int32_t>( y );
                     if ( dy < 0 || dy >= static_cast<std::int32_t>( full_h ) ) {
@@ -150,17 +151,16 @@ DefResource DefParser::parseFile( const std::filesystem::path& filepath ) const 
                     }
                 }
 
-                (void) frames[f].texture_.resize( { full_w, full_h } );
-                frames[f].texture_.update( rgba.data( ) );
-
-                frames[f].texture_.setSmooth( false );
-
-                frames[f].offsetX_ = lmargin;
-                frames[f].offsetY_ = tmargin;
-                frames[f].width_ = crop_w;
-                frames[f].height_ = crop_h;
-                frames[f].canvasWidth_ = full_w;
-                frames[f].canvasHeight_ = full_h;
+                if ( frames[f].texture_.resize( { full_w, full_h } ) ) {
+                    frames[f].texture_.update( rgba.data( ) );
+                    frames[f].texture_.setSmooth( false );
+                    frames[f].offsetX_ = lmargin;
+                    frames[f].offsetY_ = tmargin;
+                    frames[f].width_ = crop_w;
+                    frames[f].height_ = crop_h;
+                    frames[f].canvasWidth_ = full_w;
+                    frames[f].canvasHeight_ = full_h;
+                }
             }
 
             file.seekg( return_pos );

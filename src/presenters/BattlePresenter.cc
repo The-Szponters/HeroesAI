@@ -1,15 +1,16 @@
 /**
  * @file BattlePresenter.cc
  * @brief Implementation of the MVP presenter for the battle screen.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
-#include "BattlePresenter.h"
-
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
+
+#include "BattlePresenter.h"
 
 namespace presenters {
 
@@ -1360,7 +1361,7 @@ BattlePresenter::PickedApproach BattlePresenter::pickAttackApproachForCursor(
         }
         const bool present = std::any_of(
             picked.allOrigins_.begin( ), picked.allOrigins_.end( ), [&]( const auto& o ) {
-                return o.q == self_origin.q_ && o.r == self_origin.r_;
+                return o.q_ == self_origin.q_ && o.r_ == self_origin.r_;
             } );
         if ( ! present ) {
             picked.allOrigins_.push_back( self_origin );

@@ -1,13 +1,14 @@
 /**
  * @file AnimationController.cc
  * @brief Implementation of the unit-sprite animation state machine.
+ * @author Dominik Śledziewski
  */
-#include "AnimationController.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <random>
+
+#include "AnimationController.h"
 
 namespace views {
 

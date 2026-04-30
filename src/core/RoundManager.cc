@@ -1,9 +1,11 @@
 /**
  * @file RoundManager.cc
  * @brief Implementation of round scheduling and the wait/initiative logic.
+ * @author Dominik Śledziewski
  */
-#include "RoundManager.h"
 #include <algorithm>
+
+#include "RoundManager.h"
 
 namespace core {
 

@@ -1,6 +1,7 @@
 /**
  * @file DefParser.h
  * @brief Binary parser for the legacy DEF sprite-animation format.
+ * @author Dominik Śledziewski
  */
 #pragma once
 

@@ -1,11 +1,13 @@
 /**
  * @file Board.h
  * @brief Battlefield grid built out of axial-coordinate hex cells.
+ * @author Łukasz Szydlik
  */
 #pragma once
-#include "Hex.h"
 #include <cstddef>
 #include <vector>
+
+#include "Hex.h"
 
 namespace models {
 
@@ -21,7 +23,7 @@ public:
     static constexpr int HEIGHT = 11;
 
     Board( ) {
-        grid_.reserve( static_cast<size_type>(static_cast<size_type>(static_cast<size_type>(WIDTH * HEIGHT))) );
+        grid_.reserve( static_cast<std::size_t>( WIDTH * HEIGHT ) );
 
         for ( int row = 0; row < HEIGHT; ++row ) {
             for ( int col = 0; col < WIDTH; ++col ) {

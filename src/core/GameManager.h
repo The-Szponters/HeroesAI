@@ -1,16 +1,18 @@
 /**
  * @file GameManager.h
  * @brief High-level battle controller -- the model the presenter talks to.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
 #pragma once
+#include <unordered_set>
+#include <vector>
+
 #include "../models/Hero.h"
 #include "ActionManager.h"
 #include "Board.h"
 #include "Hex.h"
 #include "RoundManager.h"
 #include "Unit.h"
-#include <unordered_set>
-#include <vector>
 
 namespace core {
 

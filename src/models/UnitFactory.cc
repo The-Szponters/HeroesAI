@@ -1,14 +1,16 @@
 /**
  * @file UnitFactory.cc
  * @brief Implementation of the data-driven Unit / RangeUnit factory.
+ * @author Łukasz Szydlik
  */
-#include "UnitFactory.h"
 #include <fstream>
 #include <stdexcept>
 
+#include "UnitFactory.h"
+
 namespace models {
 
-std::unordered_map<UnitID, nlohmann::Json> UnitFactory::UnitData;
+std::unordered_map<UnitID, nlohmann::json> UnitFactory::UnitData;
 
 std::string UnitFactory::unitIdToString( UnitID id ) {
     static const char* unit_names[] = {
@@ -34,7 +36,7 @@ void UnitFactory::init( const std::string& filepath ) {
         throw std::runtime_error( "UnitFactory: could not open " + filepath );
     }
 
-    nlohmann::Json j;
+    nlohmann::json j;
     file >> j;
 
     UnitData.clear( );

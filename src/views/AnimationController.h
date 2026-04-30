@@ -1,15 +1,15 @@
 /**
  * @file AnimationController.h
  * @brief Per-unit sprite animation state machine.
+ * @author Dominik Śledziewski
  */
 #pragma once
 
+#include <memory>
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 
 #include "DefParser.h"
-
-#include <memory>
 
 namespace views {
 

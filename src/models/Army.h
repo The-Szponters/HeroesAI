@@ -1,11 +1,13 @@
 /**
  * @file Army.h
  * @brief Container for a hero's deployable unit stacks.
+ * @author Dominik Śledziewski
  */
 #pragma once
-#include "Unit.h"
 #include <memory>
 #include <vector>
+
+#include "Unit.h"
 
 namespace models {
 

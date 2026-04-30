@@ -1,12 +1,13 @@
 /**
  * @file DefManager.cc
  * @brief Implementation of the DEF resource cache and lookup.
+ * @author Łukasz Szydlik
  */
-#include "DefManager.h"
-
 #include <algorithm>
 #include <cctype>
 #include <exception>
+
+#include "DefManager.h"
 
 namespace views {
 

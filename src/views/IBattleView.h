@@ -4,6 +4,7 @@
  *
  * Defines the data and animation hooks required to render and animate
  * a battle, decoupling presenter logic from any concrete renderer.
+ * @author Łukasz Szydlik
  */
 #pragma once
 

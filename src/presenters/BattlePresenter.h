@@ -1,15 +1,17 @@
 /**
  * @file BattlePresenter.h
  * @brief Mediator between the GameManager model and an IBattleView.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
 #pragma once
 
-#include "../core/GameManager.h"
-#include "../views/IBattleView.h"
 #include <optional>
 #include <SFML/System/Vector2.hpp>
 #include <unordered_map>
 #include <unordered_set>
+
+#include "../core/GameManager.h"
+#include "../views/IBattleView.h"
 
 namespace presenters {
 
@@ -26,10 +28,37 @@ class BattlePresenter {
 public:
     BattlePresenter( core::GameManager& model, views::IBattleView& view );
 
+    /**
+     * @brief Initialises the view with the starting board state and highlights.
+     */
     void startBattle( );
+
+    /**
+     * @brief Handles a player click on a battlefield hex.
+     *
+     * Routes the click to move, melee attack, or ranged attack depending on
+     * what occupies the clicked hex and the current unit's capabilities.
+     * @param q          Axial column coordinate of the clicked hex.
+     * @param r          Axial row coordinate of the clicked hex.
+     * @param shift_held True when the player holds Shift (unit range preview mode).
+     */
     void onHexClicked( int q, int r, bool shift_held = false );
+
+    /**
+     * @brief Updates cursor style, destination highlight and attack-origin hints on hover.
+     * @param pixel_x    Horizontal cursor position in window pixels.
+     * @param pixel_y    Vertical cursor position in window pixels.
+     * @param shift_held True when the player holds Shift (unit info preview mode).
+     */
     void onMouseHover( int pixel_x, int pixel_y, bool shift_held );
+
+    /**
+     * @brief Shows the unit info panel for the unit occupying the right-clicked hex.
+     * @param pixel_x Horizontal cursor position in window pixels.
+     * @param pixel_y Vertical cursor position in window pixels.
+     */
     void onRightClickPressed( int pixel_x, int pixel_y );
+
     void onRightClickReleased( );
     void onDefendClicked( );
     void onWaitClicked( );

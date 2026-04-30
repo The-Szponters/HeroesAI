@@ -5,7 +5,10 @@
  * Bootstraps the unit factory from JSON, builds two opposing heroes with
  * a fixed test roster, wires the model/view/presenter triad, and drives
  * the SFML event loop until the window closes.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
+#include <memory>
+
 #include "core/GameManager.h"
 #include "models/Hero.h"
 #include "models/Unit.h"
@@ -13,8 +16,6 @@
 #include "models/UnitId.h"
 #include "presenters/BattlePresenter.h"
 #include "views/SfmlBattleView.h"
-
-#include <memory>
 
 using core::GameManager;
 using models::Hero;
@@ -99,10 +100,10 @@ int main( ) {
     while ( view.isOpen( ) ) {
         try {
             view.processEvents( presenter );
+            view.render( );
         } catch ( const std::exception& e ) {
             (void) e;
         }
-        view.render( );
     }
 
     return 0;

@@ -1,11 +1,13 @@
 /**
  * @file GameManager.cc
  * @brief Implementation of the battle facade and morale rolls.
+ * @author Dominik Śledziewski
  */
-#include "GameManager.h"
 #include <algorithm>
 #include <random>
 #include <tuple>
+
+#include "GameManager.h"
 
 namespace core {
 

@@ -1,8 +1,8 @@
 /**
  * @file ActionManager.cc
  * @brief Implementation of pathfinding and combat resolution rules.
+ * @author Łukasz Szydlik
  */
-#include "ActionManager.h"
 #include <algorithm>
 #include <limits>
 #include <map>
@@ -10,6 +10,8 @@
 #include <random>
 #include <set>
 #include <tuple>
+
+#include "ActionManager.h"
 
 namespace core {
 

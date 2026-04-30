@@ -1,6 +1,7 @@
 /**
  * @file SfmlBattleView.h
  * @brief Concrete SFML-backed battle view.
+ * @author Dominik Śledziewski & Łukasz Szydlik
  */
 #pragma once
 
