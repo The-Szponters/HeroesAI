@@ -94,16 +94,15 @@ int main( ) {
     SfmlBattleView view( 1280, 960, "HeroesAI - Battle" );
     BattlePresenter presenter( model, view );
 
-    presenter.startBattle( );
-    view.render( );
+    try {
+        presenter.startBattle( );
+    } catch ( const std::exception& ) {}
 
     while ( view.isOpen( ) ) {
         try {
             view.processEvents( presenter );
             view.render( );
-        } catch ( const std::exception& e ) {
-            (void) e;
-        }
+        } catch ( ... ) {}
     }
 
     return 0;
