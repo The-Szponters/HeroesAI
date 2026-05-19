@@ -12,9 +12,10 @@ namespace core {
 
 SceneManager::SceneManager( unsigned int width,
                                 unsigned int height,
-                                const std::string& title )
+                                const std::string& title,
+                                unsigned int framerate_limit )
     : window_( sf::VideoMode( { width, height } ), title ) {
-    window_.setFramerateLimit( 60 );
+    window_.setFramerateLimit( framerate_limit );
 }
 
 void SceneManager::run( ) {

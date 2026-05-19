@@ -31,6 +31,7 @@ add_executable(${PROJECT_NAME}
   src/core/ActionManager.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
+  src/core/Settings.cc
   src/core/SceneManager.cc
   src/core/MainMenuScene.cc
   src/core/BattleScene.cc
@@ -61,6 +62,10 @@ target_link_libraries(${PROJECT_NAME}
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets")
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_SOURCE_DIR}/settings.cfg" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/settings.cfg")
 
 
 include(FetchContent)

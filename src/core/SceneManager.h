@@ -24,7 +24,10 @@ namespace core {
  */
 class SceneManager {
 public:
-    SceneManager( unsigned int width, unsigned int height, const std::string& title );
+    SceneManager( unsigned int width,
+                      unsigned int height,
+                      const std::string& title,
+                      unsigned int framerate_limit );
 
     void run( );
 
