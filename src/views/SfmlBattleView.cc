@@ -14,7 +14,9 @@
 
 #include "../models/Board.h"
 #include "../presenters/BattlePresenter.h"
+#include "BattleLayout.h"
 #include "SfmlBattleView.h"
+#include "ViewportUtils.h"
 
 namespace views {
 
@@ -51,12 +53,12 @@ std::pair<int, int> cubeRoundToAxial( float fq, float fr, float fs ) {
 
 SfmlBattleView::SfmlBattleView( sf::RenderWindow& window )
     : window_( window ),
-      screenWidth_( static_cast<float>( window.getSize( ).x ) ),
-      screenHeight_( static_cast<float>( window.getSize( ).y ) ),
+      screenWidth_( window.getView( ).getSize( ).x ),
+      screenHeight_( window.getView( ).getSize( ).y ),
       battlefieldHeight_( screenHeight_ * 0.8f ),
-      hexRadius_( 28.0f ),
+      hexRadius_( K_HEX_RADIUS ),
 
-      gridOrigin_( 300.0f, 70.0f + 28.0f * 1.5f ),
+      gridOrigin_( K_GRID_ORIGIN_X, K_GRID_ORIGIN_Y ),
       hudCount_( 0 ),
       hudHpLeft_( 0 ) {
     const std::array<const char*, 11> font_candidates = {
@@ -203,17 +205,27 @@ void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
             continue;
         }
 
+        if ( event->is<sf::Event::Resized>( ) ) {
+            views::applyLetterboxView( window_, screenWidth_, screenHeight_ );
+            continue;
+        }
+
         if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
-            onMouseHover( mouse_move->position.x, mouse_move->position.y, presenter );
+            const sf::Vector2f world = window_.mapPixelToCoords( mouse_move->position );
+            onMouseHover( static_cast<int>( world.x ),
+                              static_cast<int>( world.y ),
+                              presenter );
             continue;
         }
 
         if ( const auto* mouse_press = event->getIf<sf::Event::MouseButtonPressed>( ) ) {
-            const float mx = static_cast<float>( mouse_press->position.x );
-            const float my = static_cast<float>( mouse_press->position.y );
+            const sf::Vector2f world = window_.mapPixelToCoords( mouse_press->position );
+            const float mx = world.x;
+            const float my = world.y;
 
             if ( mouse_press->button == sf::Mouse::Button::Right ) {
-                presenter.onRightClickPressed( mouse_press->position.x, mouse_press->position.y );
+                presenter.onRightClickPressed( static_cast<int>( mx ),
+                                                   static_cast<int>( my ) );
                 continue;
             }
 
@@ -803,7 +815,9 @@ void SfmlBattleView::drawCursor( ) {
 }
 
     sf::Sprite sprite( frame.texture_ );
-    sprite.setOrigin( { 0.0f, 0.0f } );
+    const sf::Vector2u tex_size = frame.texture_.getSize( );
+    sprite.setOrigin( { static_cast<float>( tex_size.x ) * 0.5f,
+                          static_cast<float>( tex_size.y ) * 0.5f } );
     sprite.setPosition( cursorPosition_ );
     window_.draw( sprite );
 }

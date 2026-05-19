@@ -8,6 +8,7 @@
 
 #include "../presenters/MainMenuPresenter.h"
 #include "SfmlMainMenuView.h"
+#include "ViewportUtils.h"
 
 namespace views {
 
@@ -23,8 +24,8 @@ constexpr unsigned int K_MESSAGE_LABEL_SIZE = 18;
 
 SfmlMainMenuView::SfmlMainMenuView( sf::RenderWindow& window )
     : window_( window ),
-      screenWidth_( static_cast<float>( window.getSize( ).x ) ),
-      screenHeight_( static_cast<float>( window.getSize( ).y ) ),
+      screenWidth_( window.getView( ).getSize( ).x ),
+      screenHeight_( window.getView( ).getSize( ).y ),
       newGameButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
     const std::array<const char*, 11> font_candidates = {
         "assets/font.ttf",
@@ -106,10 +107,14 @@ void SfmlMainMenuView::processEvents( MainMenuPresenter& presenter ) {
             continue;
         }
 
+        if ( event->is<sf::Event::Resized>( ) ) {
+            views::applyLetterboxView( window_, screenWidth_, screenHeight_ );
+            continue;
+        }
+
         if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
-            const float mx = static_cast<float>( mouse_move->position.x );
-            const float my = static_cast<float>( mouse_move->position.y );
-            newGameButtonHovered_ = newGameButtonBounds_.contains( { mx, my } );
+            const sf::Vector2f world = window_.mapPixelToCoords( mouse_move->position );
+            newGameButtonHovered_ = newGameButtonBounds_.contains( { world.x, world.y } );
             continue;
         }
 
@@ -117,9 +122,8 @@ void SfmlMainMenuView::processEvents( MainMenuPresenter& presenter ) {
             if ( mouse_press->button != sf::Mouse::Button::Left ) {
                 continue;
             }
-            const float mx = static_cast<float>( mouse_press->position.x );
-            const float my = static_cast<float>( mouse_press->position.y );
-            routeMenuClick( mx, my, presenter );
+            const sf::Vector2f world = window_.mapPixelToCoords( mouse_press->position );
+            routeMenuClick( world.x, world.y, presenter );
             continue;
         }
     }

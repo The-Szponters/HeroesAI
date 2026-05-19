@@ -5,6 +5,7 @@
  */
 #include "SceneManager.h"
 
+#include "../views/ViewportUtils.h"
 #include "BattleScene.h"
 #include "MainMenuScene.h"
 
@@ -16,6 +17,9 @@ SceneManager::SceneManager( unsigned int width,
                                 unsigned int framerate_limit )
     : window_( sf::VideoMode( { width, height } ), title ) {
     window_.setFramerateLimit( framerate_limit );
+    views::applyLetterboxView( window_,
+                                   views::K_LOGICAL_WIDTH,
+                                   views::K_LOGICAL_HEIGHT );
 }
 
 void SceneManager::run( ) {

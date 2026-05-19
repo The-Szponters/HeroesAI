@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../views/BattleLayout.h"
 #include "BattlePresenter.h"
 
 namespace presenters {
@@ -22,13 +23,12 @@ using models::Unit;
 using views::CursorStyle;
 using views::HighlightType;
 using views::IBattleView;
+using views::K_GRID_ORIGIN_X;
+using views::K_GRID_ORIGIN_Y;
+using views::K_HEX_RADIUS;
 using views::UnitRenderData;
 
 namespace {
-constexpr float K_HEX_RADIUS = 28.0f;
-constexpr float K_GRID_ORIGIN_X = 300.0f;
-
-constexpr float K_GRID_ORIGIN_Y = 70.0f + 28.0f * 1.5f;
 constexpr float K_PI = 3.14159265358979323846f;
 
 std::int64_t makeHexKey( int q, int r ) {
