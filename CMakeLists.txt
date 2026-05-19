@@ -31,11 +31,16 @@ add_executable(${PROJECT_NAME}
   src/core/ActionManager.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
+  src/core/SceneManager.cc
+  src/core/MainMenuScene.cc
+  src/core/BattleScene.cc
   src/presenters/BattlePresenter.cc
+  src/presenters/MainMenuPresenter.cc
   src/views/DefParser.cc
   src/views/DefManager.cc
   src/views/AnimationController.cc
   src/views/SfmlBattleView.cc
+  src/views/SfmlMainMenuView.cc
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

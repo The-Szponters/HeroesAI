@@ -1,0 +1,186 @@
+/**
+ * @file SfmlMainMenuView.cc
+ * @brief Implementation of the SFML-backed main menu renderer.
+ * @author Łukasz Szydlik
+ */
+#include <array>
+#include <optional>
+
+#include "../presenters/MainMenuPresenter.h"
+#include "SfmlMainMenuView.h"
+
+namespace views {
+
+using presenters::MainMenuPresenter;
+
+namespace {
+
+constexpr float K_BUTTON_WIDTH = 400.0f;
+constexpr float K_BUTTON_HEIGHT = 180.0f;
+constexpr unsigned int K_MESSAGE_LABEL_SIZE = 18;
+
+} // namespace
+
+SfmlMainMenuView::SfmlMainMenuView( sf::RenderWindow& window )
+    : window_( window ),
+      screenWidth_( static_cast<float>( window.getSize( ).x ) ),
+      screenHeight_( static_cast<float>( window.getSize( ).y ) ),
+      newGameButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
+    const std::array<const char*, 11> font_candidates = {
+        "assets/font.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial.ttf",
+        "/System/Library/Fonts/SFNS.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
+    };
+    for ( const char* path : font_candidates ) {
+        if ( font_.openFromFile( path ) ) {
+            fontLoaded_ = true;
+            break;
+        }
+    }
+    if ( fontLoaded_ ) {
+        messageText_ = std::make_unique<sf::Text>( font_ );
+        messageText_->setCharacterSize( K_MESSAGE_LABEL_SIZE );
+        messageText_->setFillColor( sf::Color( 230, 230, 230 ) );
+    }
+
+    loadAssets( );
+    layoutButton( );
+
+    window_.setMouseCursorVisible( true );
+}
+
+void SfmlMainMenuView::loadAssets( ) {
+    if ( backgroundTexture_.loadFromFile( "assets/ui/menu/main_menu_bg.jpg" ) ) {
+        backgroundSprite_ = std::make_unique<sf::Sprite>( backgroundTexture_ );
+        const sf::Vector2u ts = backgroundTexture_.getSize( );
+        if ( ts.x > 0 && ts.y > 0 ) {
+            backgroundSprite_->setScale( { screenWidth_ / static_cast<float>( ts.x ),
+                                            screenHeight_ / static_cast<float>( ts.y ) } );
+        }
+        backgroundSprite_->setPosition( { 0.0f, 0.0f } );
+        backgroundLoaded_ = true;
+    }
+
+    if ( newGameButtonTexture_.loadFromFile( "assets/ui/menu/new_game_button.psd" ) ) {
+        newGameButtonSprite_ = std::make_unique<sf::Sprite>( newGameButtonTexture_ );
+        newGameButtonLoaded_ = true;
+    }
+}
+
+void SfmlMainMenuView::layoutButton( ) {
+    const float button_x = ( screenWidth_ - K_BUTTON_WIDTH ) * 0.5f;
+    const float button_y = ( screenHeight_ - K_BUTTON_HEIGHT ) * 0.5f + screenHeight_ * 0.15f;
+    newGameButtonBounds_ = sf::FloatRect( { button_x, button_y },
+                                          { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+
+    if ( newGameButtonSprite_ ) {
+        const sf::Vector2u ts = newGameButtonTexture_.getSize( );
+        if ( ts.x > 0 && ts.y > 0 ) {
+            newGameButtonSprite_->setScale( { K_BUTTON_WIDTH / static_cast<float>( ts.x ),
+                                              K_BUTTON_HEIGHT / static_cast<float>( ts.y ) } );
+        }
+        newGameButtonSprite_->setPosition( { button_x, button_y } );
+    }
+
+    if ( messageText_ ) {
+        messageText_->setPosition( { 16.0f, screenHeight_ - 32.0f } );
+    }
+}
+
+bool SfmlMainMenuView::isOpen( ) const {
+    return window_.isOpen( );
+}
+
+void SfmlMainMenuView::processEvents( MainMenuPresenter& presenter ) {
+    while ( const std::optional<sf::Event> event = window_.pollEvent( ) ) {
+        if ( event->is<sf::Event::Closed>( ) ) {
+            window_.close( );
+            continue;
+        }
+
+        if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
+            const float mx = static_cast<float>( mouse_move->position.x );
+            const float my = static_cast<float>( mouse_move->position.y );
+            newGameButtonHovered_ = newGameButtonBounds_.contains( { mx, my } );
+            continue;
+        }
+
+        if ( const auto* mouse_press = event->getIf<sf::Event::MouseButtonPressed>( ) ) {
+            if ( mouse_press->button != sf::Mouse::Button::Left ) {
+                continue;
+            }
+            const float mx = static_cast<float>( mouse_press->position.x );
+            const float my = static_cast<float>( mouse_press->position.y );
+            routeMenuClick( mx, my, presenter );
+            continue;
+        }
+    }
+}
+
+bool SfmlMainMenuView::routeMenuClick( float x,
+                                          float y,
+                                          MainMenuPresenter& presenter ) {
+    if ( newGameButtonBounds_.contains( { x, y } ) ) {
+        presenter.onNewGameClicked( );
+        return true;
+    }
+    return false;
+}
+
+void SfmlMainMenuView::render( ) {
+    window_.clear( sf::Color( 12, 12, 18 ) );
+    drawBackground( );
+    drawNewGameButton( );
+    drawMessage( );
+    window_.display( );
+}
+
+void SfmlMainMenuView::drawBackground( ) {
+    if ( backgroundLoaded_ && backgroundSprite_ ) {
+        window_.draw( *backgroundSprite_ );
+        return;
+    }
+    sf::RectangleShape fallback( { screenWidth_, screenHeight_ } );
+    fallback.setPosition( { 0.0f, 0.0f } );
+    fallback.setFillColor( sf::Color( 22, 18, 36 ) );
+    window_.draw( fallback );
+}
+
+void SfmlMainMenuView::drawNewGameButton( ) {
+    if ( newGameButtonLoaded_ && newGameButtonSprite_ ) {
+        newGameButtonSprite_->setColor( newGameButtonHovered_
+                                            ? sf::Color( 220, 220, 220 )
+                                            : sf::Color::White );
+        window_.draw( *newGameButtonSprite_ );
+        return;
+    }
+    sf::RectangleShape fallback( { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    fallback.setPosition( newGameButtonBounds_.position );
+    fallback.setFillColor( newGameButtonHovered_ ? sf::Color( 90, 70, 30 )
+                                                 : sf::Color( 60, 45, 20 ) );
+    fallback.setOutlineColor( sf::Color( 200, 180, 110 ) );
+    fallback.setOutlineThickness( 2.0f );
+    window_.draw( fallback );
+}
+
+void SfmlMainMenuView::drawMessage( ) {
+    if ( latestMessage_.empty( ) || ! messageText_ ) {
+        return;
+    }
+    messageText_->setString( latestMessage_ );
+    window_.draw( *messageText_ );
+}
+
+void SfmlMainMenuView::showMessage( const std::string& msg ) {
+    latestMessage_ = msg;
+}
+
+} // namespace views

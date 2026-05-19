@@ -37,7 +37,7 @@ namespace views {
  */
 class SfmlBattleView : public IBattleView {
 public:
-    SfmlBattleView( unsigned int width, unsigned int height, const std::string& title );
+    explicit SfmlBattleView( sf::RenderWindow& window );
 
     bool isOpen( ) const;
     void onMouseHover( int pixel_x, int pixel_y, presenters::BattlePresenter& presenter );
@@ -238,7 +238,7 @@ private:
         int tailR_ = 0;
     };
 
-    sf::RenderWindow window_;
+    sf::RenderWindow& window_;
 
     float screenWidth_;
     float screenHeight_;

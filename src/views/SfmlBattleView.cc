@@ -49,18 +49,16 @@ std::pair<int, int> cubeRoundToAxial( float fq, float fr, float fs ) {
 
 } // namespace
 
-SfmlBattleView::SfmlBattleView( unsigned int width, unsigned int height, const std::string& title )
-    : window_( sf::VideoMode( { width, height } ), title ),
-      screenWidth_( static_cast<float>( width ) ),
-      screenHeight_( static_cast<float>( height ) ),
+SfmlBattleView::SfmlBattleView( sf::RenderWindow& window )
+    : window_( window ),
+      screenWidth_( static_cast<float>( window.getSize( ).x ) ),
+      screenHeight_( static_cast<float>( window.getSize( ).y ) ),
       battlefieldHeight_( screenHeight_ * 0.8f ),
       hexRadius_( 28.0f ),
 
       gridOrigin_( 300.0f, 70.0f + 28.0f * 1.5f ),
       hudCount_( 0 ),
       hudHpLeft_( 0 ) {
-    window_.setFramerateLimit( 60 );
-
     const std::array<const char*, 11> font_candidates = {
         "assets/font.ttf",
         // Linux
