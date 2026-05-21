@@ -4,6 +4,8 @@
  * @author Łukasz Szydlik
  */
 #include <array>
+#include <cmath>
+#include <cstdint>
 #include <optional>
 #include <sstream>
 
@@ -194,6 +196,9 @@ void SfmlArmySetupView::layout( ) {
                 K_SLOT_STACK_TOP + static_cast<float>( i ) * ( K_SLOT_HEIGHT + K_SLOT_VERTICAL_GAP );
             slots[i].bounds_ =
                 sf::FloatRect( { column_x, y }, { K_SLOT_WIDTH, K_SLOT_HEIGHT } );
+            slots[i].countBounds_ =
+                sf::FloatRect( { column_x + K_COUNT_AREA_X, y + 6.0f },
+                                   { K_COUNT_AREA_WIDTH, K_SLOT_HEIGHT - 12.0f } );
             const float btn_y = y + ( K_SLOT_HEIGHT - K_PLUS_MINUS_SIZE ) * 0.5f;
             slots[i].minusBounds_ =
                 sf::FloatRect( { column_x + K_MINUS_OFFSET_X, btn_y },
@@ -264,6 +269,30 @@ void SfmlArmySetupView::processEvents( ArmySetupPresenter& presenter ) {
             routeClick( world.x, world.y, presenter );
             continue;
         }
+
+        if ( editingSide_ >= 0 ) {
+            if ( const auto* text = event->getIf<sf::Event::TextEntered>( ) ) {
+                const std::uint32_t ch = text->unicode;
+                if ( ch >= U'0' && ch <= U'9' ) {
+                    if ( editingBuffer_.size( ) < 5 ) {
+                        editingBuffer_.push_back( static_cast<char>( ch ) );
+                    }
+                } else if ( ch == 8 ) {
+                    if ( ! editingBuffer_.empty( ) ) {
+                        editingBuffer_.pop_back( );
+                    }
+                }
+                continue;
+            }
+            if ( const auto* key = event->getIf<sf::Event::KeyPressed>( ) ) {
+                if ( key->code == sf::Keyboard::Key::Enter ) {
+                    commitEditingCount( presenter );
+                } else if ( key->code == sf::Keyboard::Key::Escape ) {
+                    cancelEditingCount( );
+                }
+                continue;
+            }
+        }
     }
 }
 
@@ -286,6 +315,7 @@ void SfmlArmySetupView::updateHover( float x, float y, bool picker_open ) {
     auto refresh = [&]( std::array<SlotUi, 7>& slots ) {
         for ( SlotUi& slot : slots ) {
             slot.hovered_ = slot.bounds_.contains( { x, y } );
+            slot.countHovered_ = slot.countBounds_.contains( { x, y } );
             slot.minusHovered_ = slot.minusBounds_.contains( { x, y } );
             slot.plusHovered_ = slot.plusBounds_.contains( { x, y } );
         }
@@ -312,8 +342,36 @@ bool SfmlArmySetupView::routeClick( float x, float y, ArmySetupPresenter& presen
         return true;
     }
 
+    // While editing a count, any click outside that slot's count area
+    // commits the typed value first; clicking on a different count box
+    // then opens the new editor on the next branch below.
+    auto find_count_target = [&]( ) -> std::pair<int, int> {
+        for ( int i = 0; i < static_cast<int>( leftSlots_.size( ) ); ++i ) {
+            if ( leftSlots_[i].countBounds_.contains( { x, y } ) ) return { 0, i };
+        }
+        for ( int i = 0; i < static_cast<int>( rightSlots_.size( ) ); ++i ) {
+            if ( rightSlots_[i].countBounds_.contains( { x, y } ) ) return { 1, i };
+        }
+        return { -1, -1 };
+    };
+    const auto [count_side, count_slot] = find_count_target( );
+    if ( editingSide_ >= 0 && ! ( count_side == editingSide_ && count_slot == editingSlot_ ) ) {
+        commitEditingCount( presenter );
+    }
+
     if ( backButtonBounds_.contains( { x, y } ) ) {
         presenter.onBackClicked( );
+        return true;
+    }
+
+    if ( count_side >= 0 ) {
+        const core::ArmyConfig& army =
+            ( count_side == 0 ) ? presenter.leftArmy( ) : presenter.rightArmy( );
+        const core::ArmySlot& slot = army[count_slot];
+        if ( slot.unitId_.has_value( ) ) {
+            startEditingCount( count_side, count_slot, slot.count_ );
+            return true;
+        }
         return true;
     }
 
@@ -439,8 +497,38 @@ void SfmlArmySetupView::drawSlot( const SlotUi& slot_ui,
         }
     }
 
+    const bool editing_this_slot = isEditing( side, slot_index );
+    {
+        sf::RectangleShape count_bg( slot_ui.countBounds_.size );
+        count_bg.setPosition( slot_ui.countBounds_.position );
+        if ( editing_this_slot ) {
+            count_bg.setFillColor( sf::Color( 60, 70, 110 ) );
+            count_bg.setOutlineColor( sf::Color( 200, 220, 255 ) );
+            count_bg.setOutlineThickness( 2.0f );
+        } else if ( slot_ui.countHovered_ && slot.unitId_.has_value( ) ) {
+            count_bg.setFillColor( sf::Color( 35, 40, 65 ) );
+            count_bg.setOutlineColor( sf::Color( 130, 150, 190 ) );
+            count_bg.setOutlineThickness( 1.0f );
+        } else {
+            count_bg.setFillColor( sf::Color( 0, 0, 0, 80 ) );
+            count_bg.setOutlineColor( sf::Color( 80, 90, 120 ) );
+            count_bg.setOutlineThickness( 1.0f );
+        }
+        window_.draw( count_bg );
+    }
+
     if ( slotCountText_ ) {
-        slotCountText_->setString( std::to_string( slot.count_ ) );
+        std::string display;
+        if ( editing_this_slot ) {
+            display = editingBuffer_;
+            const float seconds = editingClock_.getElapsedTime( ).asSeconds( );
+            if ( std::fmod( seconds, 1.0f ) < 0.5f ) {
+                display.push_back( '_' );
+            }
+        } else {
+            display = std::to_string( slot.count_ );
+        }
+        slotCountText_->setString( display );
         const sf::FloatRect tb = slotCountText_->getLocalBounds( );
         const float count_x =
             slot_pos.x + K_COUNT_AREA_X + ( K_COUNT_AREA_WIDTH - tb.size.x ) * 0.5f - tb.position.x;
@@ -611,6 +699,39 @@ void SfmlArmySetupView::drawMessage( ) {
 
 void SfmlArmySetupView::showMessage( const std::string& msg ) {
     latestMessage_ = msg;
+}
+
+void SfmlArmySetupView::startEditingCount( int side, int slot_index, int current_value ) {
+    editingSide_ = side;
+    editingSlot_ = slot_index;
+    editingBuffer_ = std::to_string( current_value );
+    editingClock_.restart( );
+}
+
+void SfmlArmySetupView::commitEditingCount( ArmySetupPresenter& presenter ) {
+    if ( editingSide_ < 0 ) {
+        return;
+    }
+    int value = 0;
+    if ( ! editingBuffer_.empty( ) ) {
+        try {
+            value = std::stoi( editingBuffer_ );
+        } catch ( const std::exception& ) {
+            value = 0;
+        }
+    }
+    presenter.setCount( editingSide_, editingSlot_, value );
+    cancelEditingCount( );
+}
+
+void SfmlArmySetupView::cancelEditingCount( ) {
+    editingSide_ = -1;
+    editingSlot_ = -1;
+    editingBuffer_.clear( );
+}
+
+bool SfmlArmySetupView::isEditing( int side, int slot_index ) const {
+    return editingSide_ == side && editingSlot_ == slot_index;
 }
 
 } // namespace views

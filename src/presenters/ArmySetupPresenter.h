@@ -30,6 +30,7 @@ public:
     void onPickerCellClicked( int unit_index );
     void onPickerCancelled( );
     void onCountChanged( int side, int slot_index, int delta );
+    void setCount( int side, int slot_index, int value );
     void onBackClicked( );
 
     bool isBackRequested( ) const;

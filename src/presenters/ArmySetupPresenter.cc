@@ -13,7 +13,7 @@ namespace presenters {
 
 namespace {
 
-constexpr int K_MAX_COUNT = 999;
+constexpr int K_MAX_COUNT = 99999;
 constexpr int K_UNIT_COUNT = 42;
 
 } // namespace
@@ -68,6 +68,20 @@ void ArmySetupPresenter::onCountChanged( int side, int slot_index, int delta ) {
         return;
     }
     slot.count_ = std::clamp( slot.count_ + delta, 0, K_MAX_COUNT );
+    if ( slot.count_ == 0 ) {
+        slot.unitId_.reset( );
+    }
+}
+
+void ArmySetupPresenter::setCount( int side, int slot_index, int value ) {
+    if ( slot_index < 0 || slot_index >= static_cast<int>( core::K_ARMY_SLOT_COUNT ) ) {
+        return;
+    }
+    core::ArmySlot& slot = armyFor( side )[slot_index];
+    if ( ! slot.unitId_.has_value( ) ) {
+        return;
+    }
+    slot.count_ = std::clamp( value, 0, K_MAX_COUNT );
     if ( slot.count_ == 0 ) {
         slot.unitId_.reset( );
     }

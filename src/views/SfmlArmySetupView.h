@@ -46,9 +46,11 @@ public:
 private:
     struct SlotUi {
         sf::FloatRect bounds_;
+        sf::FloatRect countBounds_;
         sf::FloatRect minusBounds_;
         sf::FloatRect plusBounds_;
         bool hovered_ = false;
+        bool countHovered_ = false;
         bool minusHovered_ = false;
         bool plusHovered_ = false;
     };
@@ -64,6 +66,10 @@ private:
     void layout( );
     bool routeClick( float x, float y, presenters::ArmySetupPresenter& presenter );
     void updateHover( float x, float y, bool picker_open );
+    void startEditingCount( int side, int slot_index, int current_value );
+    void commitEditingCount( presenters::ArmySetupPresenter& presenter );
+    void cancelEditingCount( );
+    bool isEditing( int side, int slot_index ) const;
 
     void drawBackground( );
     void drawSlot( const SlotUi& slot_ui,
@@ -112,6 +118,11 @@ private:
     sf::Texture portraitAtlasTexture_;
     bool portraitAtlasLoaded_ = false;
     std::vector<UnitEntry> unitCatalog_;
+
+    int editingSide_ = -1;
+    int editingSlot_ = -1;
+    std::string editingBuffer_;
+    sf::Clock editingClock_;
 
     std::string latestMessage_;
 };
