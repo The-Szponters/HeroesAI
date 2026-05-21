@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -27,6 +28,11 @@ class UnitFactory {
 public:
     static void init( const std::string& filepath );
     static std::shared_ptr<Unit> createUnit( UnitID id, int count );
+
+    static std::string idToString( UnitID id );
+    static std::optional<UnitID> idFromString( const std::string& name );
+
+    static std::optional<PortraitRect> getPortraitRect( UnitID id );
 
 private:
     static std::unordered_map<UnitID, nlohmann::json> UnitData;

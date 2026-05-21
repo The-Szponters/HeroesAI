@@ -16,6 +16,7 @@ namespace views {
 enum class SceneId {
     NONE,
     MAIN_MENU,
+    ARMY_SETUP,
     BATTLE
 };
 

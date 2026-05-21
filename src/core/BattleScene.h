@@ -12,20 +12,22 @@
 #include "../views/IScene.h"
 #include "../views/SfmlBattleView.h"
 #include "GameManager.h"
+#include "Settings.h"
 
 namespace core {
 
 /**
  * @brief Top-level scene that owns the battle MVP triad.
  *
- * Bootstraps the unit factory, builds the two opposing heroes with
- * their default rosters, constructs the GameManager / SfmlBattleView /
- * BattlePresenter chain and drives the existing battle event loop.
- * Reports finished when the user closes the window.
+ * Bootstraps the unit factory, builds the two opposing heroes from the
+ * army rosters stored in the shared Settings (edited by ArmySetupScene),
+ * constructs the GameManager / SfmlBattleView / BattlePresenter chain
+ * and drives the existing battle event loop. Reports finished when the
+ * user closes the window.
  */
 class BattleScene : public views::IScene {
 public:
-    explicit BattleScene( sf::RenderWindow& window );
+    BattleScene( sf::RenderWindow& window, const Settings& settings );
 
     void processEvents( ) override;
     void render( ) override;
@@ -33,8 +35,8 @@ public:
     views::SceneId nextSceneId( ) const override;
 
 private:
-    static models::Hero buildBlueHero( );
-    static models::Hero buildRedHero( );
+    static models::Hero buildBlueHero( const ArmyConfig& army );
+    static models::Hero buildRedHero( const ArmyConfig& army );
 
     sf::RenderWindow& window_;
     models::Hero blueHero_;

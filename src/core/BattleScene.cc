@@ -5,7 +5,9 @@
  */
 #include "BattleScene.h"
 
+#include <array>
 #include <exception>
+#include <utility>
 
 #include "../models/Unit.h"
 #include "../models/UnitFactory.h"
@@ -15,7 +17,6 @@ namespace core {
 
 using models::Hero;
 using models::UnitFactory;
-using models::UnitID;
 
 namespace {
 
@@ -35,19 +36,29 @@ Axial offsetToAxial( int col, int row ) {
 }
 
 /**
- * @brief Static unit placement data for initial army layouts.
+ * @brief Fixed offset-coord positions per army slot index.
+ *
+ * Preserves the original hardcoded layout so a fresh settings.cfg
+ * produces the same battle as before the army-setup feature shipped.
  */
-struct Placement {
-    UnitID id_;
-    int count_;
-    int col_;
-    int row_;
-};
+constexpr std::array<std::pair<int, int>, K_ARMY_SLOT_COUNT> K_BLUE_SLOT_POSITIONS = { {
+    { 0, 0 }, { 0, 2 }, { 1, 4 }, { 0, 6 }, { 0, 8 }, { 1, 10 }, { 1, 5 }
+} };
+constexpr std::array<std::pair<int, int>, K_ARMY_SLOT_COUNT> K_RED_SLOT_POSITIONS = { {
+    { 14, 0 }, { 14, 2 }, { 13, 4 }, { 14, 6 }, { 14, 8 }, { 14, 10 }, { 13, 5 }
+} };
 
-void applyRoster( Hero& hero, const Placement* roster_begin, const Placement* roster_end ) {
-    for ( const Placement* p = roster_begin; p != roster_end; ++p ) {
-        auto unit = UnitFactory::createUnit( p->id_, p->count_ );
-        const Axial a = offsetToAxial( p->col_, p->row_ );
+void applyRoster( Hero& hero,
+                          const ArmyConfig& army,
+                          const std::array<std::pair<int, int>, K_ARMY_SLOT_COUNT>& positions ) {
+    for ( std::size_t i = 0; i < army.size( ); ++i ) {
+        const ArmySlot& slot = army[i];
+        if ( ! slot.unitId_.has_value( ) || slot.count_ <= 0 ) {
+            continue;
+        }
+        const auto [col, row] = positions[i];
+        auto unit = UnitFactory::createUnit( *slot.unitId_, slot.count_ );
+        const Axial a = offsetToAxial( col, row );
         unit->setPosition( a.q_, a.r_, a.s_ );
         hero.getArmy( ).addUnit( unit );
     }
@@ -55,40 +66,23 @@ void applyRoster( Hero& hero, const Placement* roster_begin, const Placement* ro
 
 } // namespace
 
-Hero BattleScene::buildBlueHero( ) {
+Hero BattleScene::buildBlueHero( const ArmyConfig& army ) {
     Hero hero( "Blue Hero", 0, 0, 0, 0 );
-    static const Placement blue_roster[] = {
-        { UnitID::PIKEMAN, 10, 0, 0 },
-        { UnitID::ARCHER, 8, 0, 2 },
-        { UnitID::GRIFFIN, 5, 1, 4 },
-        { UnitID::SWORDSMAN, 6, 0, 6 },
-        { UnitID::MONK, 4, 0, 8 },
-        { UnitID::CAVALIER, 3, 1, 10 },
-        { UnitID::ARCHANGEL, 1, 1, 5 },
-    };
-    applyRoster( hero, std::begin( blue_roster ), std::end( blue_roster ) );
+    applyRoster( hero, army, K_BLUE_SLOT_POSITIONS );
     return hero;
 }
 
-Hero BattleScene::buildRedHero( ) {
+Hero BattleScene::buildRedHero( const ArmyConfig& army ) {
     Hero hero( "Red Hero", 0, 0, 0, 0 );
-    static const Placement red_roster[] = {
-        { UnitID::IMP, 12, 14, 0 },
-        { UnitID::GOG, 8, 14, 2 },
-        { UnitID::HELL_HOUND, 5, 13, 4 },
-        { UnitID::DEMON, 6, 14, 6 },
-        { UnitID::PIT_FIEND, 4, 14, 8 },
-        { UnitID::EFREET, 3, 14, 10 },
-        { UnitID::DEVIL, 1, 13, 5 },
-    };
-    applyRoster( hero, std::begin( red_roster ), std::end( red_roster ) );
+    applyRoster( hero, army, K_RED_SLOT_POSITIONS );
     return hero;
 }
 
-BattleScene::BattleScene( sf::RenderWindow& window )
+BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
     : window_( window ),
-      blueHero_( ( UnitFactory::init( "assets/units.json" ), buildBlueHero( ) ) ),
-      redHero_( buildRedHero( ) ),
+      blueHero_(
+          ( UnitFactory::init( "assets/units.json" ), buildBlueHero( settings.leftArmy_ ) ) ),
+      redHero_( buildRedHero( settings.rightArmy_ ) ),
       gameManager_( blueHero_, redHero_ ),
       view_( window ),
       presenter_( gameManager_, view_ ) {

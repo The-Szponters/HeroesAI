@@ -12,22 +12,64 @@ namespace models {
 
 std::unordered_map<UnitID, nlohmann::json> UnitFactory::UnitData;
 
+namespace {
+
+constexpr const char* K_UNIT_NAMES[] = {
+    "Pikeman",      "Halberdier",  "Archer",    "Marksman",    "Griffin",
+    "RoyalGriffin", "Swordsman",   "Crusader",  "Monk",        "Zealot",
+    "Cavalier",     "Champion",    "Angel",     "Archangel",   "Imp",
+    "Familiar",     "Gog",         "Magog",     "HellHound",   "Cerberus",
+    "Demon",        "HornedDemon", "PitFiend",  "PitLord",     "Efreet",
+    "EfreetSultan", "Devil",       "ArchDevil", "Skeleton",    "SkeletonWarrior",
+    "WalkingDead",  "Zombie",      "Wight",     "Wraith",      "Vampire",
+    "VampireLord",  "Lich",        "PowerLich", "BlackKnight", "DreadKnight",
+    "BoneDragon",   "GhostDragon"
+};
+constexpr int K_UNIT_COUNT = sizeof( K_UNIT_NAMES ) / sizeof( K_UNIT_NAMES[0] );
+
+} // namespace
+
 std::string UnitFactory::unitIdToString( UnitID id ) {
-    static const char* unit_names[] = {
-        "Pikeman",      "Halberdier",  "Archer",    "Marksman",    "Griffin",
-        "RoyalGriffin", "Swordsman",   "Crusader",  "Monk",        "Zealot",
-        "Cavalier",     "Champion",    "Angel",     "Archangel",   "Imp",
-        "Familiar",     "Gog",         "Magog",     "HellHound",   "Cerberus",
-        "Demon",        "HornedDemon", "PitFiend",  "PitLord",     "Efreet",
-        "EfreetSultan", "Devil",       "ArchDevil", "Skeleton",    "SkeletonWarrior",
-        "WalkingDead",  "Zombie",      "Wight",     "Wraith",      "Vampire",
-        "VampireLord",  "Lich",        "PowerLich", "BlackKnight", "DreadKnight",
-        "BoneDragon",   "GhostDragon" };
     int index = static_cast<int>( id );
-    if ( index >= 0 && index < sizeof( unit_names ) / sizeof( unit_names[0] ) ) {
-        return unit_names[index];
+    if ( index >= 0 && index < K_UNIT_COUNT ) {
+        return K_UNIT_NAMES[index];
     }
     throw std::invalid_argument( "Unknown UnitID" );
+}
+
+std::string UnitFactory::idToString( UnitID id ) {
+    return unitIdToString( id );
+}
+
+std::optional<UnitID> UnitFactory::idFromString( const std::string& name ) {
+    for ( int i = 0; i < K_UNIT_COUNT; ++i ) {
+        if ( name == K_UNIT_NAMES[i] ) {
+            return static_cast<UnitID>( i );
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<PortraitRect> UnitFactory::getPortraitRect( UnitID id ) {
+    auto it = UnitData.find( id );
+    if ( it == UnitData.end( ) ) {
+        return std::nullopt;
+    }
+    const auto& data = it->second;
+    if ( ! data.contains( "portrait" ) || ! data["portrait"].is_object( ) ) {
+        return std::nullopt;
+    }
+    const auto& rect_json = data["portrait"];
+    if ( ! rect_json.contains( "x" ) || ! rect_json.contains( "y" ) ||
+         ! rect_json.contains( "w" ) || ! rect_json.contains( "h" ) ) {
+        return std::nullopt;
+    }
+    PortraitRect rect;
+    rect.x_ = rect_json["x"].get<int>( );
+    rect.y_ = rect_json["y"].get<int>( );
+    rect.w_ = rect_json["w"].get<int>( );
+    rect.h_ = rect_json["h"].get<int>( );
+    return rect;
 }
 
 void UnitFactory::init( const std::string& filepath ) {

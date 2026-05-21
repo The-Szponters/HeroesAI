@@ -11,6 +11,7 @@
 #include <string>
 
 #include "../views/IScene.h"
+#include "Settings.h"
 
 namespace core {
 
@@ -20,14 +21,13 @@ namespace core {
  * The manager opens a single sf::RenderWindow shared by every scene
  * (so transitions don't flicker the window), starts on the main menu,
  * and constructs the next scene whenever the current one reports it
- * is finished.
+ * is finished. It also owns the shared application Settings so that
+ * scenes can observe and mutate them (e.g. ArmySetupScene editing the
+ * army rosters that BattleScene later consumes).
  */
 class SceneManager {
 public:
-    SceneManager( unsigned int width,
-                      unsigned int height,
-                      const std::string& title,
-                      unsigned int framerate_limit );
+    explicit SceneManager( const std::string& settings_path = "settings.cfg" );
 
     void run( );
 
@@ -35,6 +35,7 @@ private:
     void switchTo( views::SceneId id );
     std::unique_ptr<views::IScene> createScene( views::SceneId id );
 
+    Settings settings_;
     sf::RenderWindow window_;
     std::unique_ptr<views::IScene> currentScene_;
 };

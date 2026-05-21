@@ -18,6 +18,7 @@ namespace {
 
 constexpr float K_BUTTON_WIDTH = 400.0f;
 constexpr float K_BUTTON_HEIGHT = 180.0f;
+constexpr float K_BUTTON_VERTICAL_GAP = 20.0f;
 constexpr unsigned int K_MESSAGE_LABEL_SIZE = 18;
 
 } // namespace
@@ -26,7 +27,8 @@ SfmlMainMenuView::SfmlMainMenuView( sf::RenderWindow& window )
     : window_( window ),
       screenWidth_( window.getView( ).getSize( ).x ),
       screenHeight_( window.getView( ).getSize( ).y ),
-      newGameButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
+      newGameButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ),
+      armySetupButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
     const std::array<const char*, 11> font_candidates = {
         "assets/font.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -53,7 +55,7 @@ SfmlMainMenuView::SfmlMainMenuView( sf::RenderWindow& window )
     }
 
     loadAssets( );
-    layoutButton( );
+    layoutButtons( );
 
     window_.setMouseCursorVisible( true );
 }
@@ -74,13 +76,25 @@ void SfmlMainMenuView::loadAssets( ) {
         newGameButtonSprite_ = std::make_unique<sf::Sprite>( newGameButtonTexture_ );
         newGameButtonLoaded_ = true;
     }
+
+    if ( armySetupButtonTexture_.loadFromFile( "assets/ui/menu/army_setup_button.psd" ) ) {
+        armySetupButtonSprite_ = std::make_unique<sf::Sprite>( armySetupButtonTexture_ );
+        armySetupButtonLoaded_ = true;
+    }
 }
 
-void SfmlMainMenuView::layoutButton( ) {
+void SfmlMainMenuView::layoutButtons( ) {
     const float button_x = ( screenWidth_ - K_BUTTON_WIDTH ) * 0.5f;
-    const float button_y = ( screenHeight_ - K_BUTTON_HEIGHT ) * 0.5f + screenHeight_ * 0.15f;
-    newGameButtonBounds_ = sf::FloatRect( { button_x, button_y },
+    const float stack_height = K_BUTTON_HEIGHT * 2.0f + K_BUTTON_VERTICAL_GAP;
+    const float stack_top = ( screenHeight_ - stack_height ) * 0.5f + screenHeight_ * 0.10f;
+
+    const float new_game_y = stack_top;
+    const float army_setup_y = stack_top + K_BUTTON_HEIGHT + K_BUTTON_VERTICAL_GAP;
+
+    newGameButtonBounds_ = sf::FloatRect( { button_x, new_game_y },
                                           { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    armySetupButtonBounds_ = sf::FloatRect( { button_x, army_setup_y },
+                                            { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
 
     if ( newGameButtonSprite_ ) {
         const sf::Vector2u ts = newGameButtonTexture_.getSize( );
@@ -88,7 +102,16 @@ void SfmlMainMenuView::layoutButton( ) {
             newGameButtonSprite_->setScale( { K_BUTTON_WIDTH / static_cast<float>( ts.x ),
                                               K_BUTTON_HEIGHT / static_cast<float>( ts.y ) } );
         }
-        newGameButtonSprite_->setPosition( { button_x, button_y } );
+        newGameButtonSprite_->setPosition( { button_x, new_game_y } );
+    }
+
+    if ( armySetupButtonSprite_ ) {
+        const sf::Vector2u ts = armySetupButtonTexture_.getSize( );
+        if ( ts.x > 0 && ts.y > 0 ) {
+            armySetupButtonSprite_->setScale( { K_BUTTON_WIDTH / static_cast<float>( ts.x ),
+                                                K_BUTTON_HEIGHT / static_cast<float>( ts.y ) } );
+        }
+        armySetupButtonSprite_->setPosition( { button_x, army_setup_y } );
     }
 
     if ( messageText_ ) {
@@ -115,6 +138,7 @@ void SfmlMainMenuView::processEvents( MainMenuPresenter& presenter ) {
         if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
             const sf::Vector2f world = window_.mapPixelToCoords( mouse_move->position );
             newGameButtonHovered_ = newGameButtonBounds_.contains( { world.x, world.y } );
+            armySetupButtonHovered_ = armySetupButtonBounds_.contains( { world.x, world.y } );
             continue;
         }
 
@@ -136,6 +160,10 @@ bool SfmlMainMenuView::routeMenuClick( float x,
         presenter.onNewGameClicked( );
         return true;
     }
+    if ( armySetupButtonBounds_.contains( { x, y } ) ) {
+        presenter.onArmySetupClicked( );
+        return true;
+    }
     return false;
 }
 
@@ -143,6 +171,7 @@ void SfmlMainMenuView::render( ) {
     window_.clear( sf::Color( 12, 12, 18 ) );
     drawBackground( );
     drawNewGameButton( );
+    drawArmySetupButton( );
     drawMessage( );
     window_.display( );
 }
@@ -171,6 +200,23 @@ void SfmlMainMenuView::drawNewGameButton( ) {
     fallback.setFillColor( newGameButtonHovered_ ? sf::Color( 90, 70, 30 )
                                                  : sf::Color( 60, 45, 20 ) );
     fallback.setOutlineColor( sf::Color( 200, 180, 110 ) );
+    fallback.setOutlineThickness( 2.0f );
+    window_.draw( fallback );
+}
+
+void SfmlMainMenuView::drawArmySetupButton( ) {
+    if ( armySetupButtonLoaded_ && armySetupButtonSprite_ ) {
+        armySetupButtonSprite_->setColor( armySetupButtonHovered_
+                                              ? sf::Color( 220, 220, 220 )
+                                              : sf::Color::White );
+        window_.draw( *armySetupButtonSprite_ );
+        return;
+    }
+    sf::RectangleShape fallback( { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    fallback.setPosition( armySetupButtonBounds_.position );
+    fallback.setFillColor( armySetupButtonHovered_ ? sf::Color( 30, 70, 90 )
+                                                   : sf::Color( 20, 45, 60 ) );
+    fallback.setOutlineColor( sf::Color( 110, 180, 200 ) );
     fallback.setOutlineThickness( 2.0f );
     window_.draw( fallback );
 }

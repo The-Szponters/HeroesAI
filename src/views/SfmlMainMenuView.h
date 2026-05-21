@@ -38,9 +38,10 @@ public:
 
 private:
     void loadAssets( );
-    void layoutButton( );
+    void layoutButtons( );
     void drawBackground( );
     void drawNewGameButton( );
+    void drawArmySetupButton( );
     void drawMessage( );
     bool routeMenuClick( float x, float y, presenters::MainMenuPresenter& presenter );
 
@@ -57,6 +58,12 @@ private:
     sf::FloatRect newGameButtonBounds_;
     bool newGameButtonHovered_ = false;
     bool newGameButtonLoaded_ = false;
+
+    sf::Texture armySetupButtonTexture_;
+    std::unique_ptr<sf::Sprite> armySetupButtonSprite_;
+    sf::FloatRect armySetupButtonBounds_;
+    bool armySetupButtonHovered_ = false;
+    bool armySetupButtonLoaded_ = false;
 
     sf::Font font_;
     bool fontLoaded_ = false;

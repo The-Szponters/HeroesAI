@@ -21,12 +21,16 @@ void MainMenuScene::render( ) {
 }
 
 bool MainMenuScene::isFinished( ) const {
-    return ! window_.isOpen( ) || presenter_.isNewGameRequested( );
+    return ! window_.isOpen( ) || presenter_.isNewGameRequested( ) ||
+           presenter_.isArmySetupRequested( );
 }
 
 views::SceneId MainMenuScene::nextSceneId( ) const {
     if ( presenter_.isNewGameRequested( ) ) {
         return views::SceneId::BATTLE;
+    }
+    if ( presenter_.isArmySetupRequested( ) ) {
+        return views::SceneId::ARMY_SETUP;
     }
     return views::SceneId::NONE;
 }

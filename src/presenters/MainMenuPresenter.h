@@ -13,21 +13,25 @@ namespace presenters {
  * @brief Translates main-menu UI events into scene-transition requests.
  *
  * Holds no domain model -- the menu has no game state to manage. It
- * exposes a single command (onNewGameClicked) and a single query
- * (isNewGameRequested) used by the scene wrapper to decide when to
- * switch to the battle scene.
+ * exposes button click commands and matching query flags read by the
+ * scene wrapper to decide which scene to switch into next.
  */
 class MainMenuPresenter {
 public:
     explicit MainMenuPresenter( views::IMainMenuView& view );
 
     void start( );
+
     void onNewGameClicked( );
     bool isNewGameRequested( ) const;
+
+    void onArmySetupClicked( );
+    bool isArmySetupRequested( ) const;
 
 private:
     views::IMainMenuView& view_;
     bool newGameRequested_ = false;
+    bool armySetupRequested_ = false;
 };
 
 } // namespace presenters

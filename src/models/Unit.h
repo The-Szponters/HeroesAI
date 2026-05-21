@@ -13,6 +13,19 @@
 namespace models {
 
 /**
+ * @brief Pixel rectangle inside a portrait sprite atlas.
+ *
+ * Plain ints to keep models free of SFML dependencies; the view
+ * converts to sf::IntRect when sourcing pixels from the atlas.
+ */
+struct PortraitRect {
+    int x_ = 0;
+    int y_ = 0;
+    int w_ = 0;
+    int h_ = 0;
+};
+
+/**
  * @brief A stack of identical creatures.
  *
  * Encapsulates the immutable base stats, the position on the board,
