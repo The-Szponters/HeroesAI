@@ -29,16 +29,20 @@ PortraitRect iconAt( int col, int row ) {
     return r;
 }
 
-Spell make( SpellId id,
-                std::string name,
-                int level,
-                SpellSchool school,
-                SpellAlignment alignment,
-                int mana_cost,
-                bool instant_effect,
-                std::string animation_asset,
-                int icon_col,
-                int icon_row ) {
+constexpr int K_DEF_ICON_PLACEHOLDER = -1; // TODO: set per-spell frame index in spells_icons.def
+
+Spell make(
+    SpellId id,
+    std::string name,
+    int level,
+    SpellSchool school,
+    SpellAlignment alignment,
+    int mana_cost,
+    bool instant_effect,
+    std::string animation_asset,
+    int icon_col,
+    int icon_row,
+    int def_icon_frame ) {
     Spell s;
     s.id_ = id;
     s.name_ = std::move( name );
@@ -49,6 +53,7 @@ Spell make( SpellId id,
     s.instantEffect_ = instant_effect;
     s.animationAsset_ = std::move( animation_asset );
     s.iconRect_ = iconAt( icon_col, icon_row );
+    s.defIconFrame_ = def_icon_frame;
     return s;
 }
 
@@ -56,34 +61,47 @@ const std::vector<Spell>& buildCatalogue( ) {
     static const std::vector<Spell> catalogue = {
         // Damage spells (instant).
         make( SpellId::MAGIC_ARROW,    "Magic Arrow",    1, SpellSchool::AIR,
-              SpellAlignment::NEGATIVE,  5, true,  "",            0, 0 ),
+              SpellAlignment::NEGATIVE,  5, true,  "",            0, 0,
+              15 ),
         make( SpellId::LIGHTNING_BOLT, "Lightning Bolt", 2, SpellSchool::AIR,
-              SpellAlignment::NEGATIVE, 10, true,  "",            1, 0 ),
+              SpellAlignment::NEGATIVE, 10, true,  "",            1, 0,
+              17 ),
         make( SpellId::ICE_BOLT,       "Ice Bolt",       2, SpellSchool::WATER,
-              SpellAlignment::NEGATIVE,  8, true,  "",            2, 0 ),
+              SpellAlignment::NEGATIVE,  8, true,  "",            2, 0,
+              16 ),
         // Cure (instant).
         make( SpellId::CURE,           "Cure",           1, SpellSchool::WATER,
-              SpellAlignment::POSITIVE,  6, true,  "",            3, 0 ),
+              SpellAlignment::POSITIVE,  6, true,  "",            3, 0,
+              37 ),
         // Buffs / debuffs (duration = power).
         make( SpellId::CURSE,          "Curse",          1, SpellSchool::FIRE,
-              SpellAlignment::NEGATIVE,  6, false, "",            0, 1 ),
+              SpellAlignment::NEGATIVE,  6, false, "",            0, 1,
+              42 ),
         make( SpellId::BLOODLUST,      "Bloodlust",      1, SpellSchool::FIRE,
-              SpellAlignment::POSITIVE,  5, false, "",            1, 1 ),
+              SpellAlignment::POSITIVE,  5, false, "",            1, 1,
+              43 ),
         make( SpellId::BLIND,          "Blind",          2, SpellSchool::FIRE,
-              SpellAlignment::NEGATIVE, 10, false, "",            2, 1 ),
+              SpellAlignment::NEGATIVE, 10, false, "",            2, 1,
+              62 ),
         make( SpellId::HASTE,          "Haste",          1, SpellSchool::AIR,
-              SpellAlignment::POSITIVE,  6, false, "",            3, 1 ),
+              SpellAlignment::POSITIVE,  6, false, "",            3, 1,
+              53 ),
         make( SpellId::BLESS,          "Bless",          1, SpellSchool::WATER,
-              SpellAlignment::POSITIVE,  5, false, "",            0, 2 ),
+              SpellAlignment::POSITIVE,  5, false, "",            0, 2,
+              41 ),
         make( SpellId::STONE_SKIN,     "Stone Skin",     1, SpellSchool::EARTH,
-              SpellAlignment::POSITIVE,  5, false, "",            1, 2 ),
+              SpellAlignment::POSITIVE,  5, false, "",            1, 2,
+              46 ),
         make( SpellId::SLOW,           "Slow",           1, SpellSchool::EARTH,
-              SpellAlignment::NEGATIVE,  6, false, "",            2, 2 ),
+              SpellAlignment::NEGATIVE,  6, false, "",            2, 2,
+              54 ),
         make( SpellId::SHIELD,         "Shield",         1, SpellSchool::EARTH,
-              SpellAlignment::POSITIVE,  5, false, "",            3, 2 ),
+              SpellAlignment::POSITIVE,  5, false, "",            3, 2,
+              27 ),
         // Infinite-duration debuff (stackable).
         make( SpellId::DISRUPTING_RAY, "Disrupting Ray", 2, SpellSchool::AIR,
-              SpellAlignment::NEGATIVE, 10, false, "",            0, 3 )
+              SpellAlignment::NEGATIVE, 10, false, "",            0, 3,
+              47 )
     };
     return catalogue;
 }

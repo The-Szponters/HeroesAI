@@ -186,6 +186,7 @@ public:
         models::SpellSchool school_ = models::SpellSchool::AIR;
         models::SpellAlignment alignment_ = models::SpellAlignment::NEGATIVE;
         models::PortraitRect iconRect_;
+        int defIconFrame_ = -1;
         bool affordable_ = false;
     };
 

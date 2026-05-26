@@ -1515,6 +1515,7 @@ void BattlePresenter::onSpellbookClicked( ) {
         entry.school_ = spell.school_;
         entry.alignment_ = spell.alignment_;
         entry.iconRect_ = spell.iconRect_;
+        entry.defIconFrame_ = spell.defIconFrame_;
         entry.affordable_ = caster->getCurrentMana( ) >= spell.manaCost_;
         render_list.push_back( entry );
     }

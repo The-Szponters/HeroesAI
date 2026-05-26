@@ -2012,8 +2012,38 @@ void SfmlBattleView::drawSpellbookOverlay( ) {
         frame.setOutlineThickness( 1.5f );
         window_.draw( frame );
 
-        // Icon
-        if ( spellIconAtlasLoaded_ && cell.iconRect_.w_ > 0 && cell.iconRect_.h_ > 0 ) {
+        // Icon (prefer DEF frames; fall back to PNG atlas)
+        bool drew_def_icon = false;
+        if ( cell.defIconFrame_ >= 0 ) {
+            std::shared_ptr<DefResource> res = defManager_.getOrLoad( "spells_icons.def" );
+            if ( res ) {
+                const auto group_it = res->groups_.find( 0 );
+                if ( group_it != res->groups_.end( ) && ! group_it->second.empty( ) ) {
+                    const auto& frames = group_it->second;
+                    const std::size_t frame_index =
+                        static_cast<std::size_t>( cell.defIconFrame_ );
+                    if ( frame_index < frames.size( ) ) {
+                        const DefFrame& frame = frames[frame_index];
+                        if ( frame.width_ > 0 && frame.height_ > 0 ) {
+                            sf::Sprite icon( frame.texture_ );
+                            const float scale =
+                                std::min( K_SPELLBOOK_ICON_SIZE / static_cast<float>( frame.width_ ),
+                                          K_SPELLBOOK_ICON_SIZE / static_cast<float>( frame.height_ ) );
+                            icon.setScale( { scale, scale } );
+                            icon.setPosition( { bounds.position.x + 12.0f,
+                                                   bounds.position.y + 12.0f } );
+                            if ( ! cell.affordable_ ) {
+                                icon.setColor( sf::Color( 120, 120, 120 ) );
+                            }
+                            window_.draw( icon );
+                            drew_def_icon = true;
+                        }
+                    }
+                }
+            }
+        }
+        if ( ! drew_def_icon && spellIconAtlasLoaded_ && cell.iconRect_.w_ > 0 &&
+             cell.iconRect_.h_ > 0 ) {
             sf::Sprite icon( spellIconAtlasTexture_ );
             icon.setTextureRect( sf::IntRect(
                 { cell.iconRect_.x_, cell.iconRect_.y_ },

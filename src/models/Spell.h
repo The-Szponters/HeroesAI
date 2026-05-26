@@ -69,7 +69,8 @@ struct Spell {
     int manaCost_ = 0;
     bool instantEffect_ = true;
     std::string animationAsset_;
-    PortraitRect iconRect_;
+    PortraitRect iconRect_;        // PNG atlas fallback (kept for compat)
+    int defIconFrame_ = -1;        // preferred -- frame index in spells_icons.def
 };
 
 } // namespace models
