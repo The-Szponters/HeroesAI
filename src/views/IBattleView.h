@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "../models/Spell.h"
+
 namespace views {
 
 /**
@@ -172,6 +174,38 @@ public:
     virtual void setCursorStyle( CursorStyle style, int pixel_x, int pixel_y ) = 0;
     virtual void showUnitInfoPanel( const UnitRenderData& unit_data ) = 0;
     virtual void hideUnitInfoPanel( ) = 0;
+
+    /**
+     * @brief One spellbook cell's render data, shipped from presenter to view.
+     */
+    struct SpellbookSpellRender {
+        models::SpellId id_;
+        std::string name_;
+        int level_ = 0;
+        int manaCost_ = 0;
+        models::SpellSchool school_ = models::SpellSchool::AIR;
+        models::SpellAlignment alignment_ = models::SpellAlignment::NEGATIVE;
+        models::PortraitRect iconRect_;
+        bool affordable_ = false;
+    };
+
+    virtual void showSpellbook( const std::vector<SpellbookSpellRender>& spells,
+                                       int caster_mana,
+                                       int caster_max_mana ) = 0;
+    virtual void hideSpellbook( ) = 0;
+
+    virtual void setSpellTargetingActive( bool active,
+                                                  models::SpellAlignment alignment ) = 0;
+
+    // True when the currently-hovered hex holds a valid target for the
+    // pending spell; false otherwise. Drives the targeting cursor
+    // sprite (spellcasting_icon.def vs combat_icons.def).
+    virtual void setSpellCursorValid( bool valid ) = 0;
+
+    virtual void queueSpellAnimation( int target_q,
+                                            int target_r,
+                                            const std::string& def_asset,
+                                            float duration_seconds ) = 0;
 };
 
 } // namespace views

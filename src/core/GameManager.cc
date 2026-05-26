@@ -68,7 +68,7 @@ Unit* GameManager::getCurrentUnit( ) {
     const std::size_t before = roundManager_.getUnitsLeftInRound( ).size( );
     Unit* u = roundManager_.getCurrentUnit( );
     if ( u != nullptr && before == 0 ) {
-        ++roundNumber_;
+        advanceRound( );
     }
 
     if ( roundNumber_ != moraleRoundTracked_ ) {
@@ -78,6 +78,27 @@ Unit* GameManager::getCurrentUnit( ) {
 
     rollMoraleForActive( u );
     return u;
+}
+
+void GameManager::advanceRound( ) {
+    ++roundNumber_;
+    for ( Unit* u : allUnitsInBattle_ ) {
+        if ( u != nullptr && u->getCount( ) > 0 ) {
+            u->onTurnStart( );   // ticks all buff durations
+        }
+    }
+    blueHero_.resetCastFlagForNewRound( );
+    redHero_.resetCastFlagForNewRound( );
+}
+
+models::Hero* GameManager::getCasterFor( const models::Unit& unit ) {
+    if ( heroContainsUnit( blueHero_, unit ) ) {
+        return &blueHero_;
+    }
+    if ( heroContainsUnit( redHero_, unit ) ) {
+        return &redHero_;
+    }
+    return nullptr;
 }
 
 void GameManager::rollMoraleForActive( Unit* unit ) {
@@ -274,6 +295,25 @@ void GameManager::removeDeadUnit( Unit& unit ) {
     if ( it != allUnitsInBattle_.end( ) ) {
         allUnitsInBattle_.erase( it );
     }
+}
+
+void GameManager::notifyUnitMaybeDied( models::Unit& unit ) {
+    if ( unit.getCount( ) > 0 ) {
+        return;
+    }
+    try {
+        models::Hex& head_hex = board_.getHex( unit.getQ( ), unit.getR( ), unit.getS( ) );
+        head_hex.unitDied( );
+        if ( unit.getSize( ) == 2 ) {
+            const int tail_dq = unit.isFacingLeft( ) ? 1 : -1;
+            try {
+                models::Hex& tail_hex =
+                    board_.getHex( unit.getQ( ) + tail_dq, unit.getR( ), unit.getS( ) - tail_dq );
+                tail_hex.unitDied( );
+            } catch ( const std::out_of_range& ) {}
+        }
+    } catch ( const std::out_of_range& ) {}
+    removeDeadUnit( unit );
 }
 
 } // namespace core

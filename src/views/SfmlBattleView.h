@@ -85,6 +85,18 @@ public:
     void showUnitInfoPanel( const UnitRenderData& unit_data ) override;
     void hideUnitInfoPanel( ) override;
 
+    void showSpellbook( const std::vector<SpellbookSpellRender>& spells,
+                              int caster_mana,
+                              int caster_max_mana ) override;
+    void hideSpellbook( ) override;
+    void setSpellTargetingActive( bool active,
+                                          models::SpellAlignment alignment ) override;
+    void setSpellCursorValid( bool valid ) override;
+    void queueSpellAnimation( int target_q,
+                                    int target_r,
+                                    const std::string& def_asset,
+                                    float duration_seconds ) override;
+
 private:
     void drawBattlefieldBackground( );
     void drawHexGrid( );
@@ -194,6 +206,17 @@ private:
     };
 
     /**
+     * @brief Runtime state for a queued spell cast animation.
+     */
+    struct SpellCastVisualEvent {
+        int targetQ_ = 0;
+        int targetR_ = 0;
+        std::string defAsset_;
+        float durationSeconds_ = 0.7f;
+        float elapsedSeconds_ = 0.0f;
+    };
+
+    /**
      * @brief Union of queued visual event types.
      */
     struct VisualEvent {
@@ -204,7 +227,8 @@ private:
             MORALE,
             HIT,
             DEATH,
-            COMMIT_RENDER_DATA
+            COMMIT_RENDER_DATA,
+            SPELL_CAST
         } type_ = Type::MOVE;
 
         bool started_ = false;
@@ -215,6 +239,7 @@ private:
         HitVisualEvent hit_;
         DeathVisualEvent death_;
         CommitRenderDataVisualEvent commit_;
+        SpellCastVisualEvent spell_;
     };
 
     /**
@@ -317,8 +342,32 @@ private:
     void loadActionBarAssets( );
     void loadInfoPanelAssets( );
     void loadUnitStackAssets( );
+    void loadSpellbookAssets( );
     bool routeActionClick( float x, float y, presenters::BattlePresenter& presenter );
+    bool routeSpellbookClick( float x, float y, presenters::BattlePresenter& presenter );
     void drawActionBar( );
+    void drawSpellCastOverlay( sf::Time dt );
+    void drawSpellbookOverlay( );
+
+    // ---- spellbook overlay state ----
+    bool spellbookOpen_ = false;
+    int spellbookCasterMana_ = 0;
+    int spellbookCasterMaxMana_ = 0;
+    std::vector<SpellbookSpellRender> spellbookSpells_;
+    sf::Texture spellbookBgTexture_;
+    std::unique_ptr<sf::Sprite> spellbookBgSprite_;
+    bool spellbookBgLoaded_ = false;
+    sf::Texture spellIconAtlasTexture_;
+    bool spellIconAtlasLoaded_ = false;
+    std::vector<sf::FloatRect> spellCellBounds_;
+    int spellbookHoveredCell_ = -1;
+    sf::FloatRect spellbookCloseBounds_;
+    std::unique_ptr<sf::Text> spellbookText_;
+
+    // ---- spell targeting + cast indicator ----
+    bool spellTargetingActive_ = false;
+    bool spellCursorIsValid_ = false;
+    models::SpellAlignment spellTargetingAlignment_ = models::SpellAlignment::NEGATIVE;
 };
 
 } // namespace views

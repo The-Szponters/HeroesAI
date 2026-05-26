@@ -135,7 +135,8 @@ TEST( UnitTest, BuffSystemSlowPercentage ) {
 
     Buff b = BuffFactory::createSlowBuff( );
     u.applyBuff( b );
-    EXPECT_EQ( u.getSpeed( ), 3 );
+    // Spec: speed * 0.75 rounded up. ceil(6 * 0.75) = ceil(4.5) = 5.
+    EXPECT_EQ( u.getSpeed( ), 5 );
 
     u.removeBuff( BuffType::SLOW );
     EXPECT_EQ( u.getSpeed( ), 6 );

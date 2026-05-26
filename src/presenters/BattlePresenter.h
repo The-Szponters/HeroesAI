@@ -11,6 +11,8 @@
 #include <unordered_set>
 
 #include "../core/GameManager.h"
+#include "../core/SpellResolver.h"
+#include "../models/Spell.h"
 #include "../views/IBattleView.h"
 
 namespace presenters {
@@ -62,6 +64,10 @@ public:
     void onRightClickReleased( );
     void onDefendClicked( );
     void onWaitClicked( );
+
+    void onSpellbookClicked( );
+    void onSpellChosen( models::SpellId id );
+    void onSpellbookCancelled( );
 
 private:
     void refreshUiForActiveUnit( );
@@ -123,10 +129,15 @@ private:
 
     sf::Vector2f hexToPixel( int q, int r ) const;
 
+    void handleSpellTargetClick( int q, int r );
+
     core::GameManager& model_;
     views::IBattleView& view_;
+    core::SpellResolver spellResolver_;
     bool rangePreviewActive_ = false;
     bool infoPanelVisible_ = false;
+    bool isCastingSpell_ = false;
+    models::SpellId pendingSpellId_ = models::SpellId::MAGIC_ARROW;
 
     int lastCursorPx_ = 0;
     int lastCursorPy_ = 0;

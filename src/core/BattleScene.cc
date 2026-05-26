@@ -67,13 +67,13 @@ void applyRoster( Hero& hero,
 } // namespace
 
 Hero BattleScene::buildBlueHero( const ArmyConfig& army ) {
-    Hero hero( "Blue Hero", 0, 0, 0, 0 );
+    Hero hero( "Blue Hero", 10, 10, 10, 10 );
     applyRoster( hero, army, K_BLUE_SLOT_POSITIONS );
     return hero;
 }
 
 Hero BattleScene::buildRedHero( const ArmyConfig& army ) {
-    Hero hero( "Red Hero", 0, 0, 0, 0 );
+    Hero hero( "Red Hero", 10, 10, 10, 10 );
     applyRoster( hero, army, K_RED_SLOT_POSITIONS );
     return hero;
 }

@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../models/SpellRegistry.h"
 #include "../views/BattleLayout.h"
 #include "BattlePresenter.h"
 
@@ -114,7 +115,7 @@ makeUnitRenderData( const GameManager& model, const Unit& unit, int q, int r, bo
 }
 
 BattlePresenter::BattlePresenter( GameManager& model, IBattleView& view )
-    : model_( model ), view_( view ) {}
+    : model_( model ), view_( view ), spellResolver_( model ) {}
 
 void BattlePresenter::startBattle( ) {
     pushRenderDataToView( );
@@ -124,6 +125,13 @@ void BattlePresenter::startBattle( ) {
 
 void BattlePresenter::onHexClicked( int q, int r, bool ) {
     if ( view_.hasPendingVisualEvents( ) ) {
+        return;
+    }
+
+    // Spell-targeting mode intercepts every hex click before the
+    // regular move/attack pathway runs.
+    if ( isCastingSpell_ ) {
+        handleSpellTargetClick( q, r );
         return;
     }
 
@@ -337,6 +345,30 @@ void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) 
     lastCursorPy_ = pixel_y;
 
     Unit* active_unit = model_.getCurrentUnit( );
+
+    // Spell-targeting mode bypasses the normal hover logic so it can't
+    // re-add the active unit's move / attack highlights. Just probe
+    // the hovered hex for a valid target and update the cast cursor.
+    if ( isCastingSpell_ ) {
+        bool valid = false;
+        if ( active_unit != nullptr ) {
+            const auto [q, r] =
+                pixelToHex( static_cast<float>( pixel_x ), static_cast<float>( pixel_y ) );
+            try {
+                const Hex& hex = model_.getBoard( ).getHex( q, r, -q - r );
+                if ( hex.hasUnit( ) ) {
+                    const Unit* target = hex.getUnit( ).get( );
+                    if ( target != nullptr ) {
+                        valid = spellResolver_.isValidTarget(
+                            pendingSpellId_, *active_unit, *target );
+                    }
+                }
+            } catch ( const std::out_of_range& ) {}
+        }
+        view_.setSpellCursorValid( valid );
+        return;
+    }
+
     if ( active_unit == nullptr ) {
         view_.clearActiveUnitHighlight( );
         view_.clearHoverDestinationHighlight( );
@@ -1448,6 +1480,151 @@ CursorStyle BattlePresenter::directionToCursor( float angle_deg ) const {
         return CursorStyle::SWORD_NW;
 }
     return CursorStyle::SWORD_NE;
+}
+
+// =========================================================================
+// Spellbook + spell targeting handlers
+// =========================================================================
+
+void BattlePresenter::onSpellbookClicked( ) {
+    if ( view_.hasPendingVisualEvents( ) ) {
+        return;
+    }
+    Unit* active_unit = model_.getCurrentUnit( );
+    if ( active_unit == nullptr ) {
+        view_.showMessage( "No active unit." );
+        return;
+    }
+    models::Hero* caster = model_.getCasterFor( *active_unit );
+    if ( caster == nullptr ) {
+        view_.showMessage( "No caster available." );
+        return;
+    }
+    if ( caster->hasCastThisRound( ) ) {
+        view_.showMessage( "Hero already cast this round." );
+        return;
+    }
+
+    std::vector<IBattleView::SpellbookSpellRender> render_list;
+    for ( const models::Spell& spell : models::SpellRegistry::all( ) ) {
+        IBattleView::SpellbookSpellRender entry;
+        entry.id_ = spell.id_;
+        entry.name_ = spell.name_;
+        entry.level_ = spell.level_;
+        entry.manaCost_ = spell.manaCost_;
+        entry.school_ = spell.school_;
+        entry.alignment_ = spell.alignment_;
+        entry.iconRect_ = spell.iconRect_;
+        entry.affordable_ = caster->getCurrentMana( ) >= spell.manaCost_;
+        render_list.push_back( entry );
+    }
+    view_.showSpellbook( render_list, caster->getCurrentMana( ), caster->getMaxMana( ) );
+}
+
+void BattlePresenter::onSpellChosen( models::SpellId id ) {
+    view_.hideSpellbook( );
+    pendingSpellId_ = id;
+    isCastingSpell_ = true;
+    const models::Spell& spell = models::SpellRegistry::bySpellId( id );
+
+    // Hide the active-unit move / attack / hover highlights so the
+    // player only sees what's relevant to targeting.
+    view_.clearAllHighlights( );
+    view_.clearActiveUnitHighlight( );
+    view_.clearHoverDestinationHighlight( );
+    view_.clearAttackOriginHighlights( );
+
+    view_.setSpellTargetingActive( true, spell.alignment_ );
+    view_.showMessage( "Select a target for " + spell.name_ + "." );
+}
+
+void BattlePresenter::onSpellbookCancelled( ) {
+    view_.hideSpellbook( );
+    if ( isCastingSpell_ ) {
+        isCastingSpell_ = false;
+        view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+    }
+}
+
+void BattlePresenter::handleSpellTargetClick( int q, int r ) {
+    Unit* active_unit = model_.getCurrentUnit( );
+    if ( active_unit == nullptr ) {
+        isCastingSpell_ = false;
+        view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+        refreshUiForActiveUnit( );
+        return;
+    }
+
+    // Helper: cancel targeting + restore the active unit's normal
+    // highlights, then bail out. Used for invalid clicks (empty hex,
+    // wrong-side unit, out of bounds, missing caster).
+    auto cancel_targeting = [this]( const std::string& msg ) {
+        view_.showMessage( msg );
+        isCastingSpell_ = false;
+        view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+        refreshUiForActiveUnit( );
+    };
+
+    Hex* clicked_hex = nullptr;
+    try {
+        clicked_hex = &model_.getBoard( ).getHex( q, r, -q - r );
+    } catch ( const std::out_of_range& ) {
+        cancel_targeting( "Invalid hex -- spell cancelled." );
+        return;
+    }
+    if ( ! clicked_hex->hasUnit( ) ) {
+        cancel_targeting( "No target -- spell cancelled." );
+        return;
+    }
+    Unit* target = clicked_hex->getUnit( ).get( );
+    if ( target == nullptr ) {
+        cancel_targeting( "No target -- spell cancelled." );
+        return;
+    }
+
+    if ( ! spellResolver_.isValidTarget( pendingSpellId_, *active_unit, *target ) ) {
+        cancel_targeting( "Invalid target -- spell cancelled." );
+        return;
+    }
+
+    models::Hero* caster = model_.getCasterFor( *active_unit );
+    if ( caster == nullptr ) {
+        cancel_targeting( "No caster found -- spell cancelled." );
+        return;
+    }
+
+    const models::Spell& spell = models::SpellRegistry::bySpellId( pendingSpellId_ );
+
+    // Snapshot BEFORE the model mutation so the view can keep showing
+    // the pre-cast state while the spell animation plays. The shared
+    // default `spell_animation.def` is used when the spell does not
+    // declare its own asset.
+    const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
+    const std::string anim_asset = spell.animationAsset_.empty( )
+                                        ? std::string( "spell_animation.def" )
+                                        : spell.animationAsset_;
+    view_.queueSpellAnimation( target->getQ( ),
+                                       target->getR( ),
+                                       anim_asset,
+                                       0.7f );
+
+    const core::SpellCastResult result =
+        spellResolver_.tryCast( pendingSpellId_, *caster, *target );
+    view_.showMessage( result.message );
+
+    isCastingSpell_ = false;
+    view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+
+    // Defer the post-cast snapshot: render before-state during the
+    // animation, then commit the after-state (dead target removed,
+    // HP/buffs updated) when the animation finishes. Mirrors the
+    // attack/move pattern so the queue stays consistent.
+    const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
+    view_.updateRenderData( before_units );
+    view_.syncUnitPositions( );
+    view_.queueRenderDataCommit( after_units );
+
+    refreshUiForActiveUnit( );
 }
 
 } // namespace presenters

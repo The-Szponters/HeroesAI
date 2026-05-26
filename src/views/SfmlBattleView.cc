@@ -136,6 +136,13 @@ SfmlBattleView::SfmlBattleView( sf::RenderWindow& window )
     loadActionBarAssets( );
     loadInfoPanelAssets( );
     loadUnitStackAssets( );
+    loadSpellbookAssets( );
+
+    if ( font_loaded ) {
+        spellbookText_ = std::make_unique<sf::Text>( font_ );
+        spellbookText_->setCharacterSize( 14 );
+        spellbookText_->setFillColor( sf::Color::White );
+    }
 }
 
 void SfmlBattleView::loadActionBarAssets( ) {
@@ -212,6 +219,16 @@ void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
 
         if ( const auto* mouse_move = event->getIf<sf::Event::MouseMoved>( ) ) {
             const sf::Vector2f world = window_.mapPixelToCoords( mouse_move->position );
+            if ( spellbookOpen_ ) {
+                spellbookHoveredCell_ = -1;
+                for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+                    if ( spellCellBounds_[i].contains( { world.x, world.y } ) ) {
+                        spellbookHoveredCell_ = i;
+                        break;
+                    }
+                }
+                continue;
+            }
             onMouseHover( static_cast<int>( world.x ),
                               static_cast<int>( world.y ),
                               presenter );
@@ -230,6 +247,13 @@ void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
             }
 
             if ( mouse_press->button != sf::Mouse::Button::Left ) {
+                continue;
+            }
+
+            // While the spellbook is open it absorbs all left-clicks --
+            // either picking a spell or dismissing the overlay.
+            if ( spellbookOpen_ ) {
+                routeSpellbookClick( mx, my, presenter );
                 continue;
             }
 
@@ -282,10 +306,14 @@ void SfmlBattleView::render( ) {
     drawBattlefieldBackground( );
     drawHexGrid( );
     drawUnits( );
+    drawSpellCastOverlay( dt );
     drawHud( );
     drawTurnQueue( );
     drawUnitStackUi( );
     drawInfoPanel( );
+    if ( spellbookOpen_ ) {
+        drawSpellbookOverlay( );
+    }
     drawCursor( );
 
     window_.display( );
@@ -789,6 +817,32 @@ void SfmlBattleView::drawInfoPanel( ) {
 }
 
 void SfmlBattleView::drawCursor( ) {
+    // Spell-targeting mode swaps in dedicated cursor sprites:
+    //   valid target  -> spellcasting_icon.def (cast cursor)
+    //   anything else -> combat_icons.def first frame ("no target")
+    if ( spellTargetingActive_ ) {
+        const std::string asset = spellCursorIsValid_
+                                       ? std::string( "spellcasting_icon.def" )
+                                       : std::string( "spell_invalid_cursor.def" );
+        std::shared_ptr<DefResource> res = defManager_.getOrLoad( asset );
+        if ( ! res ) {
+            return;
+        }
+        const auto group_it = res->groups_.find( 0 );
+        if ( group_it == res->groups_.end( ) || group_it->second.empty( ) ) {
+            return;
+        }
+        const DefFrame& frame = group_it->second.front( );
+        if ( frame.width_ <= 0 || frame.height_ <= 0 ) {
+            return;
+        }
+        sf::Sprite sprite( frame.texture_ );
+        sprite.setOrigin( { 0.0f, 0.0f } );
+        sprite.setPosition( cursorPosition_ );
+        window_.draw( sprite );
+        return;
+    }
+
     if ( cursorStyle_ == CursorStyle::DEFAULT ) {
         return;
 }
@@ -1078,6 +1132,8 @@ bool SfmlBattleView::routeActionClick( float x, float y, BattlePresenter& presen
             break;
 
         case ActionKind::SPELLBOOK:
+            presenter.onSpellbookClicked( );
+            break;
         case ActionKind::AUTO_COMBAT:
         case ActionKind::SURRENDER:
             showMessage( "Action not yet implemented" );
@@ -1474,6 +1530,12 @@ void SfmlBattleView::updateVisualEvents( sf::Time dt ) {
         finished = true;
         break;
     }
+
+    case VisualEvent::Type::SPELL_CAST: {
+        // Time-advance + drawing happen in drawSpellCastOverlay() so
+        // the animation renders ABOVE the unit sprites. Skip here.
+        break;
+    }
     }
 
     if ( finished ) {
@@ -1569,6 +1631,9 @@ void SfmlBattleView::processVisualEventStart( ) {
     case VisualEvent::Type::COMMIT_RENDER_DATA: {
         break;
     }
+    case VisualEvent::Type::SPELL_CAST: {
+        break;
+    }
     }
 }
 
@@ -1620,6 +1685,9 @@ void SfmlBattleView::processVisualEventFinish( ) {
         refreshExpandedHighlights( );
         break;
     }
+    case VisualEvent::Type::SPELL_CAST: {
+        break;
+    }
     }
 }
 
@@ -1662,6 +1730,330 @@ std::int64_t SfmlBattleView::makeHexKey( int q, int r ) {
 
 bool SfmlBattleView::isPointInBattlefield( float x, float y ) const {
     return x >= 0.0f && x <= screenWidth_ && y >= 0.0f && y < battlefieldHeight_;
+}
+
+// =========================================================================
+// Spellbook overlay + spell targeting + SPELL_CAST visual event
+// =========================================================================
+
+namespace {
+
+constexpr float K_SPELLBOOK_PANEL_W = 960.0f;
+constexpr float K_SPELLBOOK_PANEL_H = 720.0f;
+constexpr int K_SPELLBOOK_COLS = 4;
+constexpr float K_SPELLBOOK_CELL_W = 200.0f;
+constexpr float K_SPELLBOOK_CELL_H = 130.0f;
+constexpr float K_SPELLBOOK_CELL_GAP = 12.0f;
+constexpr float K_SPELLBOOK_HEADER_PAD = 60.0f;
+constexpr float K_SPELLBOOK_ICON_SIZE = 58.0f;
+constexpr float K_SPELL_TARGET_FLASH_SECONDS = 0.4f;
+
+} // namespace
+
+void SfmlBattleView::loadSpellbookAssets( ) {
+    if ( spellbookBgTexture_.loadFromFile( "assets/ui/spellbook/spellbook_bg.png" ) ) {
+        spellbookBgSprite_ = std::make_unique<sf::Sprite>( spellbookBgTexture_ );
+        const sf::Vector2u ts = spellbookBgTexture_.getSize( );
+        if ( ts.x > 0 && ts.y > 0 ) {
+            spellbookBgSprite_->setScale(
+                { K_SPELLBOOK_PANEL_W / static_cast<float>( ts.x ),
+                  K_SPELLBOOK_PANEL_H / static_cast<float>( ts.y ) } );
+        }
+        spellbookBgLoaded_ = true;
+    }
+    if ( spellIconAtlasTexture_.loadFromFile( "assets/ui/spellbook/spell_icons.png" ) ) {
+        spellIconAtlasLoaded_ = true;
+    }
+}
+
+void SfmlBattleView::showSpellbook( const std::vector<SpellbookSpellRender>& spells,
+                                              int caster_mana,
+                                              int caster_max_mana ) {
+    spellbookOpen_ = true;
+    spellbookCasterMana_ = caster_mana;
+    spellbookCasterMaxMana_ = caster_max_mana;
+    spellbookSpells_ = spells;
+    spellbookHoveredCell_ = -1;
+
+    const float panel_x = ( screenWidth_ - K_SPELLBOOK_PANEL_W ) * 0.5f;
+    const float panel_y = ( screenHeight_ - K_SPELLBOOK_PANEL_H ) * 0.5f;
+    if ( spellbookBgSprite_ ) {
+        spellbookBgSprite_->setPosition( { panel_x, panel_y } );
+    }
+
+    spellCellBounds_.clear( );
+    spellCellBounds_.reserve( spellbookSpells_.size( ) );
+    const float grid_x = panel_x +
+        ( K_SPELLBOOK_PANEL_W -
+          K_SPELLBOOK_COLS * ( K_SPELLBOOK_CELL_W + K_SPELLBOOK_CELL_GAP ) +
+          K_SPELLBOOK_CELL_GAP ) *
+            0.5f;
+    const float grid_y = panel_y + K_SPELLBOOK_HEADER_PAD;
+    for ( int i = 0; i < static_cast<int>( spellbookSpells_.size( ) ); ++i ) {
+        const int col = i % K_SPELLBOOK_COLS;
+        const int row = i / K_SPELLBOOK_COLS;
+        const float x =
+            grid_x + static_cast<float>( col ) * ( K_SPELLBOOK_CELL_W + K_SPELLBOOK_CELL_GAP );
+        const float y =
+            grid_y + static_cast<float>( row ) * ( K_SPELLBOOK_CELL_H + K_SPELLBOOK_CELL_GAP );
+        spellCellBounds_.emplace_back( sf::Vector2f{ x, y },
+                                              sf::Vector2f{ K_SPELLBOOK_CELL_W,
+                                                                K_SPELLBOOK_CELL_H } );
+    }
+
+    spellbookCloseBounds_ = sf::FloatRect(
+        { panel_x + K_SPELLBOOK_PANEL_W - 90.0f, panel_y + 20.0f }, { 70.0f, 28.0f } );
+}
+
+void SfmlBattleView::hideSpellbook( ) {
+    spellbookOpen_ = false;
+    spellbookSpells_.clear( );
+    spellCellBounds_.clear( );
+    spellbookHoveredCell_ = -1;
+}
+
+void SfmlBattleView::setSpellTargetingActive( bool active,
+                                                        models::SpellAlignment alignment ) {
+    spellTargetingActive_ = active;
+    spellTargetingAlignment_ = alignment;
+    spellCursorIsValid_ = false;
+    if ( ! active ) {
+        // Restore default cursor when targeting ends.
+        setCursorStyle( CursorStyle::DEFAULT, 0, 0 );
+    }
+}
+
+void SfmlBattleView::setSpellCursorValid( bool valid ) {
+    spellCursorIsValid_ = valid;
+}
+
+void SfmlBattleView::queueSpellAnimation( int target_q,
+                                                  int target_r,
+                                                  const std::string& def_asset,
+                                                  float duration_seconds ) {
+    VisualEvent ev;
+    ev.type_ = VisualEvent::Type::SPELL_CAST;
+    ev.spell_.targetQ_ = target_q;
+    ev.spell_.targetR_ = target_r;
+    ev.spell_.defAsset_ = def_asset;
+    ev.spell_.durationSeconds_ = duration_seconds > 0.0f ? duration_seconds
+                                                          : K_SPELL_TARGET_FLASH_SECONDS;
+    visualEvents_.push_back( ev );
+}
+
+void SfmlBattleView::drawSpellCastOverlay( sf::Time dt ) {
+    if ( visualEvents_.empty( ) ) {
+        return;
+    }
+    VisualEvent& event = visualEvents_.front( );
+    if ( event.type_ != VisualEvent::Type::SPELL_CAST ) {
+        return;
+    }
+
+    SpellCastVisualEvent& spe = event.spell_;
+    spe.elapsedSeconds_ += dt.asSeconds( );
+
+    const sf::Vector2f center = hexToPixel( spe.targetQ_, spe.targetR_ );
+    const float radius = hexRadius_ * 1.1f;
+
+    bool drew_from_def = false;
+    if ( ! spe.defAsset_.empty( ) ) {
+        std::shared_ptr<DefResource> res = defManager_.getOrLoad( spe.defAsset_ );
+        if ( res ) {
+            const auto group_it = res->groups_.find( 0 );
+            if ( group_it != res->groups_.end( ) && ! group_it->second.empty( ) ) {
+                const auto& frames = group_it->second;
+                const float progress = std::clamp(
+                    spe.elapsedSeconds_ / spe.durationSeconds_, 0.0f, 0.9999f );
+                const std::size_t frame_index = static_cast<std::size_t>(
+                    progress * static_cast<float>( frames.size( ) ) );
+                const DefFrame& frame = frames[frame_index];
+                if ( frame.width_ > 0 && frame.height_ > 0 ) {
+                    sf::Sprite spr( frame.texture_ );
+                    const float scale = std::min(
+                        ( radius * 2.0f ) / static_cast<float>( frame.width_ ),
+                        ( radius * 2.0f ) / static_cast<float>( frame.height_ ) );
+                    spr.setScale( { scale, scale } );
+                    spr.setOrigin(
+                        { static_cast<float>( frame.width_ ) * 0.5f,
+                          static_cast<float>( frame.height_ ) * 0.5f } );
+                    spr.setPosition( center );
+                    window_.draw( spr );
+                    drew_from_def = true;
+                }
+            }
+        }
+    }
+
+    if ( ! drew_from_def ) {
+        const float t =
+            std::clamp( spe.elapsedSeconds_ / spe.durationSeconds_, 0.0f, 1.0f );
+        const float alpha_norm = ( t < 0.5f ) ? t * 2.0f : ( 1.0f - t ) * 2.0f;
+        const std::uint8_t alpha =
+            static_cast<std::uint8_t>( std::round( alpha_norm * 220.0f ) );
+        sf::CircleShape flash( radius );
+        flash.setOrigin( { radius, radius } );
+        flash.setPosition( center );
+        flash.setFillColor( sf::Color( 255, 230, 120, alpha ) );
+        flash.setOutlineColor( sf::Color( 255, 200, 80, alpha ) );
+        flash.setOutlineThickness( 2.0f );
+        window_.draw( flash );
+    }
+
+    if ( spe.elapsedSeconds_ >= spe.durationSeconds_ ) {
+        processVisualEventFinish( );
+        visualEvents_.pop_front( );
+
+        // Drain any COMMIT_RENDER_DATA events that were queued right
+        // after this spell so the post-cast state shows up this frame.
+        while ( ! visualEvents_.empty( ) &&
+                visualEvents_.front( ).type_ == VisualEvent::Type::COMMIT_RENDER_DATA ) {
+            processVisualEventStart( );
+            processVisualEventFinish( );
+            visualEvents_.pop_front( );
+        }
+
+        if ( visualEvents_.empty( ) && idleCallback_ ) {
+            std::function<void( )> cb = std::move( idleCallback_ );
+            idleCallback_ = nullptr;
+            cb( );
+        }
+    }
+}
+
+bool SfmlBattleView::routeSpellbookClick( float x, float y, presenters::BattlePresenter& presenter ) {
+    if ( spellbookCloseBounds_.contains( { x, y } ) ) {
+        presenter.onSpellbookCancelled( );
+        return true;
+    }
+    for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+        if ( spellCellBounds_[i].contains( { x, y } ) ) {
+            const SpellbookSpellRender& cell = spellbookSpells_[i];
+            if ( cell.affordable_ ) {
+                presenter.onSpellChosen( cell.id_ );
+            } else {
+                showMessage( "Cannot cast that spell right now." );
+            }
+            return true;
+        }
+    }
+    presenter.onSpellbookCancelled( );
+    return true;
+}
+
+void SfmlBattleView::drawSpellbookOverlay( ) {
+    sf::RectangleShape backdrop( { screenWidth_, screenHeight_ } );
+    backdrop.setPosition( { 0.0f, 0.0f } );
+    backdrop.setFillColor( sf::Color( 0, 0, 0, 170 ) );
+    window_.draw( backdrop );
+
+    const float panel_x = ( screenWidth_ - K_SPELLBOOK_PANEL_W ) * 0.5f;
+    const float panel_y = ( screenHeight_ - K_SPELLBOOK_PANEL_H ) * 0.5f;
+
+    if ( spellbookBgLoaded_ && spellbookBgSprite_ ) {
+        spellbookBgSprite_->setPosition( { panel_x, panel_y } );
+        window_.draw( *spellbookBgSprite_ );
+    } else {
+        sf::RectangleShape panel( { K_SPELLBOOK_PANEL_W, K_SPELLBOOK_PANEL_H } );
+        panel.setPosition( { panel_x, panel_y } );
+        panel.setFillColor( sf::Color( 22, 22, 36, 240 ) );
+        panel.setOutlineColor( sf::Color( 140, 170, 220 ) );
+        panel.setOutlineThickness( 2.0f );
+        window_.draw( panel );
+    }
+
+    if ( spellbookText_ ) {
+        spellbookText_->setCharacterSize( 22 );
+        spellbookText_->setFillColor( sf::Color( 240, 235, 200 ) );
+        spellbookText_->setStyle( sf::Text::Bold );
+        spellbookText_->setString( "Spellbook  --  Mana " +
+                                       std::to_string( spellbookCasterMana_ ) + " / " +
+                                       std::to_string( spellbookCasterMaxMana_ ) );
+        spellbookText_->setPosition( { panel_x + 20.0f, panel_y + 18.0f } );
+        window_.draw( *spellbookText_ );
+
+        // Close button
+        sf::RectangleShape close_bg( spellbookCloseBounds_.size );
+        close_bg.setPosition( spellbookCloseBounds_.position );
+        close_bg.setFillColor( sf::Color( 70, 35, 35, 220 ) );
+        close_bg.setOutlineColor( sf::Color( 200, 120, 120 ) );
+        close_bg.setOutlineThickness( 1.5f );
+        window_.draw( close_bg );
+        spellbookText_->setCharacterSize( 16 );
+        spellbookText_->setStyle( sf::Text::Regular );
+        spellbookText_->setFillColor( sf::Color::White );
+        spellbookText_->setString( "Close" );
+        const sf::FloatRect tb = spellbookText_->getLocalBounds( );
+        spellbookText_->setPosition(
+            { spellbookCloseBounds_.position.x +
+                  ( spellbookCloseBounds_.size.x - tb.size.x ) * 0.5f - tb.position.x,
+              spellbookCloseBounds_.position.y +
+                  ( spellbookCloseBounds_.size.y - tb.size.y ) * 0.5f - tb.position.y } );
+        window_.draw( *spellbookText_ );
+    }
+
+    for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+        const sf::FloatRect& bounds = spellCellBounds_[i];
+        const SpellbookSpellRender& cell = spellbookSpells_[i];
+        const bool hovered = ( spellbookHoveredCell_ == i );
+
+        sf::RectangleShape frame( bounds.size );
+        frame.setPosition( bounds.position );
+        if ( ! cell.affordable_ ) {
+            frame.setFillColor( sf::Color( 18, 18, 26, 220 ) );
+            frame.setOutlineColor( sf::Color( 70, 70, 90 ) );
+        } else if ( hovered ) {
+            frame.setFillColor( sf::Color( 50, 60, 100, 230 ) );
+            frame.setOutlineColor( sf::Color( 200, 220, 255 ) );
+        } else {
+            frame.setFillColor( sf::Color( 28, 32, 50, 220 ) );
+            frame.setOutlineColor( sf::Color( 130, 150, 190 ) );
+        }
+        frame.setOutlineThickness( 1.5f );
+        window_.draw( frame );
+
+        // Icon
+        if ( spellIconAtlasLoaded_ && cell.iconRect_.w_ > 0 && cell.iconRect_.h_ > 0 ) {
+            sf::Sprite icon( spellIconAtlasTexture_ );
+            icon.setTextureRect( sf::IntRect(
+                { cell.iconRect_.x_, cell.iconRect_.y_ },
+                { cell.iconRect_.w_, cell.iconRect_.h_ } ) );
+            const float scale =
+                std::min( K_SPELLBOOK_ICON_SIZE / static_cast<float>( cell.iconRect_.w_ ),
+                          K_SPELLBOOK_ICON_SIZE / static_cast<float>( cell.iconRect_.h_ ) );
+            icon.setScale( { scale, scale } );
+            icon.setPosition( { bounds.position.x + 12.0f, bounds.position.y + 12.0f } );
+            if ( ! cell.affordable_ ) {
+                icon.setColor( sf::Color( 120, 120, 120 ) );
+            }
+            window_.draw( icon );
+        }
+
+        // Text
+        if ( spellbookText_ ) {
+            spellbookText_->setCharacterSize( 16 );
+            spellbookText_->setStyle( sf::Text::Bold );
+            spellbookText_->setFillColor( cell.affordable_ ? sf::Color::White
+                                                            : sf::Color( 130, 130, 130 ) );
+            spellbookText_->setString( cell.name_ );
+            spellbookText_->setPosition(
+                { bounds.position.x + 12.0f + K_SPELLBOOK_ICON_SIZE + 10.0f,
+                  bounds.position.y + 14.0f } );
+            window_.draw( *spellbookText_ );
+
+            spellbookText_->setCharacterSize( 14 );
+            spellbookText_->setStyle( sf::Text::Regular );
+            spellbookText_->setFillColor( cell.affordable_ ? sf::Color( 200, 220, 255 )
+                                                            : sf::Color( 100, 100, 100 ) );
+            spellbookText_->setString( "Lv " + std::to_string( cell.level_ ) +
+                                           "  --  " +
+                                           std::to_string( cell.manaCost_ ) + " mana" );
+            spellbookText_->setPosition(
+                { bounds.position.x + 12.0f + K_SPELLBOOK_ICON_SIZE + 10.0f,
+                  bounds.position.y + 38.0f } );
+            window_.draw( *spellbookText_ );
+        }
+    }
 }
 
 } // namespace views

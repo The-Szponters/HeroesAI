@@ -64,8 +64,23 @@ public:
 
     const models::Hero& getBlueHero( ) const { return blueHero_; }
     const models::Hero& getRedHero( ) const { return redHero_; }
+    models::Hero& getBlueHeroMutable( ) { return blueHero_; }
+    models::Hero& getRedHeroMutable( ) { return redHero_; }
+
+    // Returns the hero that owns the given unit, or nullptr if it
+    // belongs to neither army (defensive). Used by SpellResolver to
+    // find the caster for the currently-active unit.
+    models::Hero* getCasterFor( const models::Unit& unit );
+
+    // Removes the unit from the board AND the active-units list when
+    // its count has dropped to zero. Used by the spell resolver after
+    // damage spells so dead targets clear hexes the same way melee
+    // kills do.
+    void notifyUnitMaybeDied( models::Unit& unit );
 
 private:
+    void advanceRound( );
+
     void removeDeadUnit( models::Unit& unit );
     bool heroContainsUnit( const models::Hero& hero, const models::Unit& unit ) const;
 

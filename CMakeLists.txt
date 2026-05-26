@@ -28,7 +28,9 @@ FetchContent_MakeAvailable(json)
 add_executable(${PROJECT_NAME}
   src/Main.cc
   src/models/UnitFactory.cc
+  src/models/SpellRegistry.cc
   src/core/ActionManager.cc
+  src/core/SpellResolver.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
   src/core/Settings.cc

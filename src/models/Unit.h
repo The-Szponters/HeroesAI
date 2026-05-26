@@ -144,13 +144,17 @@ public:
     }
 
     void applyBuff( const Buff& buff ) {
-        auto it = std::find_if( activeBuffs_.begin( ),
-                                activeBuffs_.end( ),
-                                [&buff]( const Buff& b ) { return b.type_ == buff.type_; } );
-        if ( it != activeBuffs_.end( ) ) {
-            *it = buff;
-        } else {
+        if ( buff.stackable_ ) {
             activeBuffs_.push_back( buff );
+        } else {
+            auto it = std::find_if( activeBuffs_.begin( ),
+                                    activeBuffs_.end( ),
+                                    [&buff]( const Buff& b ) { return b.type_ == buff.type_; } );
+            if ( it != activeBuffs_.end( ) ) {
+                *it = buff;
+            } else {
+                activeBuffs_.push_back( buff );
+            }
         }
         recalculateStats( );
     }
@@ -159,6 +163,49 @@ public:
         std::erase_if( activeBuffs_, [type]( const Buff& b ) { return b.type_ == type; } );
         recalculateStats( );
     }
+
+    bool hasBuff( BuffType type ) const {
+        return std::find_if(
+                   activeBuffs_.begin( ),
+                   activeBuffs_.end( ),
+                   [type]( const Buff& b ) { return b.type_ == type; } ) != activeBuffs_.end( );
+    }
+
+    // Removes every NEGATIVE-aligned buff (used by Cure).
+    void removeNegativeBuffs( ) {
+        std::erase_if( activeBuffs_, []( const Buff& b ) {
+            return b.alignment_ == BuffAlignment::NEGATIVE;
+        } );
+        recalculateStats( );
+    }
+
+    // Restores HP without resurrecting -- capped at the stack's current
+    // theoretical max (count * health). Cure uses this.
+    void heal( int amount ) {
+        if ( amount <= 0 || count_ <= 0 ) {
+            return;
+        }
+        const int max_total = count_ * health_;
+        int total_health = healthLeft_ + ( count_ - 1 ) * health_;
+        total_health = std::min( total_health + amount, max_total );
+        count_ = ( total_health + health_ - 1 ) / health_;
+        healthLeft_ = total_health % health_;
+        if ( healthLeft_ == 0 && count_ > 0 ) {
+            healthLeft_ = health_;
+        }
+    }
+
+    // Aggregate incoming-melee damage multiplier from all active buffs.
+    float getIncomingMeleeMultiplier( ) const {
+        float multiplier = 1.0f;
+        for ( const auto& buff : activeBuffs_ ) {
+            multiplier = buff.modifyIncomingMeleeMult_( multiplier );
+        }
+        return multiplier;
+    }
+
+    bool getNextRetaliationHalfAttack( ) const { return nextRetaliationHalfAttack_; }
+    void setNextRetaliationHalfAttack( bool v ) { nextRetaliationHalfAttack_ = v; }
 
     void recalculateStats( ) {
         totalAttack_ = attack_;
@@ -175,6 +222,17 @@ public:
             totalSpeed_ = buff.modifySpeed_( totalSpeed_ );
         }
 
+        // Bless / Curse damage clamps: applied AFTER per-stat lambdas
+        // so they see both running totals at once.
+        for ( const auto& buff : activeBuffs_ ) {
+            if ( buff.forceMaxDamage_ ) {
+                totalDamageMin_ = totalDamageMax_;
+            }
+            if ( buff.forceMinDamage_ ) {
+                totalDamageMax_ = totalDamageMin_;
+            }
+        }
+
         totalAttack_ = std::max( 0, totalAttack_ );
         totalDefense_ = std::max( 0, totalDefense_ );
         totalDamageMin_ = std::max( 0, totalDamageMin_ );
@@ -186,13 +244,18 @@ public:
         hasRetaliated_ = false;
         bool removed = false;
         for ( auto& buff : activeBuffs_ ) {
+            if ( buff.duration_ == -1 ) {
+                continue;   // infinite duration (Disrupting Ray)
+            }
             buff.duration_--;
             if ( buff.duration_ <= 0 ) {
                 removed = true;
             }
         }
         if ( removed ) {
-            std::erase_if( activeBuffs_, []( const Buff& b ) { return b.duration_ <= 0; } );
+            std::erase_if( activeBuffs_, []( const Buff& b ) {
+                return b.duration_ != -1 && b.duration_ <= 0;
+            } );
             recalculateStats( );
         }
     }
@@ -222,6 +285,7 @@ private:
     bool isTeleporter_ = false;
     bool isFlying_ = false;
     bool hasRetaliated_ = false;
+    bool nextRetaliationHalfAttack_ = false;
     bool logicalFacingLeft_ = false;
     bool visualFacingLeft_ = false;
     bool positionInitialized_ = false;

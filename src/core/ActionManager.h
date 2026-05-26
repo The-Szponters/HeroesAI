@@ -130,6 +130,16 @@ public:
      * @return Integer damage value after the attack/defense modifier is applied.
      */
     int calculateDamage( const models::Unit& attacker, const models::Unit& defender ) const;
+
+    /**
+     * @brief Same as calculateDamage but overrides the attacker's attack stat.
+     *
+     * Used for "first retaliation after Blind broken" which must use 50%
+     * of the defender's actual attack stat (spec).
+     */
+    int calculateDamageWithAttack( const models::Unit& attacker,
+                                       const models::Unit& defender,
+                                       int attack_override ) const;
 };
 
 } // namespace core

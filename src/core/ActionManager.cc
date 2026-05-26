@@ -442,6 +442,13 @@ bool ActionManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex
 }
     defender.takeDamage( damage );
 
+    // Blind break: any successful hit dispels Blind on the defender
+    // and primes its next retaliation for 50% attack (spec).
+    if ( defender.getCount( ) > 0 && defender.hasBuff( models::BuffType::BLIND ) ) {
+        defender.removeBuff( models::BuffType::BLIND );
+        defender.setNextRetaliationHalfAttack( true );
+    }
+
     if ( defender.getCount( ) == 0 ) {
         try {
             Hex& def_hex = board.getHex( defender.getQ( ), defender.getR( ), defender.getS( ) );
@@ -466,7 +473,12 @@ bool ActionManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex
             attacker.setVisualFacingLeft( false );
         }
 
-        const int counter = calculateDamage( defender, attacker );
+        int counter_attack_override = defender.getAttack( );
+        if ( defender.getNextRetaliationHalfAttack( ) ) {
+            counter_attack_override /= 2;
+            defender.setNextRetaliationHalfAttack( false );
+        }
+        const int counter = calculateDamageWithAttack( defender, attacker, counter_attack_override );
         attacker.takeDamage( counter );
         defender.setRetaliated( true );
 
@@ -497,6 +509,12 @@ void ActionManager::defend( Unit& unit ) {
 }
 
 int ActionManager::calculateDamage( const Unit& attacker, const Unit& defender ) const {
+    return calculateDamageWithAttack( attacker, defender, attacker.getAttack( ) );
+}
+
+int ActionManager::calculateDamageWithAttack( const Unit& attacker,
+                                                      const Unit& defender,
+                                                      int attack_override ) const {
     if ( attacker.getCount( ) <= 0 ) {
         return 0;
 }
@@ -504,15 +522,16 @@ int ActionManager::calculateDamage( const Unit& attacker, const Unit& defender )
     int total_base_damage = 0;
     std::random_device rd;
     std::mt19937 gen( rd( ) );
-    std::uniform_int_distribution<> distrib( attacker.getDamageMin( ),
-                                             attacker.getDamageMax( ) );
+    const int dmg_min = std::max( 0, attacker.getDamageMin( ) );
+    const int dmg_max = std::max( dmg_min, attacker.getDamageMax( ) );
+    std::uniform_int_distribution<> distrib( dmg_min, dmg_max );
 
     for ( int i = 0; i < attacker.getCount( ); ++i ) {
         total_base_damage += distrib( gen );
     }
 
     double modifier = 1.0;
-    int attack_stat = attacker.getAttack( );
+    int attack_stat = attack_override;
     int defense_stat = defender.getDefense( );
 
     if ( attack_stat > defense_stat ) {
@@ -527,7 +546,15 @@ int ActionManager::calculateDamage( const Unit& attacker, const Unit& defender )
 }
     }
 
-    return static_cast<int>( total_base_damage * modifier );
+    int damage = static_cast<int>( total_base_damage * modifier );
+
+    // Shield: reduce incoming MELEE damage by the defender's buff
+    // multiplier (ranged attacks ignore Shield).
+    if ( ! attacker.isRanged( ) ) {
+        damage = static_cast<int>(
+            static_cast<float>( damage ) * defender.getIncomingMeleeMultiplier( ) );
+    }
+    return damage;
 }
 
 bool ActionManager::shoot( Unit& attacker, Unit& defender, Board& board ) {
