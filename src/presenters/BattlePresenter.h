@@ -70,6 +70,7 @@ public:
     void onSpellbookCancelled( );
 
 private:
+    void cancelSpellTargeting( );
     void refreshUiForActiveUnit( );
     void pushRenderDataToView( );
     std::vector<views::UnitRenderData> buildRenderDataSnapshot( ) const;

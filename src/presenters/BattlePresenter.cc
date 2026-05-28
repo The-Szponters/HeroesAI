@@ -654,7 +654,17 @@ void BattlePresenter::onRightClickReleased( ) {
     infoPanelVisible_ = false;
 }
 
+void BattlePresenter::cancelSpellTargeting( ) {
+    if ( ! isCastingSpell_ ) {
+        return;
+    }
+    isCastingSpell_ = false;
+    view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+    view_.clearHoverDestinationHighlight( );
+}
+
 void BattlePresenter::onDefendClicked( ) {
+    cancelSpellTargeting( );
     view_.clearVisualEvents( );
     view_.setIdleCallback( nullptr );
 
@@ -675,6 +685,7 @@ void BattlePresenter::onDefendClicked( ) {
 }
 
 void BattlePresenter::onWaitClicked( ) {
+    cancelSpellTargeting( );
     view_.clearVisualEvents( );
     view_.setIdleCallback( nullptr );
 
@@ -1512,6 +1523,10 @@ void BattlePresenter::onSpellbookClicked( ) {
     if ( view_.hasPendingVisualEvents( ) ) {
         return;
     }
+    // Re-opening the spellbook mid-targeting drops the in-flight cast
+    // so the active-unit highlights come back when the book closes.
+    cancelSpellTargeting( );
+    refreshUiForActiveUnit( );
     Unit* active_unit = model_.getCurrentUnit( );
     if ( active_unit == nullptr ) {
         view_.showMessage( "No active unit." );
