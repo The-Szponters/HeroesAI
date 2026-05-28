@@ -1789,6 +1789,11 @@ constexpr float K_PAGE_TOP_Y_RATIO = 0.150f;
 constexpr float K_PAGE_BOTTOM_Y_RATIO = 0.690f;
 constexpr float K_SPELLBOOK_ICON_SIZE_RATIO = 0.075f;
 
+// Plain red banner (3rd from left) used as a mana indicator. Centre
+// coordinates of the ribbon; the text is centred on this point.
+constexpr float K_MANA_BANNER_CX_RATIO = 0.700f;
+constexpr float K_MANA_BANNER_CY_RATIO = 0.745f;
+
 // Close-book ribbon (crossed circle / "no" symbol on the bottom-right
 // red banner of Spellbook.bmp). Tuned from the actual texture; the
 // cursor swaps to spell_invalid_cursor.def while hovering this area.
@@ -2130,6 +2135,21 @@ void SfmlBattleView::drawSpellbookOverlay( ) {
                   icon_y + icon_size + 18.0f } );
             window_.draw( *spellbookText_ );
         }
+    }
+
+    // Current mana on the plain red banner next to the close ribbon.
+    if ( spellbookText_ ) {
+        spellbookText_->setStyle( sf::Text::Bold );
+        spellbookText_->setCharacterSize( 22 );
+        spellbookText_->setFillColor( sf::Color( 250, 235, 200 ) );
+        spellbookText_->setString( std::to_string( spellbookCasterMana_ ) );
+        const sf::FloatRect tb = spellbookText_->getLocalBounds( );
+        const float cx = panel_x + K_MANA_BANNER_CX_RATIO * panel_w;
+        const float cy = panel_y + K_MANA_BANNER_CY_RATIO * panel_h;
+        spellbookText_->setPosition(
+            { cx - tb.size.x * 0.5f - tb.position.x,
+              cy - tb.size.y * 0.5f - tb.position.y } );
+        window_.draw( *spellbookText_ );
     }
 
     // Right-click description tooltip (anchored to the bottom of the
