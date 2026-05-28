@@ -12,11 +12,17 @@ namespace core {
 using models::Unit;
 
 namespace {
+// A unit with speed 0 (e.g. blinded) is treated as if it weren't in
+// the round at all -- can't activate, doesn't show up in the queue UI.
+bool canAct( const Unit* u ) {
+    return u != nullptr && u->getCount( ) > 0 && u->getSpeed( ) > 0;
+}
+
 template <typename Queue>
-void discardDeadFromTop( Queue& q ) {
+void discardSkippedFromTop( Queue& q ) {
     while ( ! q.empty( ) ) {
         Unit* top = q.top( );
-        if ( top != nullptr && top->getCount( ) > 0 ) {
+        if ( canAct( top ) ) {
             break;
         }
         q.pop( );
@@ -40,8 +46,8 @@ void RoundManager::startRound( ) {
 }
 
 Unit* RoundManager::getCurrentUnit( ) {
-    discardDeadFromTop( unactivatedUnits_ );
-    discardDeadFromTop( waitedUnits_ );
+    discardSkippedFromTop( unactivatedUnits_ );
+    discardSkippedFromTop( waitedUnits_ );
 
     if ( ! unactivatedUnits_.empty( ) ) {
         return unactivatedUnits_.top( );
@@ -59,8 +65,8 @@ Unit* RoundManager::getCurrentUnit( ) {
 }
 
 void RoundManager::endCurrentUnitTurn( ) {
-    discardDeadFromTop( unactivatedUnits_ );
-    discardDeadFromTop( waitedUnits_ );
+    discardSkippedFromTop( unactivatedUnits_ );
+    discardSkippedFromTop( waitedUnits_ );
 
     if ( ! unactivatedUnits_.empty( ) ) {
         unactivatedUnits_.pop( );
@@ -70,7 +76,7 @@ void RoundManager::endCurrentUnitTurn( ) {
 }
 
 void RoundManager::waitCurrentUnit( ) {
-    discardDeadFromTop( unactivatedUnits_ );
+    discardSkippedFromTop( unactivatedUnits_ );
 
     if ( ! unactivatedUnits_.empty( ) ) {
         Unit* u = unactivatedUnits_.top( );
@@ -88,7 +94,7 @@ std::vector<Unit*> RoundManager::getUnitsLeftInRound( ) const {
 
     while ( ! temp_unactivated.empty( ) ) {
         Unit* unit = temp_unactivated.top( );
-        if ( unit != nullptr && unit->getCount( ) > 0 ) {
+        if ( canAct( unit ) ) {
             left.push_back( unit );
         }
         temp_unactivated.pop( );
@@ -96,7 +102,7 @@ std::vector<Unit*> RoundManager::getUnitsLeftInRound( ) const {
 
     while ( ! temp_waited.empty( ) ) {
         Unit* unit = temp_waited.top( );
-        if ( unit != nullptr && unit->getCount( ) > 0 ) {
+        if ( canAct( unit ) ) {
             left.push_back( unit );
         }
         temp_waited.pop( );
@@ -112,7 +118,7 @@ std::vector<Unit*> RoundManager::getUnitQueueInRound( ) const {
     while ( ! temp_unactivated.empty( ) ) {
         Unit* u = temp_unactivated.top( );
         temp_unactivated.pop( );
-        if ( u != nullptr && u->getCount( ) > 0 ) {
+        if ( canAct( u ) ) {
             result.push_back( u );
 }
     }
@@ -121,7 +127,7 @@ std::vector<Unit*> RoundManager::getUnitQueueInRound( ) const {
     while ( ! temp_waited.empty( ) ) {
         Unit* u = temp_waited.top( );
         temp_waited.pop( );
-        if ( u != nullptr && u->getCount( ) > 0 ) {
+        if ( canAct( u ) ) {
             result.push_back( u );
 }
     }

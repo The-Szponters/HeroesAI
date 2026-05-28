@@ -69,6 +69,11 @@ SpellCastResult SpellResolver::tryCast( SpellId id,
     case SpellId::ICE_BOLT: {
         const int damage = SpellRegistry::damageFor( id, power );
         target.takeDamage( damage );
+        // Spell damage also breaks Blind (spec: any damage dispels it).
+        if ( target.getCount( ) > 0 && target.hasBuff( models::BuffType::BLIND ) ) {
+            target.removeBuff( models::BuffType::BLIND );
+            target.setNextRetaliationHalfAttack( true );
+        }
         // Mirror the melee/range death-cleanup path so dead targets
         // free their hex(es) instead of lingering as ghost blockers.
         model_.notifyUnitMaybeDied( target );

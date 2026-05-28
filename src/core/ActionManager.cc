@@ -473,12 +473,11 @@ bool ActionManager::attack( Unit& attacker, Unit& defender, Hex& attack_from_hex
             attacker.setVisualFacingLeft( false );
         }
 
-        int counter_attack_override = defender.getAttack( );
+        int counter = calculateDamage( defender, attacker );
         if ( defender.getNextRetaliationHalfAttack( ) ) {
-            counter_attack_override /= 2;
+            counter /= 2;
             defender.setNextRetaliationHalfAttack( false );
         }
-        const int counter = calculateDamageWithAttack( defender, attacker, counter_attack_override );
         attacker.takeDamage( counter );
         defender.setRetaliated( true );
 
@@ -574,6 +573,14 @@ bool ActionManager::shoot( Unit& attacker, Unit& defender, Board& board ) {
     }
     defender.takeDamage( damage );
     attacker.decrementAmmo( );
+
+    // Ranged hits also break Blind (spec: any damage dispels it).
+    // No retaliation happens for ranged, so the half-attack flag is
+    // effectively moot here, but we still set it for consistency.
+    if ( defender.getCount( ) > 0 && defender.hasBuff( models::BuffType::BLIND ) ) {
+        defender.removeBuff( models::BuffType::BLIND );
+        defender.setNextRetaliationHalfAttack( true );
+    }
 
     if ( defender.getCount( ) == 0 ) {
         try {

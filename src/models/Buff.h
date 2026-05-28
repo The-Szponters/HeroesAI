@@ -102,8 +102,11 @@ public:
         b.type_ = BuffType::BLIND;
         b.duration_ = duration;
         b.alignment_ = BuffAlignment::NEGATIVE;
+        // Speed -> 0 keeps the unit out of the turn queue (RoundManager
+        // skips speed-0 actors). Attack stat stays unchanged; the 50%
+        // counter-attack penalty is applied to the DAMAGE in
+        // ActionManager via the nextRetaliationHalfAttack_ flag.
         b.modifySpeed_ = []( int ) { return 0; };
-        b.modifyAttack_ = []( int ) { return 0; };
         return b;
     }
 
