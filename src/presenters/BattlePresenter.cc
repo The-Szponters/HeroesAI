@@ -347,10 +347,13 @@ void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) 
     Unit* active_unit = model_.getCurrentUnit( );
 
     // Spell-targeting mode bypasses the normal hover logic so it can't
-    // re-add the active unit's move / attack highlights. Just probe
-    // the hovered hex for a valid target and update the cast cursor.
+    // re-add the active unit's move / attack highlights. Probe the
+    // hovered hex for a valid target, update the cast cursor, and (if
+    // valid) outline every hex the target unit occupies so the player
+    // sees exactly what they're about to hit.
     if ( isCastingSpell_ ) {
         bool valid = false;
+        const Unit* hovered_target = nullptr;
         if ( active_unit != nullptr ) {
             const auto [q, r] =
                 pixelToHex( static_cast<float>( pixel_x ), static_cast<float>( pixel_y ) );
@@ -361,11 +364,30 @@ void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) 
                     if ( target != nullptr ) {
                         valid = spellResolver_.isValidTarget(
                             pendingSpellId_, *active_unit, *target );
+                        if ( valid ) {
+                            hovered_target = target;
+                        }
                     }
                 }
             } catch ( const std::out_of_range& ) {}
         }
         view_.setSpellCursorValid( valid );
+        if ( hovered_target != nullptr ) {
+            const int head_q = hovered_target->getQ( );
+            const int head_r = hovered_target->getR( );
+            bool has_tail = false;
+            int tail_q = 0;
+            int tail_r = 0;
+            if ( hovered_target->getSize( ) == 2 ) {
+                const int tail_dq = hovered_target->isFacingLeft( ) ? 1 : -1;
+                has_tail = true;
+                tail_q = head_q + tail_dq;
+                tail_r = head_r;
+            }
+            view_.setHoverDestinationHighlight( head_q, head_r, has_tail, tail_q, tail_r );
+        } else {
+            view_.clearHoverDestinationHighlight( );
+        }
         return;
     }
 

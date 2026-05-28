@@ -1343,6 +1343,13 @@ void SfmlBattleView::refreshExpandedHighlights( ) {
 }
 
 void SfmlBattleView::updateHoverFromMouse( ) {
+    // Spell-targeting drives its own hover highlight from the presenter
+    // (highlighting the hovered target unit's occupied hexes). Skip the
+    // walkable-based reset so we don't immediately clear that highlight.
+    if ( spellTargetingActive_ ) {
+        return;
+    }
+
     if ( ! attackOriginHighlights_.empty( ) ) {
         return;
     }
