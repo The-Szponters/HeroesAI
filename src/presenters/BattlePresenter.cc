@@ -1516,6 +1516,7 @@ void BattlePresenter::onSpellbookClicked( ) {
         entry.alignment_ = spell.alignment_;
         entry.iconRect_ = spell.iconRect_;
         entry.defIconFrame_ = spell.defIconFrame_;
+        entry.description_ = spell.description_;
         entry.affordable_ = caster->getCurrentMana( ) >= spell.manaCost_;
         render_list.push_back( entry );
     }

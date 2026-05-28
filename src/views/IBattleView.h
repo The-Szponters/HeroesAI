@@ -187,6 +187,7 @@ public:
         models::SpellAlignment alignment_ = models::SpellAlignment::NEGATIVE;
         models::PortraitRect iconRect_;
         int defIconFrame_ = -1;
+        std::string description_;
         bool affordable_ = false;
     };
 

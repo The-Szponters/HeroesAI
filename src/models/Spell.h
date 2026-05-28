@@ -71,6 +71,7 @@ struct Spell {
     std::string animationAsset_;
     PortraitRect iconRect_;        // PNG atlas fallback (kept for compat)
     int defIconFrame_ = -1;        // preferred -- frame index in spells_icons.def
+    std::string description_;      // shown when right-clicking the spell in the spellbook
 };
 
 } // namespace models

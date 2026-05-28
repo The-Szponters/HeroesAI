@@ -241,6 +241,21 @@ void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
             const float my = world.y;
 
             if ( mouse_press->button == sf::Mouse::Button::Right ) {
+                // While the spellbook is open, a right-click on a spell
+                // cell toggles the description tooltip; release hides it.
+                if ( spellbookOpen_ ) {
+                    spellbookDescriptionCell_ = -1;
+                    for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+                        if ( i >= static_cast<int>( spellbookSpells_.size( ) ) ) {
+                            break;
+                        }
+                        if ( spellCellBounds_[i].contains( { mx, my } ) ) {
+                            spellbookDescriptionCell_ = i;
+                            break;
+                        }
+                    }
+                    continue;
+                }
                 presenter.onRightClickPressed( static_cast<int>( mx ),
                                                    static_cast<int>( my ) );
                 continue;
@@ -274,6 +289,10 @@ void SfmlBattleView::processEvents( BattlePresenter& presenter ) {
 
         if ( const auto* mouse_release = event->getIf<sf::Event::MouseButtonReleased>( ) ) {
             if ( mouse_release->button == sf::Mouse::Button::Right ) {
+                if ( spellbookOpen_ ) {
+                    spellbookDescriptionCell_ = -1;
+                    continue;
+                }
                 presenter.onRightClickReleased( );
             }
             continue;
@@ -819,7 +838,7 @@ void SfmlBattleView::drawInfoPanel( ) {
 void SfmlBattleView::drawCursor( ) {
     // Spell-targeting mode swaps in dedicated cursor sprites:
     //   valid target  -> spellcasting_icon.def (cast cursor)
-    //   anything else -> combat_icons.def first frame ("no target")
+    //   anything else -> spell_invalid_cursor.def ("no target")
     if ( spellTargetingActive_ ) {
         const std::string asset = spellCursorIsValid_
                                        ? std::string( "spellcasting_icon.def" )
@@ -1738,27 +1757,48 @@ bool SfmlBattleView::isPointInBattlefield( float x, float y ) const {
 
 namespace {
 
-constexpr float K_SPELLBOOK_PANEL_W = 960.0f;
-constexpr float K_SPELLBOOK_PANEL_H = 720.0f;
-constexpr int K_SPELLBOOK_COLS = 4;
-constexpr float K_SPELLBOOK_CELL_W = 200.0f;
-constexpr float K_SPELLBOOK_CELL_H = 130.0f;
-constexpr float K_SPELLBOOK_CELL_GAP = 12.0f;
-constexpr float K_SPELLBOOK_HEADER_PAD = 60.0f;
-constexpr float K_SPELLBOOK_ICON_SIZE = 58.0f;
+// Spellbook panel scales with the current logical view (letterbox),
+// so window resizing always keeps proportions and any later change of
+// the logical resolution propagates without recompiling constants.
+// 2 pages, 8 cells each (2 cols x 4 rows). 16 slots total; our 13
+// spells fit on the first 13, the rest stay empty.
+constexpr float K_SPELLBOOK_PANEL_W_RATIO = 0.94f;
+constexpr float K_SPELLBOOK_PANEL_H_RATIO = 0.92f;
+
+constexpr int K_SPELLBOOK_PAGES = 2;
+constexpr int K_SPELLBOOK_COLS_PER_PAGE = 2;
+constexpr int K_SPELLBOOK_ROWS = 4;
+constexpr int K_SPELLBOOK_CELLS_PER_PAGE =
+    K_SPELLBOOK_COLS_PER_PAGE * K_SPELLBOOK_ROWS;
+
+// Layout ratios relative to panel size (so cells line up with the book
+// pages in the background texture regardless of panel scale). Tuned
+// against assets/ui/spells/Spellbook.bmp.
+constexpr float K_PAGE_LEFT_X_RATIO = 0.165f;
+constexpr float K_PAGE_LEFT_W_RATIO = 0.300f;
+constexpr float K_PAGE_RIGHT_X_RATIO = 0.505f;
+constexpr float K_PAGE_RIGHT_W_RATIO = 0.300f;
+constexpr float K_PAGE_TOP_Y_RATIO = 0.150f;
+constexpr float K_PAGE_BOTTOM_Y_RATIO = 0.690f;
+constexpr float K_SPELLBOOK_ICON_SIZE_RATIO = 0.075f;
+
+// Close-book ribbon (crossed circle / "no" symbol on the bottom-right
+// red banner of Spellbook.bmp). Tuned from the actual texture; the
+// cursor swaps to spell_invalid_cursor.def while hovering this area.
+constexpr float K_CLOSE_BTN_X_RATIO = 0.775f;
+constexpr float K_CLOSE_BTN_Y_RATIO = 0.715f;
+constexpr float K_CLOSE_BTN_W_RATIO = 0.070f;
+constexpr float K_CLOSE_BTN_H_RATIO = 0.100f;
+
 constexpr float K_SPELL_TARGET_FLASH_SECONDS = 0.4f;
 
 } // namespace
 
 void SfmlBattleView::loadSpellbookAssets( ) {
-    if ( spellbookBgTexture_.loadFromFile( "assets/ui/spellbook/spellbook_bg.png" ) ) {
+    // Sprite scale is applied per-frame in drawSpellbookOverlay() because
+    // panel size depends on the (potentially dynamic) screen dimensions.
+    if ( spellbookBgTexture_.loadFromFile( "assets/ui/spells/Spellbook.bmp" ) ) {
         spellbookBgSprite_ = std::make_unique<sf::Sprite>( spellbookBgTexture_ );
-        const sf::Vector2u ts = spellbookBgTexture_.getSize( );
-        if ( ts.x > 0 && ts.y > 0 ) {
-            spellbookBgSprite_->setScale(
-                { K_SPELLBOOK_PANEL_W / static_cast<float>( ts.x ),
-                  K_SPELLBOOK_PANEL_H / static_cast<float>( ts.y ) } );
-        }
         spellbookBgLoaded_ = true;
     }
     if ( spellIconAtlasTexture_.loadFromFile( "assets/ui/spellbook/spell_icons.png" ) ) {
@@ -1774,35 +1814,52 @@ void SfmlBattleView::showSpellbook( const std::vector<SpellbookSpellRender>& spe
     spellbookCasterMaxMana_ = caster_max_mana;
     spellbookSpells_ = spells;
     spellbookHoveredCell_ = -1;
+    spellbookDescriptionCell_ = -1;
 
-    const float panel_x = ( screenWidth_ - K_SPELLBOOK_PANEL_W ) * 0.5f;
-    const float panel_y = ( screenHeight_ - K_SPELLBOOK_PANEL_H ) * 0.5f;
+    const float panel_w = K_SPELLBOOK_PANEL_W_RATIO * screenWidth_;
+    const float panel_h = K_SPELLBOOK_PANEL_H_RATIO * screenHeight_;
+    const float panel_x = ( screenWidth_ - panel_w ) * 0.5f;
+    const float panel_y = ( screenHeight_ - panel_h ) * 0.5f;
     if ( spellbookBgSprite_ ) {
         spellbookBgSprite_->setPosition( { panel_x, panel_y } );
     }
 
     spellCellBounds_.clear( );
-    spellCellBounds_.reserve( spellbookSpells_.size( ) );
-    const float grid_x = panel_x +
-        ( K_SPELLBOOK_PANEL_W -
-          K_SPELLBOOK_COLS * ( K_SPELLBOOK_CELL_W + K_SPELLBOOK_CELL_GAP ) +
-          K_SPELLBOOK_CELL_GAP ) *
-            0.5f;
-    const float grid_y = panel_y + K_SPELLBOOK_HEADER_PAD;
-    for ( int i = 0; i < static_cast<int>( spellbookSpells_.size( ) ); ++i ) {
-        const int col = i % K_SPELLBOOK_COLS;
-        const int row = i / K_SPELLBOOK_COLS;
-        const float x =
-            grid_x + static_cast<float>( col ) * ( K_SPELLBOOK_CELL_W + K_SPELLBOOK_CELL_GAP );
-        const float y =
-            grid_y + static_cast<float>( row ) * ( K_SPELLBOOK_CELL_H + K_SPELLBOOK_CELL_GAP );
+    const int total_slots = K_SPELLBOOK_PAGES * K_SPELLBOOK_CELLS_PER_PAGE;
+    spellCellBounds_.reserve( total_slots );
+
+    // Per-page geometry, computed in panel-relative ratios so the cells
+    // align with the book's two visible pages regardless of panel size.
+    const float page_top = panel_y + K_PAGE_TOP_Y_RATIO * panel_h;
+    const float page_bottom = panel_y + K_PAGE_BOTTOM_Y_RATIO * panel_h;
+    const float page_h = page_bottom - page_top;
+    const float row_h = page_h / static_cast<float>( K_SPELLBOOK_ROWS );
+
+    const float left_page_x = panel_x + K_PAGE_LEFT_X_RATIO * panel_w;
+    const float left_page_w = K_PAGE_LEFT_W_RATIO * panel_w;
+    const float right_page_x = panel_x + K_PAGE_RIGHT_X_RATIO * panel_w;
+    const float right_page_w = K_PAGE_RIGHT_W_RATIO * panel_w;
+    const float col_w_left = left_page_w / static_cast<float>( K_SPELLBOOK_COLS_PER_PAGE );
+    const float col_w_right = right_page_w / static_cast<float>( K_SPELLBOOK_COLS_PER_PAGE );
+
+    for ( int slot = 0; slot < total_slots; ++slot ) {
+        const int page = slot / K_SPELLBOOK_CELLS_PER_PAGE;
+        const int local = slot % K_SPELLBOOK_CELLS_PER_PAGE;
+        const int row = local / K_SPELLBOOK_COLS_PER_PAGE;
+        const int col = local % K_SPELLBOOK_COLS_PER_PAGE;
+        const float origin_x = ( page == 0 ) ? left_page_x : right_page_x;
+        const float col_w = ( page == 0 ) ? col_w_left : col_w_right;
+        const float x = origin_x + static_cast<float>( col ) * col_w;
+        const float y = page_top + static_cast<float>( row ) * row_h;
         spellCellBounds_.emplace_back( sf::Vector2f{ x, y },
-                                              sf::Vector2f{ K_SPELLBOOK_CELL_W,
-                                                                K_SPELLBOOK_CELL_H } );
+                                              sf::Vector2f{ col_w, row_h } );
     }
 
     spellbookCloseBounds_ = sf::FloatRect(
-        { panel_x + K_SPELLBOOK_PANEL_W - 90.0f, panel_y + 20.0f }, { 70.0f, 28.0f } );
+        { panel_x + K_CLOSE_BTN_X_RATIO * panel_w,
+          panel_y + K_CLOSE_BTN_Y_RATIO * panel_h },
+        { K_CLOSE_BTN_W_RATIO * panel_w,
+          K_CLOSE_BTN_H_RATIO * panel_h } );
 }
 
 void SfmlBattleView::hideSpellbook( ) {
@@ -1810,6 +1867,7 @@ void SfmlBattleView::hideSpellbook( ) {
     spellbookSpells_.clear( );
     spellCellBounds_.clear( );
     spellbookHoveredCell_ = -1;
+    spellbookDescriptionCell_ = -1;
 }
 
 void SfmlBattleView::setSpellTargetingActive( bool active,
@@ -1922,11 +1980,18 @@ void SfmlBattleView::drawSpellCastOverlay( sf::Time dt ) {
 }
 
 bool SfmlBattleView::routeSpellbookClick( float x, float y, presenters::BattlePresenter& presenter ) {
+    // Dismiss the description tooltip on any left click (right-click
+    // is what shows it, this branch handles selection).
+    spellbookDescriptionCell_ = -1;
+
     if ( spellbookCloseBounds_.contains( { x, y } ) ) {
         presenter.onSpellbookCancelled( );
         return true;
     }
     for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+        if ( i >= static_cast<int>( spellbookSpells_.size( ) ) ) {
+            break;
+        }
         if ( spellCellBounds_[i].contains( { x, y } ) ) {
             const SpellbookSpellRender& cell = spellbookSpells_[i];
             if ( cell.affordable_ ) {
@@ -1937,7 +2002,8 @@ bool SfmlBattleView::routeSpellbookClick( float x, float y, presenters::BattlePr
             return true;
         }
     }
-    presenter.onSpellbookCancelled( );
+    // Click on the book outside any spell cell -- do nothing (don't
+    // accidentally dismiss the book).
     return true;
 }
 
@@ -1947,14 +2013,22 @@ void SfmlBattleView::drawSpellbookOverlay( ) {
     backdrop.setFillColor( sf::Color( 0, 0, 0, 170 ) );
     window_.draw( backdrop );
 
-    const float panel_x = ( screenWidth_ - K_SPELLBOOK_PANEL_W ) * 0.5f;
-    const float panel_y = ( screenHeight_ - K_SPELLBOOK_PANEL_H ) * 0.5f;
+    const float panel_w = K_SPELLBOOK_PANEL_W_RATIO * screenWidth_;
+    const float panel_h = K_SPELLBOOK_PANEL_H_RATIO * screenHeight_;
+    const float panel_x = ( screenWidth_ - panel_w ) * 0.5f;
+    const float panel_y = ( screenHeight_ - panel_h ) * 0.5f;
 
     if ( spellbookBgLoaded_ && spellbookBgSprite_ ) {
         spellbookBgSprite_->setPosition( { panel_x, panel_y } );
+        const sf::Vector2u ts = spellbookBgTexture_.getSize( );
+        if ( ts.x > 0 && ts.y > 0 ) {
+            spellbookBgSprite_->setScale(
+                { panel_w / static_cast<float>( ts.x ),
+                  panel_h / static_cast<float>( ts.y ) } );
+        }
         window_.draw( *spellbookBgSprite_ );
     } else {
-        sf::RectangleShape panel( { K_SPELLBOOK_PANEL_W, K_SPELLBOOK_PANEL_H } );
+        sf::RectangleShape panel( { panel_w, panel_h } );
         panel.setPosition( { panel_x, panel_y } );
         panel.setFillColor( sf::Color( 22, 22, 36, 240 ) );
         panel.setOutlineColor( sf::Color( 140, 170, 220 ) );
@@ -1962,127 +2036,127 @@ void SfmlBattleView::drawSpellbookOverlay( ) {
         window_.draw( panel );
     }
 
-    if ( spellbookText_ ) {
-        spellbookText_->setCharacterSize( 22 );
-        spellbookText_->setFillColor( sf::Color( 240, 235, 200 ) );
-        spellbookText_->setStyle( sf::Text::Bold );
-        spellbookText_->setString( "Spellbook  --  Mana " +
-                                       std::to_string( spellbookCasterMana_ ) + " / " +
-                                       std::to_string( spellbookCasterMaxMana_ ) );
-        spellbookText_->setPosition( { panel_x + 20.0f, panel_y + 18.0f } );
-        window_.draw( *spellbookText_ );
+    // Try the HoMM3 spells_icons.def first; fall back to the PNG atlas.
+    std::shared_ptr<DefResource> spell_def_res =
+        defManager_.getOrLoad( "spells_icons.def" );
 
-        // Close button
-        sf::RectangleShape close_bg( spellbookCloseBounds_.size );
-        close_bg.setPosition( spellbookCloseBounds_.position );
-        close_bg.setFillColor( sf::Color( 70, 35, 35, 220 ) );
-        close_bg.setOutlineColor( sf::Color( 200, 120, 120 ) );
-        close_bg.setOutlineThickness( 1.5f );
-        window_.draw( close_bg );
-        spellbookText_->setCharacterSize( 16 );
-        spellbookText_->setStyle( sf::Text::Regular );
-        spellbookText_->setFillColor( sf::Color::White );
-        spellbookText_->setString( "Close" );
-        const sf::FloatRect tb = spellbookText_->getLocalBounds( );
-        spellbookText_->setPosition(
-            { spellbookCloseBounds_.position.x +
-                  ( spellbookCloseBounds_.size.x - tb.size.x ) * 0.5f - tb.position.x,
-              spellbookCloseBounds_.position.y +
-                  ( spellbookCloseBounds_.size.y - tb.size.y ) * 0.5f - tb.position.y } );
-        window_.draw( *spellbookText_ );
-    }
+    const float icon_size = K_SPELLBOOK_ICON_SIZE_RATIO * panel_h;
 
     for ( int i = 0; i < static_cast<int>( spellCellBounds_.size( ) ); ++i ) {
+        if ( i >= static_cast<int>( spellbookSpells_.size( ) ) ) {
+            break;
+        }
         const sf::FloatRect& bounds = spellCellBounds_[i];
         const SpellbookSpellRender& cell = spellbookSpells_[i];
-        const bool hovered = ( spellbookHoveredCell_ == i );
 
-        sf::RectangleShape frame( bounds.size );
-        frame.setPosition( bounds.position );
-        if ( ! cell.affordable_ ) {
-            frame.setFillColor( sf::Color( 18, 18, 26, 220 ) );
-            frame.setOutlineColor( sf::Color( 70, 70, 90 ) );
-        } else if ( hovered ) {
-            frame.setFillColor( sf::Color( 50, 60, 100, 230 ) );
-            frame.setOutlineColor( sf::Color( 200, 220, 255 ) );
-        } else {
-            frame.setFillColor( sf::Color( 28, 32, 50, 220 ) );
-            frame.setOutlineColor( sf::Color( 130, 150, 190 ) );
-        }
-        frame.setOutlineThickness( 1.5f );
-        window_.draw( frame );
+        // Icon centered horizontally near top of the cell.
+        const float icon_x = bounds.position.x + ( bounds.size.x - icon_size ) * 0.5f;
+        const float icon_y = bounds.position.y + 4.0f;
 
-        // Icon (prefer DEF frames; fall back to PNG atlas)
-        bool drew_def_icon = false;
-        if ( cell.defIconFrame_ >= 0 ) {
-            std::shared_ptr<DefResource> res = defManager_.getOrLoad( "spells_icons.def" );
-            if ( res ) {
-                const auto group_it = res->groups_.find( 0 );
-                if ( group_it != res->groups_.end( ) && ! group_it->second.empty( ) ) {
-                    const auto& frames = group_it->second;
-                    const std::size_t frame_index =
-                        static_cast<std::size_t>( cell.defIconFrame_ );
-                    if ( frame_index < frames.size( ) ) {
-                        const DefFrame& frame = frames[frame_index];
-                        if ( frame.width_ > 0 && frame.height_ > 0 ) {
-                            sf::Sprite icon( frame.texture_ );
-                            const float scale =
-                                std::min( K_SPELLBOOK_ICON_SIZE / static_cast<float>( frame.width_ ),
-                                          K_SPELLBOOK_ICON_SIZE / static_cast<float>( frame.height_ ) );
-                            icon.setScale( { scale, scale } );
-                            icon.setPosition( { bounds.position.x + 12.0f,
-                                                   bounds.position.y + 12.0f } );
-                            if ( ! cell.affordable_ ) {
-                                icon.setColor( sf::Color( 120, 120, 120 ) );
-                            }
-                            window_.draw( icon );
-                            drew_def_icon = true;
+        bool icon_drawn = false;
+        if ( cell.defIconFrame_ >= 0 && spell_def_res ) {
+            const auto group_it = spell_def_res->groups_.find( 0 );
+            if ( group_it != spell_def_res->groups_.end( ) ) {
+                const auto& frames = group_it->second;
+                if ( cell.defIconFrame_ < static_cast<int>( frames.size( ) ) ) {
+                    const DefFrame& frame = frames[cell.defIconFrame_];
+                    if ( frame.width_ > 0 && frame.height_ > 0 ) {
+                        sf::Sprite icon( frame.texture_ );
+                        const float scale = std::min(
+                            icon_size / static_cast<float>( frame.width_ ),
+                            icon_size / static_cast<float>( frame.height_ ) );
+                        icon.setScale( { scale, scale } );
+                        const float rendered_w =
+                            static_cast<float>( frame.width_ ) * scale;
+                        const float rendered_h =
+                            static_cast<float>( frame.height_ ) * scale;
+                        icon.setPosition(
+                            { icon_x + ( icon_size - rendered_w ) * 0.5f,
+                              icon_y + ( icon_size - rendered_h ) * 0.5f } );
+                        if ( ! cell.affordable_ ) {
+                            icon.setColor( sf::Color( 120, 120, 120 ) );
                         }
+                        window_.draw( icon );
+                        icon_drawn = true;
                     }
                 }
             }
         }
-        if ( ! drew_def_icon && spellIconAtlasLoaded_ && cell.iconRect_.w_ > 0 &&
-             cell.iconRect_.h_ > 0 ) {
+        if ( ! icon_drawn && spellIconAtlasLoaded_ &&
+             cell.iconRect_.w_ > 0 && cell.iconRect_.h_ > 0 ) {
             sf::Sprite icon( spellIconAtlasTexture_ );
             icon.setTextureRect( sf::IntRect(
                 { cell.iconRect_.x_, cell.iconRect_.y_ },
                 { cell.iconRect_.w_, cell.iconRect_.h_ } ) );
-            const float scale =
-                std::min( K_SPELLBOOK_ICON_SIZE / static_cast<float>( cell.iconRect_.w_ ),
-                          K_SPELLBOOK_ICON_SIZE / static_cast<float>( cell.iconRect_.h_ ) );
+            const float scale = std::min(
+                icon_size / static_cast<float>( cell.iconRect_.w_ ),
+                icon_size / static_cast<float>( cell.iconRect_.h_ ) );
             icon.setScale( { scale, scale } );
-            icon.setPosition( { bounds.position.x + 12.0f, bounds.position.y + 12.0f } );
+            icon.setPosition( { icon_x, icon_y } );
             if ( ! cell.affordable_ ) {
                 icon.setColor( sf::Color( 120, 120, 120 ) );
             }
             window_.draw( icon );
         }
 
-        // Text
+        // Name + mana cost stacked below the icon, centered.
         if ( spellbookText_ ) {
-            spellbookText_->setCharacterSize( 16 );
             spellbookText_->setStyle( sf::Text::Bold );
-            spellbookText_->setFillColor( cell.affordable_ ? sf::Color::White
-                                                            : sf::Color( 130, 130, 130 ) );
+            spellbookText_->setCharacterSize( 12 );
+            spellbookText_->setFillColor( cell.affordable_ ? sf::Color( 50, 30, 20 )
+                                                            : sf::Color( 120, 100, 90 ) );
             spellbookText_->setString( cell.name_ );
+            sf::FloatRect tb = spellbookText_->getLocalBounds( );
             spellbookText_->setPosition(
-                { bounds.position.x + 12.0f + K_SPELLBOOK_ICON_SIZE + 10.0f,
-                  bounds.position.y + 14.0f } );
+                { bounds.position.x + ( bounds.size.x - tb.size.x ) * 0.5f - tb.position.x,
+                  icon_y + icon_size + 3.0f } );
             window_.draw( *spellbookText_ );
 
-            spellbookText_->setCharacterSize( 14 );
             spellbookText_->setStyle( sf::Text::Regular );
-            spellbookText_->setFillColor( cell.affordable_ ? sf::Color( 200, 220, 255 )
-                                                            : sf::Color( 100, 100, 100 ) );
-            spellbookText_->setString( "Lv " + std::to_string( cell.level_ ) +
-                                           "  --  " +
-                                           std::to_string( cell.manaCost_ ) + " mana" );
+            spellbookText_->setCharacterSize( 11 );
+            spellbookText_->setFillColor( cell.affordable_ ? sf::Color( 30, 60, 150 )
+                                                            : sf::Color( 130, 110, 100 ) );
+            spellbookText_->setString( std::to_string( cell.manaCost_ ) + " mana" );
+            tb = spellbookText_->getLocalBounds( );
             spellbookText_->setPosition(
-                { bounds.position.x + 12.0f + K_SPELLBOOK_ICON_SIZE + 10.0f,
-                  bounds.position.y + 38.0f } );
+                { bounds.position.x + ( bounds.size.x - tb.size.x ) * 0.5f - tb.position.x,
+                  icon_y + icon_size + 18.0f } );
             window_.draw( *spellbookText_ );
         }
+    }
+
+    // Right-click description tooltip (anchored to the bottom of the
+    // book, just above the close button).
+    if ( spellbookDescriptionCell_ >= 0 &&
+         spellbookDescriptionCell_ < static_cast<int>( spellbookSpells_.size( ) ) &&
+         spellbookText_ ) {
+        const SpellbookSpellRender& cell = spellbookSpells_[spellbookDescriptionCell_];
+
+        spellbookText_->setStyle( sf::Text::Regular );
+        spellbookText_->setCharacterSize( 15 );
+        spellbookText_->setFillColor( sf::Color( 250, 240, 210 ) );
+        spellbookText_->setString( cell.name_ + " -- " + cell.description_ );
+
+        const sf::FloatRect tb = spellbookText_->getLocalBounds( );
+        const float box_pad_x = 14.0f;
+        const float box_pad_y = 8.0f;
+        const float max_w = panel_w * 0.78f;
+        const float box_w = std::min( tb.size.x + box_pad_x * 2.0f, max_w );
+        const float box_h = tb.size.y + box_pad_y * 2.0f;
+        const float box_x = panel_x + ( panel_w - box_w ) * 0.5f;
+        const float box_y = panel_y + panel_h * 0.72f;
+
+        sf::RectangleShape box( { box_w, box_h } );
+        box.setPosition( { box_x, box_y } );
+        box.setFillColor( sf::Color( 20, 20, 30, 235 ) );
+        box.setOutlineColor( sf::Color( 200, 180, 110 ) );
+        box.setOutlineThickness( 1.5f );
+        window_.draw( box );
+
+        spellbookText_->setPosition(
+            { box_x + box_pad_x - tb.position.x,
+              box_y + box_pad_y - tb.position.y } );
+        window_.draw( *spellbookText_ );
     }
 }
 

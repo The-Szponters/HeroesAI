@@ -357,10 +357,11 @@ private:
     sf::Texture spellbookBgTexture_;
     std::unique_ptr<sf::Sprite> spellbookBgSprite_;
     bool spellbookBgLoaded_ = false;
-    sf::Texture spellIconAtlasTexture_;
+    sf::Texture spellIconAtlasTexture_;     // PNG fallback atlas
     bool spellIconAtlasLoaded_ = false;
     std::vector<sf::FloatRect> spellCellBounds_;
     int spellbookHoveredCell_ = -1;
+    int spellbookDescriptionCell_ = -1;     // -1 = no description shown
     sf::FloatRect spellbookCloseBounds_;
     std::unique_ptr<sf::Text> spellbookText_;
 
