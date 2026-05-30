@@ -44,6 +44,12 @@ struct Settings {
     ArmyConfig leftArmy_;
     ArmyConfig rightArmy_;
 
+    // Which side the AI controls. Blue = left army (human by default),
+    // red = right army (bot by default), giving an out-of-the-box
+    // human-vs-bot match. Set both true for an automated bot-vs-bot run.
+    bool blueIsBot_ = false;
+    bool redIsBot_ = true;
+
     Settings( );
 
     static Settings loadFromFile( const std::string& filepath );

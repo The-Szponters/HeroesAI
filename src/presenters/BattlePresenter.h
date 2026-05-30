@@ -10,7 +10,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "../core/ActionCommand.h"
+#include "../core/ActionGenerator.h"
 #include "../core/GameManager.h"
+#include "../core/RandomBotService.h"
 #include "../core/SpellResolver.h"
 #include "../models/Spell.h"
 #include "../views/IBattleView.h"
@@ -28,12 +31,24 @@ namespace presenters {
  */
 class BattlePresenter {
 public:
-    BattlePresenter( core::GameManager& model, views::IBattleView& view );
+    BattlePresenter( core::GameManager& model,
+                          views::IBattleView& view,
+                          bool blue_is_bot = false,
+                          bool red_is_bot = false );
 
     /**
      * @brief Initialises the view with the starting board state and highlights.
      */
     void startBattle( );
+
+    /**
+     * @brief Per-frame hook driving the AI.
+     *
+     * Called once each frame by BattleScene. When the battlefield is idle
+     * (no pending animations, not mid spell-targeting) and the active
+     * unit is bot-controlled, asks the bot for one action and executes it.
+     */
+    void update( );
 
     /**
      * @brief Handles a player click on a battlefield hex.
@@ -132,9 +147,31 @@ private:
 
     void handleSpellTargetClick( int q, int r );
 
+    // Cursor-independent action execution shared by player clicks and the
+    // bot. Each applies the model mutation and queues the matching visual
+    // event sequence, then advances the turn.
+    void executeMove( models::Unit& unit, models::Hex& move_head );
+    void executeMeleeAttack( models::Unit& attacker,
+                                  models::Unit& target,
+                                  models::Hex& approach );
+    void executeRangedAttack( models::Unit& attacker, models::Unit& target );
+    void executeCastSpell( models::SpellId id, models::Unit& target );
+    void executeWait( );
+    void executeDefend( );
+
+    // AI driving.
+    bool isUnitBotControlled( const models::Unit& unit ) const;
+    bool isActiveUnitBotControlled( ) const;
+    void runBotTurn( );
+    void executeCommand( const core::ActionCommand& command );
+
     core::GameManager& model_;
     views::IBattleView& view_;
     core::SpellResolver spellResolver_;
+    core::ActionGenerator actionGenerator_;
+    core::RandomBotService randomBot_;
+    bool blueIsBot_ = false;
+    bool redIsBot_ = false;
     bool rangePreviewActive_ = false;
     bool infoPanelVisible_ = false;
     bool isCastingSpell_ = false;

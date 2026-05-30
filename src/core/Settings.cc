@@ -6,6 +6,7 @@
 #include "Settings.h"
 
 #include <fstream>
+#include <iostream>
 #include <nlohmann/json.hpp>
 
 #include "../models/UnitFactory.h"
@@ -59,6 +60,11 @@ void readArmyFromJson( const nlohmann::json& arr, ArmyConfig& out ) {
     if ( ! arr.is_array( ) ) {
         return;
     }
+    // The array fully defines the roster: reset every slot to empty
+    // first so that unspecified trailing slots don't keep the built-in
+    // default units (a shorter array would otherwise only patch the
+    // leading slots and leave the defaults behind).
+    out = ArmyConfig{ };
     const std::size_t entries = std::min( arr.size( ), K_ARMY_SLOT_COUNT );
     for ( std::size_t i = 0; i < entries; ++i ) {
         const nlohmann::json& entry = arr[i];
@@ -82,13 +88,20 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
     Settings settings;
     std::ifstream file( filepath );
     if ( ! file.is_open( ) ) {
+        std::cerr << "Settings: could not open '" << filepath
+                  << "' -- using built-in defaults." << std::endl;
         return settings;
     }
 
     nlohmann::json j;
     try {
         file >> j;
-    } catch ( const std::exception& ) {
+    } catch ( const std::exception& e ) {
+        // Surface the failure loudly: a malformed config otherwise looks
+        // identical to a missing one and the game silently ignores every
+        // user setting. nlohmann's message pinpoints the line/column.
+        std::cerr << "Settings: failed to parse '" << filepath << "': " << e.what( )
+                  << "\nSettings: using built-in defaults instead." << std::endl;
         return settings;
     }
 
@@ -115,6 +128,16 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
         readArmyFromJson( j["right_army"], settings.rightArmy_ );
     }
 
+    if ( j.contains( "ai" ) && j["ai"].is_object( ) ) {
+        const nlohmann::json& ai = j["ai"];
+        if ( ai.contains( "blue_is_bot" ) && ai["blue_is_bot"].is_boolean( ) ) {
+            settings.blueIsBot_ = ai["blue_is_bot"].get<bool>( );
+        }
+        if ( ai.contains( "red_is_bot" ) && ai["red_is_bot"].is_boolean( ) ) {
+            settings.redIsBot_ = ai["red_is_bot"].get<bool>( );
+        }
+    }
+
     return settings;
 }
 
@@ -128,6 +151,10 @@ void Settings::saveToFile( const std::string& filepath ) const {
     };
     j["left_army"] = armyToJson( leftArmy_ );
     j["right_army"] = armyToJson( rightArmy_ );
+    j["ai"] = {
+        { "blue_is_bot", blueIsBot_ },
+        { "red_is_bot", redIsBot_ }
+    };
 
     std::ofstream file( filepath );
     if ( ! file.is_open( ) ) {

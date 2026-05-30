@@ -27,6 +27,16 @@ public:
     void endCurrentUnitTurn( );
     void waitCurrentUnit( );
 
+    /**
+     * @brief Whether the current unit may still choose to wait this round.
+     *
+     * True only while the current unit is being served from the
+     * unactivated phase (i.e. it has not already waited). A unit acting
+     * from the waited queue can no longer wait -- calling waitCurrentUnit
+     * on it is a no-op, so the AI must exclude WAIT in that case.
+     */
+    bool currentUnitCanWait( ) const;
+
     std::vector<models::Unit*> getUnitsLeftInRound( ) const;
     std::vector<models::Unit*> getUnitQueueInRound( ) const;
 

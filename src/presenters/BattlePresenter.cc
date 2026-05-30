@@ -114,8 +114,17 @@ makeUnitRenderData( const GameManager& model, const Unit& unit, int q, int r, bo
     return data;
 }
 
-BattlePresenter::BattlePresenter( GameManager& model, IBattleView& view )
-    : model_( model ), view_( view ), spellResolver_( model ) {}
+BattlePresenter::BattlePresenter( GameManager& model,
+                                          IBattleView& view,
+                                          bool blue_is_bot,
+                                          bool red_is_bot )
+    : model_( model ),
+      view_( view ),
+      spellResolver_( model ),
+      actionGenerator_( model, spellResolver_ ),
+      randomBot_( actionGenerator_ ),
+      blueIsBot_( blue_is_bot ),
+      redIsBot_( red_is_bot ) {}
 
 void BattlePresenter::startBattle( ) {
     pushRenderDataToView( );
@@ -143,7 +152,10 @@ void BattlePresenter::onHexClicked( int q, int r, bool ) {
         return;
 }
 
-    const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
+    // Ignore player clicks while it is a bot-controlled unit's turn.
+    if ( isActiveUnitBotControlled( ) ) {
+        return;
+    }
 
     const int s = -q - r;
     Hex* clicked_hex = nullptr;
@@ -165,179 +177,200 @@ void BattlePresenter::onHexClicked( int q, int r, bool ) {
             return;
         }
 
-        const bool will_shoot = model_.willShoot( *active_unit, *target );
-        const bool had_morale = model_.activeUnitHasMoraleBonus( );
-
-        std::vector<std::pair<int, int>> intended_path_for_attack;
-
-        try {
-            if ( will_shoot ) {
-                Hex& attacker_hex = model_.getBoard( ).getHex(
-                    active_unit->getQ( ), active_unit->getR( ), active_unit->getS( ) );
-                model_.attack( *active_unit, *target, attacker_hex );
-                view_.showMessage( "Shoot!" );
-            } else {
-                // Single source of truth: the same picker hover used to
-                // place the directional sword cursor and the highlighted
-                // approach hex.  Picking a different rule here (e.g.
-                // euclidean-closest origin, or short-circuiting on
-                // "directly adjacent") was the source of bug #3 -- preview
-                // disagreed with the actual attack -- and bug #1, where a
-                // current-position adjacent attacker could never reposition
-                // before striking.
-                const PickedApproach picked =
-                    pickAttackApproachForCursor( *active_unit,
-                                                     *clicked_hex,
-                                                     static_cast<float>( lastCursorPx_ ),
-                                                     static_cast<float>( lastCursorPy_ ) );
-                Hex* approach = picked.approach_;
-                if ( approach == nullptr ) {
-                    view_.showMessage( "Cannot reach that enemy" );
-                    return;
-                }
-
-                // Capture the BFS path BEFORE the model mutation so the View
-                // can replay segment-by-segment movement.  When the picked
-                // approach equals the attacker's current head (player chose
-                // to strike in place) the path is size 1 and no slide event
-                // is queued downstream.
-                try {
-                    const std::vector<const Hex*> chain =
-                        model_.findPath( *active_unit, *approach );
-                    intended_path_for_attack.reserve( chain.size( ) );
-                    for ( const Hex* h : chain ) {
-                        if ( h != nullptr ) {
-                            intended_path_for_attack.emplace_back( h->getQ( ), h->getR( ) );
-}
-                    }
-                } catch ( const std::exception& ) {}
-                model_.attack( *active_unit, *target, *approach );
-                view_.showMessage( intended_path_for_attack.size( ) >= 2 ? "Move + Attack!"
-                                                                         : "Attack!" );
-            }
-        } catch ( const std::exception& e ) {
-            view_.showMessage( std::string( "Attack failed: " ) + e.what( ) );
+        if ( model_.willShoot( *active_unit, *target ) ) {
+            executeRangedAttack( *active_unit, *target );
             return;
         }
 
-        const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
-        const std::uint64_t attacker_id = makeUnitId( active_unit );
-        const std::uint64_t defender_id = makeUnitId( target );
-
-        const auto before_att = findUnit( before_units, attacker_id );
-        const auto after_att = findUnit( after_units, attacker_id );
-        const auto before_def = findUnit( before_units, defender_id );
-        const auto after_def = findUnit( after_units, defender_id );
-
-        const bool defender_died = after_def.has_value( ) && after_def->isCorpse_ &&
-                                   before_def.has_value( ) && ! before_def->isCorpse_;
-
-        const bool attacker_took_damage = after_att.has_value( ) && before_att.has_value( ) &&
-                                          ( after_att->hpLeft_ < before_att->hpLeft_ ||
-                                            ( after_att->isCorpse_ && ! before_att->isCorpse_ ) );
-        const bool retaliation_occurred = attacker_took_damage && ! defender_died;
-
-        const bool attacker_died = after_att.has_value( ) && after_att->isCorpse_ &&
-                                   before_att.has_value( ) && ! before_att->isCorpse_;
-
-        view_.clearVisualEvents( );
-        view_.updateRenderData( before_units );
-        view_.syncUnitPositions( );
-
-        if ( will_shoot ) {
-            view_.queueAttackAnimationFacing( attacker_id, after_def->q_, after_def->r_ );
-            view_.queueProjectileAnimation( attacker_id,
-                                             after_def->q_,
-                                             after_def->r_,
-                                             active_unit->getProjectileAsset( ),
-                                             0.4f );
-            view_.queueHitAnimation( defender_id );
-
-            if ( defender_died ) {
-                view_.queueRenderDataCommit( after_units );
-                view_.queueDeathAnimation( defender_id );
-            } else {
-                view_.queueRenderDataCommit( after_units );
-            }
-            model_.nextTurn( );
-            finalizeActionVisuals( attacker_id, had_morale );
+        // Single source of truth: the same picker hover used to place the
+        // directional sword cursor and the highlighted approach hex.
+        const PickedApproach picked =
+            pickAttackApproachForCursor( *active_unit,
+                                             *clicked_hex,
+                                             static_cast<float>( lastCursorPx_ ),
+                                             static_cast<float>( lastCursorPy_ ) );
+        if ( picked.approach_ == nullptr ) {
+            view_.showMessage( "Cannot reach that enemy" );
             return;
         }
-
-        if ( intended_path_for_attack.size( ) >= 2 ) {
-            queueMoveVisualAlongPath( attacker_id, intended_path_for_attack );
-        } else {
-            queueMoveVisualIfNeeded( attacker_id, before_units, after_units );
-        }
-
-        view_.queueAttackAnimationFacing( attacker_id, after_def->q_, after_def->r_ );
-
-        view_.queueHitAnimation( defender_id );
-
-        if ( defender_died ) {
-            view_.queueRenderDataCommit( after_units );
-            view_.queueDeathAnimation( defender_id );
-        } else if ( retaliation_occurred ) {
-            view_.queueAttackAnimationFacing( defender_id, after_att->q_, after_att->r_ );
-            view_.queueHitAnimation( attacker_id );
-
-            view_.queueRenderDataCommit( after_units );
-
-            if ( attacker_died ) {
-                view_.queueDeathAnimation( attacker_id );
-            }
-        } else {
-            view_.queueRenderDataCommit( after_units );
-        }
-
-        model_.nextTurn( );
-        finalizeActionVisuals( attacker_id, had_morale );
+        executeMeleeAttack( *active_unit, *target, *picked.approach_ );
         return;
     }
 
     const Hex* move_head_hex = resolveMoveHeadDestination( *active_unit, *clicked_hex );
     if ( move_head_hex != nullptr ) {
-        const bool had_morale = model_.activeUnitHasMoraleBonus( );
-
-        std::vector<std::pair<int, int>> intended_path;
-        try {
-            const std::vector<const Hex*> chain = model_.findPath( *active_unit, *move_head_hex );
-            intended_path.reserve( chain.size( ) );
-            for ( const Hex* h : chain ) {
-                if ( h != nullptr ) {
-                    intended_path.emplace_back( h->getQ( ), h->getR( ) );
-}
-            }
-        } catch ( const std::exception& ) {}
-
         try {
             Hex& move_head =
                 model_.getBoard( ).getHex( move_head_hex->getQ( ),
                                             move_head_hex->getR( ),
                                             -move_head_hex->getQ( ) - move_head_hex->getR( ) );
-            model_.move( *active_unit, move_head );
-        } catch ( const std::exception& e ) {
-            view_.showMessage( std::string( "Move failed: " ) + e.what( ) );
-            return;
+            executeMove( *active_unit, move_head );
+        } catch ( const std::out_of_range& ) {
+            view_.showMessage( "Invalid hex" );
         }
-        view_.showMessage( "Move executed" );
-
-        const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
-        const std::uint64_t mover_id = makeUnitId( active_unit );
-
-        view_.clearVisualEvents( );
-        view_.updateRenderData( before_units );
-        view_.syncUnitPositions( );
-        if ( intended_path.size( ) >= 2 ) {
-            queueMoveVisualAlongPath( mover_id, intended_path );
-        } else {
-            queueMoveVisualIfNeeded( mover_id, before_units, after_units );
-        }
-        view_.queueRenderDataCommit( after_units );
-
-        model_.nextTurn( );
-        finalizeActionVisuals( mover_id, had_morale );
     }
+}
+
+void BattlePresenter::executeMove( Unit& unit, Hex& move_head ) {
+    const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
+    const bool had_morale = model_.activeUnitHasMoraleBonus( );
+
+    // Capture the BFS path BEFORE the model mutation so the View can
+    // replay segment-by-segment movement.
+    std::vector<std::pair<int, int>> intended_path;
+    try {
+        const std::vector<const Hex*> chain = model_.findPath( unit, move_head );
+        intended_path.reserve( chain.size( ) );
+        for ( const Hex* h : chain ) {
+            if ( h != nullptr ) {
+                intended_path.emplace_back( h->getQ( ), h->getR( ) );
+}
+        }
+    } catch ( const std::exception& ) {}
+
+    try {
+        model_.move( unit, move_head );
+    } catch ( const std::exception& e ) {
+        view_.showMessage( std::string( "Move failed: " ) + e.what( ) );
+        return;
+    }
+    view_.showMessage( "Move executed" );
+
+    const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
+    const std::uint64_t mover_id = makeUnitId( &unit );
+
+    view_.clearVisualEvents( );
+    view_.updateRenderData( before_units );
+    view_.syncUnitPositions( );
+    if ( intended_path.size( ) >= 2 ) {
+        queueMoveVisualAlongPath( mover_id, intended_path );
+    } else {
+        queueMoveVisualIfNeeded( mover_id, before_units, after_units );
+    }
+    view_.queueRenderDataCommit( after_units );
+
+    model_.nextTurn( );
+    finalizeActionVisuals( mover_id, had_morale );
+}
+
+void BattlePresenter::executeMeleeAttack( Unit& attacker, Unit& target, Hex& approach ) {
+    const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
+    const bool had_morale = model_.activeUnitHasMoraleBonus( );
+
+    // Path to the approach hex captured pre-mutation. When the approach
+    // equals the attacker's current head (strike in place) the path is
+    // size 1 and no slide event is queued downstream.
+    std::vector<std::pair<int, int>> intended_path_for_attack;
+    try {
+        const std::vector<const Hex*> chain = model_.findPath( attacker, approach );
+        intended_path_for_attack.reserve( chain.size( ) );
+        for ( const Hex* h : chain ) {
+            if ( h != nullptr ) {
+                intended_path_for_attack.emplace_back( h->getQ( ), h->getR( ) );
+}
+        }
+    } catch ( const std::exception& ) {}
+
+    try {
+        model_.attack( attacker, target, approach );
+        view_.showMessage( intended_path_for_attack.size( ) >= 2 ? "Move + Attack!" : "Attack!" );
+    } catch ( const std::exception& e ) {
+        view_.showMessage( std::string( "Attack failed: " ) + e.what( ) );
+        return;
+    }
+
+    const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
+    const std::uint64_t attacker_id = makeUnitId( &attacker );
+    const std::uint64_t defender_id = makeUnitId( &target );
+
+    const auto before_att = findUnit( before_units, attacker_id );
+    const auto after_att = findUnit( after_units, attacker_id );
+    const auto before_def = findUnit( before_units, defender_id );
+    const auto after_def = findUnit( after_units, defender_id );
+
+    const bool defender_died = after_def.has_value( ) && after_def->isCorpse_ &&
+                               before_def.has_value( ) && ! before_def->isCorpse_;
+
+    const bool attacker_took_damage = after_att.has_value( ) && before_att.has_value( ) &&
+                                      ( after_att->hpLeft_ < before_att->hpLeft_ ||
+                                        ( after_att->isCorpse_ && ! before_att->isCorpse_ ) );
+    const bool retaliation_occurred = attacker_took_damage && ! defender_died;
+
+    const bool attacker_died = after_att.has_value( ) && after_att->isCorpse_ &&
+                               before_att.has_value( ) && ! before_att->isCorpse_;
+
+    view_.clearVisualEvents( );
+    view_.updateRenderData( before_units );
+    view_.syncUnitPositions( );
+
+    if ( intended_path_for_attack.size( ) >= 2 ) {
+        queueMoveVisualAlongPath( attacker_id, intended_path_for_attack );
+    } else {
+        queueMoveVisualIfNeeded( attacker_id, before_units, after_units );
+    }
+
+    view_.queueAttackAnimationFacing( attacker_id, after_def->q_, after_def->r_ );
+    view_.queueHitAnimation( defender_id );
+
+    if ( defender_died ) {
+        view_.queueRenderDataCommit( after_units );
+        view_.queueDeathAnimation( defender_id );
+    } else if ( retaliation_occurred ) {
+        view_.queueAttackAnimationFacing( defender_id, after_att->q_, after_att->r_ );
+        view_.queueHitAnimation( attacker_id );
+        view_.queueRenderDataCommit( after_units );
+        if ( attacker_died ) {
+            view_.queueDeathAnimation( attacker_id );
+        }
+    } else {
+        view_.queueRenderDataCommit( after_units );
+    }
+
+    model_.nextTurn( );
+    finalizeActionVisuals( attacker_id, had_morale );
+}
+
+void BattlePresenter::executeRangedAttack( Unit& attacker, Unit& target ) {
+    const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
+    const bool had_morale = model_.activeUnitHasMoraleBonus( );
+
+    try {
+        Hex& attacker_hex = model_.getBoard( ).getHex(
+            attacker.getQ( ), attacker.getR( ), attacker.getS( ) );
+        model_.attack( attacker, target, attacker_hex );
+        view_.showMessage( "Shoot!" );
+    } catch ( const std::exception& e ) {
+        view_.showMessage( std::string( "Attack failed: " ) + e.what( ) );
+        return;
+    }
+
+    const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
+    const std::uint64_t attacker_id = makeUnitId( &attacker );
+    const std::uint64_t defender_id = makeUnitId( &target );
+
+    const auto before_def = findUnit( before_units, defender_id );
+    const auto after_def = findUnit( after_units, defender_id );
+    const bool defender_died = after_def.has_value( ) && after_def->isCorpse_ &&
+                               before_def.has_value( ) && ! before_def->isCorpse_;
+
+    view_.clearVisualEvents( );
+    view_.updateRenderData( before_units );
+    view_.syncUnitPositions( );
+
+    view_.queueAttackAnimationFacing( attacker_id, after_def->q_, after_def->r_ );
+    view_.queueProjectileAnimation( attacker_id,
+                                     after_def->q_,
+                                     after_def->r_,
+                                     attacker.getProjectileAsset( ),
+                                     0.4f );
+    view_.queueHitAnimation( defender_id );
+    view_.queueRenderDataCommit( after_units );
+    if ( defender_died ) {
+        view_.queueDeathAnimation( defender_id );
+    }
+
+    model_.nextTurn( );
+    finalizeActionVisuals( attacker_id, had_morale );
 }
 
 void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) {
@@ -664,6 +697,13 @@ void BattlePresenter::cancelSpellTargeting( ) {
 }
 
 void BattlePresenter::onDefendClicked( ) {
+    if ( isActiveUnitBotControlled( ) ) {
+        return;
+    }
+    executeDefend( );
+}
+
+void BattlePresenter::executeDefend( ) {
     cancelSpellTargeting( );
     view_.clearVisualEvents( );
     view_.setIdleCallback( nullptr );
@@ -685,6 +725,13 @@ void BattlePresenter::onDefendClicked( ) {
 }
 
 void BattlePresenter::onWaitClicked( ) {
+    if ( isActiveUnitBotControlled( ) ) {
+        return;
+    }
+    executeWait( );
+}
+
+void BattlePresenter::executeWait( ) {
     cancelSpellTargeting( );
     view_.clearVisualEvents( );
     view_.setIdleCallback( nullptr );
@@ -1523,6 +1570,11 @@ void BattlePresenter::onSpellbookClicked( ) {
     if ( view_.hasPendingVisualEvents( ) ) {
         return;
     }
+    // The bot casts via executeCastSpell directly; ignore the human
+    // spellbook button while a bot unit is active.
+    if ( isActiveUnitBotControlled( ) ) {
+        return;
+    }
     // Re-opening the spellbook mid-targeting drops the in-flight cast
     // so the active-unit highlights come back when the book closes.
     cancelSpellTargeting( );
@@ -1632,38 +1684,139 @@ void BattlePresenter::handleSpellTargetClick( int q, int r ) {
         return;
     }
 
-    const models::Spell& spell = models::SpellRegistry::bySpellId( pendingSpellId_ );
+    executeCastSpell( pendingSpellId_, *target );
+}
+
+void BattlePresenter::executeCastSpell( models::SpellId id, Unit& target ) {
+    Unit* active_unit = model_.getCurrentUnit( );
+    if ( active_unit == nullptr ) {
+        return;
+    }
+    models::Hero* caster = model_.getCasterFor( *active_unit );
+    if ( caster == nullptr ) {
+        view_.showMessage( "No caster found -- spell cancelled." );
+        isCastingSpell_ = false;
+        view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
+        refreshUiForActiveUnit( );
+        return;
+    }
+
+    const models::Spell& spell = models::SpellRegistry::bySpellId( id );
 
     // Snapshot BEFORE the model mutation so the view can keep showing
     // the pre-cast state while the spell animation plays. The shared
     // default `spell_animation.def` is used when the spell does not
-    // declare its own asset.
+    // declare its own asset. Casting does NOT consume the unit's turn,
+    // so we refresh (rather than advance) the active unit afterward.
     const std::vector<UnitRenderData> before_units = buildRenderDataSnapshot( );
     const std::string anim_asset = spell.animationAsset_.empty( )
                                         ? std::string( "spell_animation.def" )
                                         : spell.animationAsset_;
-    view_.queueSpellAnimation( target->getQ( ),
-                                       target->getR( ),
-                                       anim_asset,
-                                       0.7f );
+    view_.queueSpellAnimation( target.getQ( ), target.getR( ), anim_asset, 0.7f );
 
-    const core::SpellCastResult result =
-        spellResolver_.tryCast( pendingSpellId_, *caster, *target );
+    const core::SpellCastResult result = spellResolver_.tryCast( id, *caster, target );
     view_.showMessage( result.message );
 
     isCastingSpell_ = false;
     view_.setSpellTargetingActive( false, models::SpellAlignment::NEGATIVE );
 
-    // Defer the post-cast snapshot: render before-state during the
-    // animation, then commit the after-state (dead target removed,
-    // HP/buffs updated) when the animation finishes. Mirrors the
-    // attack/move pattern so the queue stays consistent.
     const std::vector<UnitRenderData> after_units = buildRenderDataSnapshot( );
     view_.updateRenderData( before_units );
     view_.syncUnitPositions( );
     view_.queueRenderDataCommit( after_units );
 
     refreshUiForActiveUnit( );
+}
+
+// =========================================================================
+// AI driving
+// =========================================================================
+
+bool BattlePresenter::isUnitBotControlled( const Unit& unit ) const {
+    const int owner = ownerIdForUnit( model_, unit );
+    if ( owner == 1 ) {
+        return blueIsBot_;
+    }
+    if ( owner == 0 ) {
+        return redIsBot_;
+    }
+    return false;
+}
+
+bool BattlePresenter::isActiveUnitBotControlled( ) const {
+    const Unit* active_unit = model_.getCurrentUnit( );
+    return active_unit != nullptr && isUnitBotControlled( *active_unit );
+}
+
+void BattlePresenter::update( ) {
+    // Drive the bot only when the battlefield is idle: animations drained
+    // and not waiting on a spell target. One action per frame lets each
+    // action's visuals play out before the next, and paces bot-vs-bot.
+    if ( view_.hasPendingVisualEvents( ) || isCastingSpell_ ) {
+        return;
+    }
+    if ( ! isActiveUnitBotControlled( ) ) {
+        return;
+    }
+    runBotTurn( );
+}
+
+void BattlePresenter::runBotTurn( ) {
+    Unit* active_unit = model_.getCurrentUnit( );
+    if ( active_unit == nullptr ) {
+        return;
+    }
+    const std::optional<core::ActionCommand> command = randomBot_.decideAction( *active_unit );
+    if ( ! command.has_value( ) ) {
+        return;
+    }
+    executeCommand( *command );
+}
+
+void BattlePresenter::executeCommand( const core::ActionCommand& command ) {
+    Unit* active_unit = model_.getCurrentUnit( );
+    if ( active_unit == nullptr ) {
+        return;
+    }
+
+    switch ( command.type_ ) {
+    case core::ActionType::MOVE: {
+        try {
+            Hex& dest = model_.getBoard( ).getHex(
+                command.destQ_, command.destR_, -command.destQ_ - command.destR_ );
+            executeMove( *active_unit, dest );
+        } catch ( const std::out_of_range& ) {}
+        break;
+    }
+    case core::ActionType::MELEE_ATTACK: {
+        if ( command.target_ == nullptr ) {
+            break;
+        }
+        try {
+            Hex& approach = model_.getBoard( ).getHex(
+                command.destQ_, command.destR_, -command.destQ_ - command.destR_ );
+            executeMeleeAttack( *active_unit, *command.target_, approach );
+        } catch ( const std::out_of_range& ) {}
+        break;
+    }
+    case core::ActionType::RANGED_ATTACK: {
+        if ( command.target_ != nullptr ) {
+            executeRangedAttack( *active_unit, *command.target_ );
+        }
+        break;
+    }
+    case core::ActionType::WAIT:
+        executeWait( );
+        break;
+    case core::ActionType::DEFEND:
+        executeDefend( );
+        break;
+    case core::ActionType::CAST_SPELL:
+        if ( command.target_ != nullptr ) {
+            executeCastSpell( command.spellId_, *command.target_ );
+        }
+        break;
+    }
 }
 
 } // namespace presenters

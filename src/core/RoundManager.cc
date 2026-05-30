@@ -87,6 +87,20 @@ void RoundManager::waitCurrentUnit( ) {
     }
 }
 
+bool RoundManager::currentUnitCanWait( ) const {
+    // The current unit can wait iff it is still in the unactivated
+    // phase. Copy the queue and discard skipped (dead / speed-0) units
+    // from the top so the check matches what getCurrentUnit would serve.
+    auto temp_unactivated = unactivatedUnits_;
+    while ( ! temp_unactivated.empty( ) ) {
+        if ( canAct( temp_unactivated.top( ) ) ) {
+            return true;
+        }
+        temp_unactivated.pop( );
+    }
+    return false;
+}
+
 std::vector<Unit*> RoundManager::getUnitsLeftInRound( ) const {
     std::vector<Unit*> left;
     auto temp_unactivated = unactivatedUnits_;

@@ -141,6 +141,10 @@ std::vector<Unit*> GameManager::getUnitQueueInRound( ) const {
     return roundManager_.getUnitQueueInRound( );
 }
 
+bool GameManager::canCurrentUnitWait( ) const {
+    return roundManager_.currentUnitCanWait( );
+}
+
 std::vector<Hex*> GameManager::getAvailableDestinations( const Unit& unit ) const {
     return actionManager_.getAvailableDestinations( unit, board_ );
 }

@@ -85,7 +85,7 @@ BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
       redHero_( buildRedHero( settings.rightArmy_ ) ),
       gameManager_( blueHero_, redHero_ ),
       view_( window ),
-      presenter_( gameManager_, view_ ) {
+      presenter_( gameManager_, view_, settings.blueIsBot_, settings.redIsBot_ ) {
     try {
         presenter_.startBattle( );
     } catch ( const std::exception& ) {}
@@ -94,6 +94,9 @@ BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
 void BattleScene::processEvents( ) {
     try {
         view_.processEvents( presenter_ );
+        // Drive the AI after input so a bot-controlled side acts on its
+        // own turn. update() no-ops while animations are still playing.
+        presenter_.update( );
     } catch ( ... ) {}
 }
 

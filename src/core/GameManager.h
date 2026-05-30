@@ -34,6 +34,16 @@ public:
     std::vector<models::Unit*> getUnitsLeftInRound( ) const;
     std::vector<models::Unit*> getUnitQueueInRound( ) const;
 
+    // Every unit still alive in the battle (both armies), regardless of
+    // turn order. Used by the AI action generator to enumerate enemy
+    // targets and spell targets.
+    const std::vector<models::Unit*>& getAllUnits( ) const { return allUnitsInBattle_; }
+
+    // True while the current unit may still wait (has not waited yet).
+    // Used by the AI action generator to exclude an illegal WAIT that
+    // would otherwise be a no-op and stall a bot turn.
+    bool canCurrentUnitWait( ) const;
+
     std::vector<models::Hex*> getAvailableDestinations( const models::Unit& unit ) const;
     std::vector<std::pair<models::Unit*, models::Hex*>>
     getAvailableAttacks( const models::Unit& unit ) const;
