@@ -54,6 +54,12 @@ struct Settings {
 
     static Settings loadFromFile( const std::string& filepath );
     void saveToFile( const std::string& filepath ) const;
+
+    // Persists ONLY the army rosters, merging into the existing file so
+    // the window / ai sections (and any other keys) are preserved exactly
+    // as on disk. Used by the army-setup screen so editing rosters never
+    // clobbers hand-edited settings.
+    void saveArmiesToFile( const std::string& filepath ) const;
 };
 
 } // namespace core

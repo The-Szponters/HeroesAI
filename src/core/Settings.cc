@@ -80,27 +80,60 @@ void readArmyFromJson( const nlohmann::json& arr, ArmyConfig& out ) {
     }
 }
 
+/**
+ * @brief Outcome of attempting to read a JSON document from disk.
+ */
+enum class JsonReadStatus {
+    Ok,         ///< Parsed successfully into the output.
+    Missing,    ///< File could not be opened (output left unchanged).
+    ParseError  ///< File opened but JSON was invalid (output left unchanged).
+};
+
+/**
+ * @brief Reads a JSON document from @p filepath.
+ *
+ * The output is only modified on success, so callers can keep a default
+ * value. On a parse error the parser's message is returned via
+ * @p error_out so the caller can phrase a context-specific diagnostic.
+ */
+JsonReadStatus readJsonFromFile( const std::string& filepath,
+                                        nlohmann::json& out,
+                                        std::string& error_out ) {
+    std::ifstream in( filepath );
+    if ( ! in.is_open( ) ) {
+        return JsonReadStatus::Missing;
+    }
+    nlohmann::json parsed;
+    try {
+        in >> parsed;
+    } catch ( const std::exception& e ) {
+        error_out = e.what( );
+        return JsonReadStatus::ParseError;
+    }
+    out = std::move( parsed );
+    return JsonReadStatus::Ok;
+}
+
 } // namespace
 
 Settings::Settings( ) : leftArmy_( defaultLeftArmy( ) ), rightArmy_( defaultRightArmy( ) ) {}
 
 Settings Settings::loadFromFile( const std::string& filepath ) {
     Settings settings;
-    std::ifstream file( filepath );
-    if ( ! file.is_open( ) ) {
+
+    nlohmann::json j;
+    std::string parse_error;
+    const JsonReadStatus status = readJsonFromFile( filepath, j, parse_error );
+    if ( status == JsonReadStatus::Missing ) {
         std::cerr << "Settings: could not open '" << filepath
                   << "' -- using built-in defaults." << std::endl;
         return settings;
     }
-
-    nlohmann::json j;
-    try {
-        file >> j;
-    } catch ( const std::exception& e ) {
+    if ( status == JsonReadStatus::ParseError ) {
         // Surface the failure loudly: a malformed config otherwise looks
         // identical to a missing one and the game silently ignores every
         // user setting. nlohmann's message pinpoints the line/column.
-        std::cerr << "Settings: failed to parse '" << filepath << "': " << e.what( )
+        std::cerr << "Settings: failed to parse '" << filepath << "': " << parse_error
                   << "\nSettings: using built-in defaults instead." << std::endl;
         return settings;
     }
@@ -161,6 +194,37 @@ void Settings::saveToFile( const std::string& filepath ) const {
         return;
     }
     file << j.dump( 4 );
+}
+
+void Settings::saveArmiesToFile( const std::string& filepath ) const {
+    // Merge into whatever is already on disk so unrelated sections
+    // (window, ai, anything else) survive untouched.
+    nlohmann::json j = nlohmann::json::object( );
+    std::string parse_error;
+    const JsonReadStatus status = readJsonFromFile( filepath, j, parse_error );
+    if ( status == JsonReadStatus::ParseError ) {
+        // Don't touch a malformed file -- repairing it is not this
+        // function's job. Report and leave the file as the user left it.
+        std::cerr << "Settings: could not merge armies into '" << filepath
+                  << "': " << parse_error << std::endl;
+        return;
+    }
+    // A missing file is fine here: fall through and write an armies-only
+    // document. Guard against the file holding a non-object JSON value.
+    if ( ! j.is_object( ) ) {
+        j = nlohmann::json::object( );
+    }
+
+    // This function owns only the rosters.
+    j["left_army"] = armyToJson( leftArmy_ );
+    j["right_army"] = armyToJson( rightArmy_ );
+
+    std::ofstream out( filepath );
+    if ( ! out.is_open( ) ) {
+        std::cerr << "Settings: could not open '" << filepath << "' for writing." << std::endl;
+        return;
+    }
+    out << j.dump( 4 );
 }
 
 } // namespace core

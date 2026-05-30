@@ -88,7 +88,9 @@ void ArmySetupPresenter::setCount( int side, int slot_index, int value ) {
 }
 
 void ArmySetupPresenter::onBackClicked( ) {
-    settings_.saveToFile( "settings.cfg" );
+    // Persist only the rosters; window / ai sections in the file stay
+    // exactly as the user left them.
+    settings_.saveArmiesToFile( "settings.cfg" );
     backRequested_ = true;
 }
 
