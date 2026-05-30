@@ -33,6 +33,7 @@ add_executable(${PROJECT_NAME}
   src/core/SpellResolver.cc
   src/core/ActionGenerator.cc
   src/core/RandomBotService.cc
+  src/core/EasyBotService.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
   src/core/Settings.cc

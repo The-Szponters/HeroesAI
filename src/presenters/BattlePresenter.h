@@ -12,7 +12,10 @@
 
 #include "../core/ActionCommand.h"
 #include "../core/ActionGenerator.h"
+#include "../core/EasyBotService.h"
 #include "../core/GameManager.h"
+#include "../core/IBot.h"
+#include "../core/PlayerType.h"
 #include "../core/RandomBotService.h"
 #include "../core/SpellResolver.h"
 #include "../models/Spell.h"
@@ -33,8 +36,8 @@ class BattlePresenter {
 public:
     BattlePresenter( core::GameManager& model,
                           views::IBattleView& view,
-                          bool blue_is_bot = false,
-                          bool red_is_bot = false );
+                          core::PlayerType blue_player = core::PlayerType::Human,
+                          core::PlayerType red_player = core::PlayerType::Human );
 
     /**
      * @brief Initialises the view with the starting board state and highlights.
@@ -160,6 +163,8 @@ private:
     void executeDefend( );
 
     // AI driving.
+    core::PlayerType playerTypeForUnit( const models::Unit& unit ) const;
+    core::IBot* botForUnit( const models::Unit& unit );
     bool isUnitBotControlled( const models::Unit& unit ) const;
     bool isActiveUnitBotControlled( ) const;
     void runBotTurn( );
@@ -170,8 +175,9 @@ private:
     core::SpellResolver spellResolver_;
     core::ActionGenerator actionGenerator_;
     core::RandomBotService randomBot_;
-    bool blueIsBot_ = false;
-    bool redIsBot_ = false;
+    core::EasyBotService easyBot_;
+    core::PlayerType bluePlayer_ = core::PlayerType::Human;
+    core::PlayerType redPlayer_ = core::PlayerType::Human;
     bool rangePreviewActive_ = false;
     bool infoPanelVisible_ = false;
     bool isCastingSpell_ = false;

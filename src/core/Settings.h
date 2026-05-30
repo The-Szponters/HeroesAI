@@ -10,6 +10,7 @@
 #include <string>
 
 #include "../models/UnitId.h"
+#include "PlayerType.h"
 
 namespace core {
 
@@ -44,11 +45,12 @@ struct Settings {
     ArmyConfig leftArmy_;
     ArmyConfig rightArmy_;
 
-    // Which side the AI controls. Blue = left army (human by default),
-    // red = right army (bot by default), giving an out-of-the-box
-    // human-vs-bot match. Set both true for an automated bot-vs-bot run.
-    bool blueIsBot_ = false;
-    bool redIsBot_ = true;
+    // Who controls each side. Blue = left army (human by default), red =
+    // right army (random bot by default), giving an out-of-the-box
+    // human-vs-bot match. Set both to a bot type for an automated
+    // bot-vs-bot run.
+    PlayerType bluePlayer_ = PlayerType::Human;
+    PlayerType redPlayer_ = PlayerType::Random;
 
     Settings( );
 

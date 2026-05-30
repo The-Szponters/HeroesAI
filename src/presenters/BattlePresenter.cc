@@ -116,15 +116,16 @@ makeUnitRenderData( const GameManager& model, const Unit& unit, int q, int r, bo
 
 BattlePresenter::BattlePresenter( GameManager& model,
                                           IBattleView& view,
-                                          bool blue_is_bot,
-                                          bool red_is_bot )
+                                          core::PlayerType blue_player,
+                                          core::PlayerType red_player )
     : model_( model ),
       view_( view ),
       spellResolver_( model ),
       actionGenerator_( model, spellResolver_ ),
       randomBot_( actionGenerator_ ),
-      blueIsBot_( blue_is_bot ),
-      redIsBot_( red_is_bot ) {}
+      easyBot_( actionGenerator_ ),
+      bluePlayer_( blue_player ),
+      redPlayer_( red_player ) {}
 
 void BattlePresenter::startBattle( ) {
     pushRenderDataToView( );
@@ -1732,15 +1733,31 @@ void BattlePresenter::executeCastSpell( models::SpellId id, Unit& target ) {
 // AI driving
 // =========================================================================
 
-bool BattlePresenter::isUnitBotControlled( const Unit& unit ) const {
+core::PlayerType BattlePresenter::playerTypeForUnit( const Unit& unit ) const {
     const int owner = ownerIdForUnit( model_, unit );
     if ( owner == 1 ) {
-        return blueIsBot_;
+        return bluePlayer_;
     }
     if ( owner == 0 ) {
-        return redIsBot_;
+        return redPlayer_;
     }
-    return false;
+    return core::PlayerType::Human;
+}
+
+core::IBot* BattlePresenter::botForUnit( const Unit& unit ) {
+    switch ( playerTypeForUnit( unit ) ) {
+    case core::PlayerType::Random:
+        return &randomBot_;
+    case core::PlayerType::Easy:
+        return &easyBot_;
+    case core::PlayerType::Human:
+    default:
+        return nullptr;
+    }
+}
+
+bool BattlePresenter::isUnitBotControlled( const Unit& unit ) const {
+    return playerTypeForUnit( unit ) != core::PlayerType::Human;
 }
 
 bool BattlePresenter::isActiveUnitBotControlled( ) const {
@@ -1766,7 +1783,11 @@ void BattlePresenter::runBotTurn( ) {
     if ( active_unit == nullptr ) {
         return;
     }
-    const std::optional<core::ActionCommand> command = randomBot_.decideAction( *active_unit );
+    core::IBot* bot = botForUnit( *active_unit );
+    if ( bot == nullptr ) {
+        return;
+    }
+    const std::optional<core::ActionCommand> command = bot->decideAction( *active_unit );
     if ( ! command.has_value( ) ) {
         return;
     }

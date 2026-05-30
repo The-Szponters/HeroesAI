@@ -85,7 +85,7 @@ BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
       redHero_( buildRedHero( settings.rightArmy_ ) ),
       gameManager_( blueHero_, redHero_ ),
       view_( window ),
-      presenter_( gameManager_, view_, settings.blueIsBot_, settings.redIsBot_ ) {
+      presenter_( gameManager_, view_, settings.bluePlayer_, settings.redPlayer_ ) {
     try {
         presenter_.startBattle( );
     } catch ( const std::exception& ) {}

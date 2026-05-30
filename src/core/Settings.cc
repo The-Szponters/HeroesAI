@@ -114,6 +114,17 @@ JsonReadStatus readJsonFromFile( const std::string& filepath,
     return JsonReadStatus::Ok;
 }
 
+// Resolves one side's controller from the "player" object, using the
+// per-side string ("human"/"random"/"easy"); otherwise keeps @p fallback.
+PlayerType readPlayerType( const nlohmann::json& player,
+                                  const char* side_key,
+                                  PlayerType fallback ) {
+    if ( player.contains( side_key ) && player[side_key].is_string( ) ) {
+        return playerTypeFromString( player[side_key].get<std::string>( ) );
+    }
+    return fallback;
+}
+
 } // namespace
 
 Settings::Settings( ) : leftArmy_( defaultLeftArmy( ) ), rightArmy_( defaultRightArmy( ) ) {}
@@ -161,14 +172,10 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
         readArmyFromJson( j["right_army"], settings.rightArmy_ );
     }
 
-    if ( j.contains( "ai" ) && j["ai"].is_object( ) ) {
-        const nlohmann::json& ai = j["ai"];
-        if ( ai.contains( "blue_is_bot" ) && ai["blue_is_bot"].is_boolean( ) ) {
-            settings.blueIsBot_ = ai["blue_is_bot"].get<bool>( );
-        }
-        if ( ai.contains( "red_is_bot" ) && ai["red_is_bot"].is_boolean( ) ) {
-            settings.redIsBot_ = ai["red_is_bot"].get<bool>( );
-        }
+    if ( j.contains( "player" ) && j["player"].is_object( ) ) {
+        const nlohmann::json& player = j["player"];
+        settings.bluePlayer_ = readPlayerType( player, "blue", settings.bluePlayer_ );
+        settings.redPlayer_ = readPlayerType( player, "red", settings.redPlayer_ );
     }
 
     return settings;
@@ -184,9 +191,9 @@ void Settings::saveToFile( const std::string& filepath ) const {
     };
     j["left_army"] = armyToJson( leftArmy_ );
     j["right_army"] = armyToJson( rightArmy_ );
-    j["ai"] = {
-        { "blue_is_bot", blueIsBot_ },
-        { "red_is_bot", redIsBot_ }
+    j["player"] = {
+        { "blue", playerTypeToString( bluePlayer_ ) },
+        { "red", playerTypeToString( redPlayer_ ) }
     };
 
     std::ofstream file( filepath );
