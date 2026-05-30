@@ -41,10 +41,12 @@ ArmyConfig defaultRightArmy( ) {
     return army;
 }
 
-nlohmann::json armyToJson( const ArmyConfig& army ) {
-    nlohmann::json arr = nlohmann::json::array( );
+// Uses ordered_json so written objects keep insertion order instead of
+// being alphabetised (nlohmann::json sorts keys; ordered_json does not).
+nlohmann::ordered_json armyToJson( const ArmyConfig& army ) {
+    nlohmann::ordered_json arr = nlohmann::ordered_json::array( );
     for ( const ArmySlot& slot : army ) {
-        nlohmann::json entry;
+        nlohmann::ordered_json entry;
         if ( slot.unitId_.has_value( ) ) {
             entry["unit"] = models::UnitFactory::idToString( *slot.unitId_ );
         } else {
@@ -96,14 +98,15 @@ enum class JsonReadStatus {
  * value. On a parse error the parser's message is returned via
  * @p error_out so the caller can phrase a context-specific diagnostic.
  */
+template <typename Json>
 JsonReadStatus readJsonFromFile( const std::string& filepath,
-                                        nlohmann::json& out,
+                                        Json& out,
                                         std::string& error_out ) {
     std::ifstream in( filepath );
     if ( ! in.is_open( ) ) {
         return JsonReadStatus::Missing;
     }
-    nlohmann::json parsed;
+    Json parsed;
     try {
         in >> parsed;
     } catch ( const std::exception& e ) {
@@ -182,7 +185,13 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
 }
 
 void Settings::saveToFile( const std::string& filepath ) const {
-    nlohmann::json j;
+    // ordered_json keeps this insertion order in the output instead of
+    // alphabetising the keys. Rosters are written last.
+    nlohmann::ordered_json j;
+    j["player"] = {
+        { "blue", playerTypeToString( bluePlayer_ ) },
+        { "red", playerTypeToString( redPlayer_ ) }
+    };
     j["window"] = {
         { "width", windowWidth_ },
         { "height", windowHeight_ },
@@ -191,10 +200,6 @@ void Settings::saveToFile( const std::string& filepath ) const {
     };
     j["left_army"] = armyToJson( leftArmy_ );
     j["right_army"] = armyToJson( rightArmy_ );
-    j["player"] = {
-        { "blue", playerTypeToString( bluePlayer_ ) },
-        { "red", playerTypeToString( redPlayer_ ) }
-    };
 
     std::ofstream file( filepath );
     if ( ! file.is_open( ) ) {
@@ -205,8 +210,9 @@ void Settings::saveToFile( const std::string& filepath ) const {
 
 void Settings::saveArmiesToFile( const std::string& filepath ) const {
     // Merge into whatever is already on disk so unrelated sections
-    // (window, ai, anything else) survive untouched.
-    nlohmann::json j = nlohmann::json::object( );
+    // (player, window, anything else) survive untouched. ordered_json
+    // preserves the existing key order rather than alphabetising it.
+    nlohmann::ordered_json j = nlohmann::ordered_json::object( );
     std::string parse_error;
     const JsonReadStatus status = readJsonFromFile( filepath, j, parse_error );
     if ( status == JsonReadStatus::ParseError ) {
@@ -219,10 +225,13 @@ void Settings::saveArmiesToFile( const std::string& filepath ) const {
     // A missing file is fine here: fall through and write an armies-only
     // document. Guard against the file holding a non-object JSON value.
     if ( ! j.is_object( ) ) {
-        j = nlohmann::json::object( );
+        j = nlohmann::ordered_json::object( );
     }
 
-    // This function owns only the rosters.
+    // This function owns only the rosters. Erase first so the re-inserted
+    // arrays land at the end, keeping the rosters together and last.
+    j.erase( "left_army" );
+    j.erase( "right_army" );
     j["left_army"] = armyToJson( leftArmy_ );
     j["right_army"] = armyToJson( rightArmy_ );
 
