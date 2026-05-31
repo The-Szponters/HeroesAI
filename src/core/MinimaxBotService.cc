@@ -47,11 +47,19 @@ int hexDistance( int aq, int ar, int bq, int br ) {
 }
 
 // Combat worth of a stack: total remaining HP weighted by unit quality.
+//
+// Quality uses BASE stats on purpose. If it used the buffed totals, a
+// temporary buff that touches a stat in the formula would directly inflate
+// the stack's material value -- e.g. Defend (+5 defense) would make the unit
+// "worth more" just for defending, so the search would rather defend than
+// actually attack. The real value of buffs/debuffs is instead captured by
+// the search seeing their effect on simulated combat (more damage dealt,
+// less damage taken).
 double stackValue( const Unit& u ) {
     const double hp_total =
         static_cast<double>( ( u.getCount( ) - 1 ) * u.getHealth( ) + u.getHealthLeft( ) );
-    double quality = u.getAttack( ) + u.getDefense( ) +
-                     ( u.getDamageMin( ) + u.getDamageMax( ) ) / 2.0 + u.getSpeed( );
+    double quality = u.getBaseAttack( ) + u.getBaseDefense( ) +
+                     ( u.getBaseDamageMin( ) + u.getBaseDamageMax( ) ) / 2.0 + u.getBaseSpeed( );
     if ( u.isRanged( ) && u.getAmmo( ) > 0 ) {
         quality *= 1.3; // shooters are worth more
     }

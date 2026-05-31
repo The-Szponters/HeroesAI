@@ -5,6 +5,7 @@
 #include "../GameManager.h"
 #include "../MinimaxBotService.h"
 #include "../../models/Hero.h"
+#include "../../models/RangeUnit.h"
 #include "../../models/Unit.h"
 #include <gtest/gtest.h>
 #include <memory>
@@ -110,6 +111,32 @@ TEST( MinimaxBotTest, AttacksToWinWhenItCanWipeTheEnemy ) {
     ASSERT_TRUE( command.has_value( ) );
     EXPECT_EQ( command->type_, core::ActionType::MELEE_ATTACK );
     EXPECT_EQ( command->target_, red );
+}
+
+TEST( MinimaxBotTest, ShootsInsteadOfDefending ) {
+    // A shooter whose only enemy is too far to melee should fire, not
+    // defend. (Regression: the evaluator must not reward Defend's temporary
+    // +5 defense by inflating the unit's material value.)
+    auto shooter = std::make_shared<models::RangeUnit>( "Archer", 1, 10, 5, 50, 5, 10, 4, 10, 12 );
+    shooter->setPosition( 0, 0, 0 );
+    Hero blue( "BlueHero", 0, 0, 0, 0 );
+    blue.getArmy( ).addUnit( shooter );
+
+    auto enemy = std::make_shared<Unit>( "Target", 1, 5, 5, 50, 2, 5, 1, 10 );
+    enemy->setPosition( 6, 0, -6 ); // distance 6: shooter (speed 4) can't reach for melee
+    Hero red( "RedHero", 0, 0, 0, 0 );
+    red.getArmy( ).addUnit( enemy );
+
+    GameManager gm( blue, red );
+    MinimaxBotService bot( gm, 3 );
+
+    Unit* active = gm.getCurrentUnit( );
+    ASSERT_NE( active, nullptr );
+    ASSERT_TRUE( active->isRanged( ) );
+
+    const auto command = bot.decideAction( *active );
+    ASSERT_TRUE( command.has_value( ) );
+    EXPECT_EQ( command->type_, core::ActionType::RANGED_ATTACK );
 }
 
 } // namespace test
