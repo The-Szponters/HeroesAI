@@ -28,10 +28,14 @@ public:
     void onArmySetupClicked( );
     bool isArmySetupRequested( ) const;
 
+    void onQuitClicked( );
+    bool isQuitRequested( ) const;
+
 private:
     views::IMainMenuView& view_;
     bool newGameRequested_ = false;
     bool armySetupRequested_ = false;
+    bool quitRequested_ = false;
 };
 
 } // namespace presenters

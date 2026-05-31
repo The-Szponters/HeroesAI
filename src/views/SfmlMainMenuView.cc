@@ -18,8 +18,22 @@ namespace {
 
 constexpr float K_BUTTON_WIDTH = 400.0f;
 constexpr float K_BUTTON_HEIGHT = 180.0f;
-constexpr float K_BUTTON_VERTICAL_GAP = 20.0f;
 constexpr unsigned int K_MESSAGE_LABEL_SIZE = 18;
+
+// Per-button size multipliers (relative to the base New Game button).
+// Custom is narrower but a touch taller; quit is uniformly larger.
+constexpr float K_CUSTOM_BUTTON_WIDTH_SCALE = 0.82f;
+constexpr float K_CUSTOM_BUTTON_HEIGHT_SCALE = 1.10f;
+constexpr float K_QUIT_BUTTON_SCALE = 1.15f;
+
+// Top of the button stack as a fraction of screen height (smaller = higher).
+constexpr float K_STACK_TOP_FRACTION = 0.05f;
+
+// Independent vertical gaps between the stacked buttons. Negative values
+// tighten / overlap the bounding boxes -- fine given the buttons'
+// transparent padding -- and let Custom sit closer to each neighbour.
+constexpr float K_GAP_NEW_TO_CUSTOM = 90.0f;
+constexpr float K_GAP_CUSTOM_TO_QUIT = 60.0f;
 
 } // namespace
 
@@ -28,7 +42,8 @@ SfmlMainMenuView::SfmlMainMenuView( sf::RenderWindow& window )
       screenWidth_( window.getView( ).getSize( ).x ),
       screenHeight_( window.getView( ).getSize( ).y ),
       newGameButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ),
-      customSettingsButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
+      customSettingsButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ),
+      quitButtonBounds_( { 0.0f, 0.0f }, { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } ) {
     const std::array<const char*, 11> font_candidates = {
         "assets/font.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -81,38 +96,51 @@ void SfmlMainMenuView::loadAssets( ) {
         customSettingsButtonSprite_ = std::make_unique<sf::Sprite>( customSettingsButtonTexture_ );
         customSettingsButtonLoaded_ = true;
     }
+
+    if ( quitButtonTexture_.loadFromFile( "assets/ui/menu/quit-button.psd" ) ) {
+        quitButtonSprite_ = std::make_unique<sf::Sprite>( quitButtonTexture_ );
+        quitButtonLoaded_ = true;
+    }
 }
 
 void SfmlMainMenuView::layoutButtons( ) {
-    const float button_x = ( screenWidth_ - K_BUTTON_WIDTH ) * 0.5f;
-    const float stack_height = K_BUTTON_HEIGHT * 2.0f + K_BUTTON_VERTICAL_GAP;
-    const float stack_top = ( screenHeight_ - stack_height ) * 0.5f + screenHeight_ * 0.10f;
+    const float custom_w = K_BUTTON_WIDTH * K_CUSTOM_BUTTON_WIDTH_SCALE;
+    const float custom_h = K_BUTTON_HEIGHT * K_CUSTOM_BUTTON_HEIGHT_SCALE;
+    const float quit_w = K_BUTTON_WIDTH * K_QUIT_BUTTON_SCALE;
+    const float quit_h = K_BUTTON_HEIGHT * K_QUIT_BUTTON_SCALE;
 
-    const float new_game_y = stack_top;
-    const float custom_settings_y = stack_top + K_BUTTON_HEIGHT + K_BUTTON_VERTICAL_GAP;
+    // Top-anchored stack: each button is placed below the previous one with
+    // its own gap, so adjusting a gap moves only the buttons below it.
+    float y = screenHeight_ * K_STACK_TOP_FRACTION;
 
-    newGameButtonBounds_ = sf::FloatRect( { button_x, new_game_y },
-                                          { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
-    customSettingsButtonBounds_ = sf::FloatRect( { button_x, custom_settings_y },
-                                            { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    // Each button is centred horizontally according to its own width.
+    auto centered = [&]( float w, float h, float top ) {
+        return sf::FloatRect( { ( screenWidth_ - w ) * 0.5f, top }, { w, h } );
+    };
 
-    if ( newGameButtonSprite_ ) {
-        const sf::Vector2u ts = newGameButtonTexture_.getSize( );
-        if ( ts.x > 0 && ts.y > 0 ) {
-            newGameButtonSprite_->setScale( { K_BUTTON_WIDTH / static_cast<float>( ts.x ),
-                                              K_BUTTON_HEIGHT / static_cast<float>( ts.y ) } );
+    newGameButtonBounds_ = centered( K_BUTTON_WIDTH, K_BUTTON_HEIGHT, y );
+    y += K_BUTTON_HEIGHT + K_GAP_NEW_TO_CUSTOM;
+    customSettingsButtonBounds_ = centered( custom_w, custom_h, y );
+    y += custom_h + K_GAP_CUSTOM_TO_QUIT;
+    quitButtonBounds_ = centered( quit_w, quit_h, y );
+
+    auto place_sprite = [&]( std::unique_ptr<sf::Sprite>& sprite,
+                                     const sf::Texture& texture,
+                                     const sf::FloatRect& bounds ) {
+        if ( ! sprite ) {
+            return;
         }
-        newGameButtonSprite_->setPosition( { button_x, new_game_y } );
-    }
-
-    if ( customSettingsButtonSprite_ ) {
-        const sf::Vector2u ts = customSettingsButtonTexture_.getSize( );
+        const sf::Vector2u ts = texture.getSize( );
         if ( ts.x > 0 && ts.y > 0 ) {
-            customSettingsButtonSprite_->setScale( { K_BUTTON_WIDTH / static_cast<float>( ts.x ),
-                                                K_BUTTON_HEIGHT / static_cast<float>( ts.y ) } );
+            sprite->setScale( { bounds.size.x / static_cast<float>( ts.x ),
+                                bounds.size.y / static_cast<float>( ts.y ) } );
         }
-        customSettingsButtonSprite_->setPosition( { button_x, custom_settings_y } );
-    }
+        sprite->setPosition( bounds.position );
+    };
+    place_sprite( newGameButtonSprite_, newGameButtonTexture_, newGameButtonBounds_ );
+    place_sprite( customSettingsButtonSprite_, customSettingsButtonTexture_,
+                      customSettingsButtonBounds_ );
+    place_sprite( quitButtonSprite_, quitButtonTexture_, quitButtonBounds_ );
 
     if ( messageText_ ) {
         messageText_->setPosition( { 16.0f, screenHeight_ - 32.0f } );
@@ -139,6 +167,7 @@ void SfmlMainMenuView::processEvents( MainMenuPresenter& presenter ) {
             const sf::Vector2f world = window_.mapPixelToCoords( mouse_move->position );
             newGameButtonHovered_ = newGameButtonBounds_.contains( { world.x, world.y } );
             customSettingsButtonHovered_ = customSettingsButtonBounds_.contains( { world.x, world.y } );
+            quitButtonHovered_ = quitButtonBounds_.contains( { world.x, world.y } );
             continue;
         }
 
@@ -164,6 +193,10 @@ bool SfmlMainMenuView::routeMenuClick( float x,
         presenter.onArmySetupClicked( );
         return true;
     }
+    if ( quitButtonBounds_.contains( { x, y } ) ) {
+        presenter.onQuitClicked( );
+        return true;
+    }
     return false;
 }
 
@@ -172,6 +205,7 @@ void SfmlMainMenuView::render( ) {
     drawBackground( );
     drawNewGameButton( );
     drawCustomSettingsButton( );
+    drawQuitButton( );
     drawMessage( );
     window_.display( );
 }
@@ -195,7 +229,7 @@ void SfmlMainMenuView::drawNewGameButton( ) {
         window_.draw( *newGameButtonSprite_ );
         return;
     }
-    sf::RectangleShape fallback( { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    sf::RectangleShape fallback( newGameButtonBounds_.size );
     fallback.setPosition( newGameButtonBounds_.position );
     fallback.setFillColor( newGameButtonHovered_ ? sf::Color( 90, 70, 30 )
                                                  : sf::Color( 60, 45, 20 ) );
@@ -212,11 +246,27 @@ void SfmlMainMenuView::drawCustomSettingsButton( ) {
         window_.draw( *customSettingsButtonSprite_ );
         return;
     }
-    sf::RectangleShape fallback( { K_BUTTON_WIDTH, K_BUTTON_HEIGHT } );
+    sf::RectangleShape fallback( customSettingsButtonBounds_.size );
     fallback.setPosition( customSettingsButtonBounds_.position );
     fallback.setFillColor( customSettingsButtonHovered_ ? sf::Color( 30, 70, 90 )
                                                    : sf::Color( 20, 45, 60 ) );
     fallback.setOutlineColor( sf::Color( 110, 180, 200 ) );
+    fallback.setOutlineThickness( 2.0f );
+    window_.draw( fallback );
+}
+
+void SfmlMainMenuView::drawQuitButton( ) {
+    if ( quitButtonLoaded_ && quitButtonSprite_ ) {
+        quitButtonSprite_->setColor( quitButtonHovered_ ? sf::Color( 220, 220, 220 )
+                                                        : sf::Color::White );
+        window_.draw( *quitButtonSprite_ );
+        return;
+    }
+    sf::RectangleShape fallback( quitButtonBounds_.size );
+    fallback.setPosition( quitButtonBounds_.position );
+    fallback.setFillColor( quitButtonHovered_ ? sf::Color( 90, 40, 40 )
+                                              : sf::Color( 60, 25, 25 ) );
+    fallback.setOutlineColor( sf::Color( 200, 110, 110 ) );
     fallback.setOutlineThickness( 2.0f );
     window_.draw( fallback );
 }

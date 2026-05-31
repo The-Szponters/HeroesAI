@@ -13,6 +13,7 @@ void MainMenuPresenter::start( ) {
     view_.showMessage( "" );
     newGameRequested_ = false;
     armySetupRequested_ = false;
+    quitRequested_ = false;
 }
 
 void MainMenuPresenter::onNewGameClicked( ) {
@@ -29,6 +30,14 @@ void MainMenuPresenter::onArmySetupClicked( ) {
 
 bool MainMenuPresenter::isArmySetupRequested( ) const {
     return armySetupRequested_;
+}
+
+void MainMenuPresenter::onQuitClicked( ) {
+    quitRequested_ = true;
+}
+
+bool MainMenuPresenter::isQuitRequested( ) const {
+    return quitRequested_;
 }
 
 } // namespace presenters

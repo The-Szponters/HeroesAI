@@ -42,6 +42,7 @@ private:
     void drawBackground( );
     void drawNewGameButton( );
     void drawCustomSettingsButton( );
+    void drawQuitButton( );
     void drawMessage( );
     bool routeMenuClick( float x, float y, presenters::MainMenuPresenter& presenter );
 
@@ -64,6 +65,12 @@ private:
     sf::FloatRect customSettingsButtonBounds_;
     bool customSettingsButtonHovered_ = false;
     bool customSettingsButtonLoaded_ = false;
+
+    sf::Texture quitButtonTexture_;
+    std::unique_ptr<sf::Sprite> quitButtonSprite_;
+    sf::FloatRect quitButtonBounds_;
+    bool quitButtonHovered_ = false;
+    bool quitButtonLoaded_ = false;
 
     sf::Font font_;
     bool fontLoaded_ = false;
