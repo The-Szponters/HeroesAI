@@ -66,23 +66,25 @@ void applyRoster( Hero& hero,
 
 } // namespace
 
-Hero BattleScene::buildBlueHero( const ArmyConfig& army ) {
-    Hero hero( "Blue Hero", 10, 10, 10, 10 );
+Hero BattleScene::buildBlueHero( const ArmyConfig& army, const HeroConfig& hero_config ) {
+    Hero hero( "Blue Hero", hero_config.attack_, hero_config.defense_, hero_config.power_,
+               hero_config.knowledge_ );
     applyRoster( hero, army, K_BLUE_SLOT_POSITIONS );
     return hero;
 }
 
-Hero BattleScene::buildRedHero( const ArmyConfig& army ) {
-    Hero hero( "Red Hero", 10, 10, 10, 10 );
+Hero BattleScene::buildRedHero( const ArmyConfig& army, const HeroConfig& hero_config ) {
+    Hero hero( "Red Hero", hero_config.attack_, hero_config.defense_, hero_config.power_,
+               hero_config.knowledge_ );
     applyRoster( hero, army, K_RED_SLOT_POSITIONS );
     return hero;
 }
 
 BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
     : window_( window ),
-      blueHero_(
-          ( UnitFactory::init( "assets/units.json" ), buildBlueHero( settings.leftArmy_ ) ) ),
-      redHero_( buildRedHero( settings.rightArmy_ ) ),
+      blueHero_( ( UnitFactory::init( "assets/units.json" ),
+                   buildBlueHero( settings.leftArmy_, settings.blueHeroConfig_ ) ) ),
+      redHero_( buildRedHero( settings.rightArmy_, settings.redHeroConfig_ ) ),
       gameManager_( blueHero_, redHero_ ),
       view_( window ),
       presenter_( gameManager_,

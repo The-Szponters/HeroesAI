@@ -88,10 +88,52 @@ void ArmySetupPresenter::setCount( int side, int slot_index, int value ) {
 }
 
 void ArmySetupPresenter::onBackClicked( ) {
-    // Persist only the rosters; window / ai sections in the file stay
-    // exactly as the user left them.
-    settings_.saveArmiesToFile( "settings.cfg" );
+    // Persist the army-setup-owned sections (rosters, player types, hero
+    // stats); the window section in the file stays exactly as it was.
+    settings_.saveArmySetupToFile( "settings.cfg" );
     backRequested_ = true;
+}
+
+void ArmySetupPresenter::cyclePlayerType( int side ) {
+    core::PlayerType& type = ( side == 0 ) ? settings_.bluePlayer_ : settings_.redPlayer_;
+    switch ( type ) {
+    case core::PlayerType::Human:
+        type = core::PlayerType::Random;
+        break;
+    case core::PlayerType::Random:
+        type = core::PlayerType::Easy;
+        break;
+    case core::PlayerType::Easy:
+        type = core::PlayerType::Minimax;
+        break;
+    case core::PlayerType::Minimax:
+    default:
+        type = core::PlayerType::Human;
+        break;
+    }
+}
+
+void ArmySetupPresenter::setHeroStat( int side, int stat_index, int value ) {
+    constexpr int K_MIN_STAT = 0;
+    constexpr int K_MAX_STAT = 99;
+    const int clamped = std::clamp( value, K_MIN_STAT, K_MAX_STAT );
+    core::HeroConfig& hero = ( side == 0 ) ? settings_.blueHeroConfig_ : settings_.redHeroConfig_;
+    switch ( stat_index ) {
+    case 0:
+        hero.attack_ = clamped;
+        break;
+    case 1:
+        hero.defense_ = clamped;
+        break;
+    case 2:
+        hero.power_ = clamped;
+        break;
+    case 3:
+        hero.knowledge_ = clamped;
+        break;
+    default:
+        break;
+    }
 }
 
 bool ArmySetupPresenter::isBackRequested( ) const {
@@ -104,6 +146,14 @@ const core::ArmyConfig& ArmySetupPresenter::leftArmy( ) const {
 
 const core::ArmyConfig& ArmySetupPresenter::rightArmy( ) const {
     return settings_.rightArmy_;
+}
+
+core::PlayerType ArmySetupPresenter::playerType( int side ) const {
+    return ( side == 0 ) ? settings_.bluePlayer_ : settings_.redPlayer_;
+}
+
+const core::HeroConfig& ArmySetupPresenter::heroConfig( int side ) const {
+    return ( side == 0 ) ? settings_.blueHeroConfig_ : settings_.redHeroConfig_;
 }
 
 bool ArmySetupPresenter::pickerOpen( ) const {

@@ -35,8 +35,8 @@ public:
     views::SceneId nextSceneId( ) const override;
 
 private:
-    static models::Hero buildBlueHero( const ArmyConfig& army );
-    static models::Hero buildRedHero( const ArmyConfig& army );
+    static models::Hero buildBlueHero( const ArmyConfig& army, const HeroConfig& hero_config );
+    static models::Hero buildRedHero( const ArmyConfig& army, const HeroConfig& hero_config );
 
     sf::RenderWindow& window_;
     models::Hero blueHero_;

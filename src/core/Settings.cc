@@ -129,6 +129,36 @@ PlayerType readPlayerType( const nlohmann::json& player,
     return fallback;
 }
 
+nlohmann::ordered_json heroToJson( const HeroConfig& hero ) {
+    return nlohmann::ordered_json{
+        { "attack", hero.attack_ },
+        { "defense", hero.defense_ },
+        { "power", hero.power_ },
+        { "knowledge", hero.knowledge_ }
+    };
+}
+
+// Reads one side's hero stats from a "heroes" object, keeping @p out's
+// current value for any field that is absent.
+void readHeroConfig( const nlohmann::json& heroes, const char* side_key, HeroConfig& out ) {
+    if ( ! heroes.contains( side_key ) || ! heroes[side_key].is_object( ) ) {
+        return;
+    }
+    const nlohmann::json& h = heroes[side_key];
+    if ( h.contains( "attack" ) && h["attack"].is_number_integer( ) ) {
+        out.attack_ = h["attack"].get<int>( );
+    }
+    if ( h.contains( "defense" ) && h["defense"].is_number_integer( ) ) {
+        out.defense_ = h["defense"].get<int>( );
+    }
+    if ( h.contains( "power" ) && h["power"].is_number_integer( ) ) {
+        out.power_ = h["power"].get<int>( );
+    }
+    if ( h.contains( "knowledge" ) && h["knowledge"].is_number_integer( ) ) {
+        out.knowledge_ = h["knowledge"].get<int>( );
+    }
+}
+
 } // namespace
 
 Settings::Settings( ) : leftArmy_( defaultLeftArmy( ) ), rightArmy_( defaultRightArmy( ) ) {}
@@ -185,6 +215,12 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
         }
     }
 
+    if ( j.contains( "heroes" ) && j["heroes"].is_object( ) ) {
+        const nlohmann::json& heroes = j["heroes"];
+        readHeroConfig( heroes, "blue", settings.blueHeroConfig_ );
+        readHeroConfig( heroes, "red", settings.redHeroConfig_ );
+    }
+
     return settings;
 }
 
@@ -194,7 +230,12 @@ void Settings::saveToFile( const std::string& filepath ) const {
     nlohmann::ordered_json j;
     j["player"] = {
         { "blue", playerTypeToString( bluePlayer_ ) },
-        { "red", playerTypeToString( redPlayer_ ) }
+        { "red", playerTypeToString( redPlayer_ ) },
+        { "depth", minimaxDepth_ }
+    };
+    j["heroes"] = {
+        { "blue", heroToJson( blueHeroConfig_ ) },
+        { "red", heroToJson( redHeroConfig_ ) }
     };
     j["window"] = {
         { "width", windowWidth_ },
@@ -212,28 +253,44 @@ void Settings::saveToFile( const std::string& filepath ) const {
     file << j.dump( 4 );
 }
 
-void Settings::saveArmiesToFile( const std::string& filepath ) const {
+void Settings::saveArmySetupToFile( const std::string& filepath ) const {
     // Merge into whatever is already on disk so unrelated sections
-    // (player, window, anything else) survive untouched. ordered_json
-    // preserves the existing key order rather than alphabetising it.
+    // (window, anything else) survive untouched. ordered_json preserves
+    // the existing key order rather than alphabetising it.
     nlohmann::ordered_json j = nlohmann::ordered_json::object( );
     std::string parse_error;
     const JsonReadStatus status = readJsonFromFile( filepath, j, parse_error );
     if ( status == JsonReadStatus::ParseError ) {
         // Don't touch a malformed file -- repairing it is not this
         // function's job. Report and leave the file as the user left it.
-        std::cerr << "Settings: could not merge armies into '" << filepath
+        std::cerr << "Settings: could not merge army setup into '" << filepath
                   << "': " << parse_error << std::endl;
         return;
     }
-    // A missing file is fine here: fall through and write an armies-only
+    // A missing file is fine here: fall through and write a fresh
     // document. Guard against the file holding a non-object JSON value.
     if ( ! j.is_object( ) ) {
         j = nlohmann::ordered_json::object( );
     }
 
-    // This function owns only the rosters. Erase first so the re-inserted
-    // arrays land at the end, keeping the rosters together and last.
+    // Per-side player type -- update in place so an existing "depth"
+    // (and the block's position) is preserved.
+    if ( ! j.contains( "player" ) || ! j["player"].is_object( ) ) {
+        j["player"] = nlohmann::ordered_json::object( );
+    }
+    j["player"]["blue"] = playerTypeToString( bluePlayer_ );
+    j["player"]["red"] = playerTypeToString( redPlayer_ );
+    if ( ! j["player"].contains( "depth" ) ) {
+        j["player"]["depth"] = minimaxDepth_;
+    }
+
+    // Hero stats.
+    j["heroes"] = {
+        { "blue", heroToJson( blueHeroConfig_ ) },
+        { "red", heroToJson( redHeroConfig_ ) }
+    };
+
+    // Rosters last (erase first so the re-inserted arrays land at the end).
     j.erase( "left_army" );
     j.erase( "right_army" );
     j["left_army"] = armyToJson( leftArmy_ );

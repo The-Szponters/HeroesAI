@@ -26,10 +26,22 @@ constexpr int K_UNIT_COUNT = 42;
 constexpr float K_SLOT_WIDTH = 490.0f;
 constexpr float K_SLOT_HEIGHT = 85.0f;
 constexpr float K_SLOT_VERTICAL_GAP = 10.0f;
-constexpr float K_SLOT_STACK_TOP = 100.0f;
+constexpr float K_SLOT_STACK_TOP = 130.0f;
 
 constexpr float K_LEFT_COLUMN_X = 50.0f;
 constexpr float K_RIGHT_COLUMN_X = 740.0f;
+
+// Per-side header controls (player-type button + hero-stat boxes), drawn
+// above each army column where the old "Left/Right army" labels used to be.
+constexpr float K_CONTROLS_TOP = 34.0f;
+constexpr float K_PLAYER_BTN_WIDTH = 300.0f;
+constexpr float K_PLAYER_BTN_HEIGHT = 36.0f;
+constexpr float K_STAT_ROW_Y = 78.0f;
+constexpr float K_STAT_BOX_WIDTH = 112.0f;
+constexpr float K_STAT_BOX_HEIGHT = 42.0f;
+constexpr float K_STAT_BOX_GAP = 6.0f;
+
+constexpr std::array<const char*, 4> K_STAT_LABELS = { "ATK", "DEF", "PWR", "KNW" };
 
 constexpr float K_ICON_INSET = 8.0f;
 constexpr float K_ICON_SIZE = 70.0f;
@@ -70,6 +82,35 @@ constexpr unsigned int K_NAME_FONT_SIZE = 14;
 constexpr unsigned int K_COUNT_FONT_SIZE = 22;
 constexpr unsigned int K_BUTTON_FONT_SIZE = 22;
 constexpr unsigned int K_MESSAGE_FONT_SIZE = 18;
+
+const char* playerTypeLabel( core::PlayerType type ) {
+    switch ( type ) {
+    case core::PlayerType::Random:
+        return "Random";
+    case core::PlayerType::Easy:
+        return "Easy";
+    case core::PlayerType::Minimax:
+        return "Minimax";
+    case core::PlayerType::Human:
+    default:
+        return "Human";
+    }
+}
+
+int heroStatValue( const core::HeroConfig& hero, int stat_index ) {
+    switch ( stat_index ) {
+    case 0:
+        return hero.attack_;
+    case 1:
+        return hero.defense_;
+    case 2:
+        return hero.power_;
+    case 3:
+        return hero.knowledge_;
+    default:
+        return 0;
+    }
+}
 
 bool loadFontFromCandidates( sf::Font& font ) {
     const std::array<const char*, 11> font_candidates = {
@@ -211,6 +252,18 @@ void SfmlArmySetupView::layout( ) {
     layoutColumn( leftSlots_, K_LEFT_COLUMN_X );
     layoutColumn( rightSlots_, K_RIGHT_COLUMN_X );
 
+    auto layoutControls = [&]( SideControls& controls, float column_x ) {
+        controls.playerButton_ = sf::FloatRect( { column_x, K_CONTROLS_TOP },
+                                                        { K_PLAYER_BTN_WIDTH, K_PLAYER_BTN_HEIGHT } );
+        for ( int i = 0; i < 4; ++i ) {
+            const float x = column_x + static_cast<float>( i ) * ( K_STAT_BOX_WIDTH + K_STAT_BOX_GAP );
+            controls.statBounds_[i] =
+                sf::FloatRect( { x, K_STAT_ROW_Y }, { K_STAT_BOX_WIDTH, K_STAT_BOX_HEIGHT } );
+        }
+    };
+    layoutControls( sideControls_[0], K_LEFT_COLUMN_X );
+    layoutControls( sideControls_[1], K_RIGHT_COLUMN_X );
+
     const float back_x = ( screenWidth_ - K_BACK_BUTTON_WIDTH ) * 0.5f;
     const float back_y = screenHeight_ - K_BACK_BUTTON_HEIGHT - 25.0f;
     backButtonBounds_ =
@@ -270,11 +323,13 @@ void SfmlArmySetupView::processEvents( ArmySetupPresenter& presenter ) {
             continue;
         }
 
-        if ( editingSide_ >= 0 ) {
+        if ( editKind_ != EditKind::None ) {
+            // Counts allow up to 5 digits; hero stats are small (2 digits).
+            const std::size_t max_digits = ( editKind_ == EditKind::HeroStat ) ? 2 : 5;
             if ( const auto* text = event->getIf<sf::Event::TextEntered>( ) ) {
                 const std::uint32_t ch = text->unicode;
                 if ( ch >= U'0' && ch <= U'9' ) {
-                    if ( editingBuffer_.size( ) < 5 ) {
+                    if ( editingBuffer_.size( ) < max_digits ) {
                         editingBuffer_.push_back( static_cast<char>( ch ) );
                     }
                 } else if ( ch == 8 ) {
@@ -286,9 +341,9 @@ void SfmlArmySetupView::processEvents( ArmySetupPresenter& presenter ) {
             }
             if ( const auto* key = event->getIf<sf::Event::KeyPressed>( ) ) {
                 if ( key->code == sf::Keyboard::Key::Enter ) {
-                    commitEditingCount( presenter );
+                    commitEditing( presenter );
                 } else if ( key->code == sf::Keyboard::Key::Escape ) {
-                    cancelEditingCount( );
+                    cancelEditing( );
                 }
                 continue;
             }
@@ -322,6 +377,14 @@ void SfmlArmySetupView::updateHover( float x, float y, bool picker_open ) {
     };
     refresh( leftSlots_ );
     refresh( rightSlots_ );
+
+    for ( SideControls& controls : sideControls_ ) {
+        controls.playerHovered_ = controls.playerButton_.contains( { x, y } );
+        for ( int i = 0; i < 4; ++i ) {
+            controls.statHovered_[i] = controls.statBounds_[i].contains( { x, y } );
+        }
+    }
+
     backButtonHovered_ = backButtonBounds_.contains( { x, y } );
 }
 
@@ -342,9 +405,7 @@ bool SfmlArmySetupView::routeClick( float x, float y, ArmySetupPresenter& presen
         return true;
     }
 
-    // While editing a count, any click outside that slot's count area
-    // commits the typed value first; clicking on a different count box
-    // then opens the new editor on the next branch below.
+    // Resolve which editable field (if any) the click landed on.
     auto find_count_target = [&]( ) -> std::pair<int, int> {
         for ( int i = 0; i < static_cast<int>( leftSlots_.size( ) ); ++i ) {
             if ( leftSlots_[i].countBounds_.contains( { x, y } ) ) return { 0, i };
@@ -354,13 +415,44 @@ bool SfmlArmySetupView::routeClick( float x, float y, ArmySetupPresenter& presen
         }
         return { -1, -1 };
     };
+    auto find_stat_target = [&]( ) -> std::pair<int, int> {
+        for ( int side = 0; side < 2; ++side ) {
+            for ( int i = 0; i < 4; ++i ) {
+                if ( sideControls_[side].statBounds_[i].contains( { x, y } ) ) return { side, i };
+            }
+        }
+        return { -1, -1 };
+    };
     const auto [count_side, count_slot] = find_count_target( );
-    if ( editingSide_ >= 0 && ! ( count_side == editingSide_ && count_slot == editingSlot_ ) ) {
-        commitEditingCount( presenter );
+    const auto [stat_side, stat_index] = find_stat_target( );
+
+    // Any click that is not on the field currently being edited commits the
+    // typed value first.
+    const bool clicking_same_count =
+        ( editKind_ == EditKind::Count && count_side == editSide_ && count_slot == editIndex_ );
+    const bool clicking_same_stat =
+        ( editKind_ == EditKind::HeroStat && stat_side == editSide_ && stat_index == editIndex_ );
+    if ( editKind_ != EditKind::None && ! clicking_same_count && ! clicking_same_stat ) {
+        commitEditing( presenter );
     }
 
     if ( backButtonBounds_.contains( { x, y } ) ) {
         presenter.onBackClicked( );
+        return true;
+    }
+
+    // Player-type button cycles the controller for that side.
+    for ( int side = 0; side < 2; ++side ) {
+        if ( sideControls_[side].playerButton_.contains( { x, y } ) ) {
+            presenter.cyclePlayerType( side );
+            return true;
+        }
+    }
+
+    // Hero-stat box: start editing its numeric value.
+    if ( stat_side >= 0 ) {
+        const int current = heroStatValue( presenter.heroConfig( stat_side ), stat_index );
+        startEditingHeroStat( stat_side, stat_index, current );
         return true;
     }
 
@@ -407,16 +499,8 @@ void SfmlArmySetupView::render( ArmySetupPresenter& presenter ) {
 
     drawBackground( );
 
-    if ( headerText_ ) {
-        headerText_->setString( "Left army" );
-        headerText_->setPosition(
-            { K_LEFT_COLUMN_X + ( K_SLOT_WIDTH - 200.0f ) * 0.5f, K_PICKER_HEADER_Y - 60.0f } );
-        window_.draw( *headerText_ );
-        headerText_->setString( "Right army" );
-        headerText_->setPosition(
-            { K_RIGHT_COLUMN_X + ( K_SLOT_WIDTH - 220.0f ) * 0.5f, K_PICKER_HEADER_Y - 60.0f } );
-        window_.draw( *headerText_ );
-    }
+    drawSideControls( 0, presenter );
+    drawSideControls( 1, presenter );
 
     for ( int i = 0; i < static_cast<int>( leftSlots_.size( ) ); ++i ) {
         drawSlot( leftSlots_[i], 0, i, presenter );
@@ -445,6 +529,92 @@ void SfmlArmySetupView::drawBackground( ) {
     fallback.setPosition( { 0.0f, 0.0f } );
     fallback.setFillColor( sf::Color( 18, 22, 36 ) );
     window_.draw( fallback );
+}
+
+void SfmlArmySetupView::drawSideControls( int side, ArmySetupPresenter& presenter ) {
+    const SideControls& controls = sideControls_[side];
+
+    // Player-type button.
+    {
+        sf::RectangleShape btn( controls.playerButton_.size );
+        btn.setPosition( controls.playerButton_.position );
+        btn.setFillColor( controls.playerHovered_ ? sf::Color( 70, 90, 130 )
+                                                   : sf::Color( 40, 52, 80 ) );
+        btn.setOutlineColor( sf::Color( 150, 180, 220 ) );
+        btn.setOutlineThickness( 1.5f );
+        window_.draw( btn );
+        if ( slotButtonText_ ) {
+            std::ostringstream os;
+            os << ( side == 0 ? "Left: " : "Right: " ) << playerTypeLabel( presenter.playerType( side ) );
+            slotButtonText_->setString( os.str( ) );
+            slotButtonText_->setCharacterSize( K_BUTTON_FONT_SIZE );
+            const sf::FloatRect tb = slotButtonText_->getLocalBounds( );
+            slotButtonText_->setPosition(
+                { controls.playerButton_.position.x +
+                      ( controls.playerButton_.size.x - tb.size.x ) * 0.5f - tb.position.x,
+                  controls.playerButton_.position.y +
+                      ( controls.playerButton_.size.y - tb.size.y ) * 0.5f - tb.position.y } );
+            window_.draw( *slotButtonText_ );
+        }
+    }
+
+    // Hero-stat boxes.
+    const core::HeroConfig& hero = presenter.heroConfig( side );
+    for ( int i = 0; i < 4; ++i ) {
+        const sf::FloatRect& box = controls.statBounds_[i];
+        const bool editing = isEditingHeroStat( side, i );
+
+        sf::RectangleShape rect( box.size );
+        rect.setPosition( box.position );
+        if ( editing ) {
+            rect.setFillColor( sf::Color( 60, 70, 110 ) );
+            rect.setOutlineColor( sf::Color( 200, 220, 255 ) );
+            rect.setOutlineThickness( 2.0f );
+        } else if ( controls.statHovered_[i] ) {
+            rect.setFillColor( sf::Color( 40, 48, 72 ) );
+            rect.setOutlineColor( sf::Color( 150, 170, 210 ) );
+            rect.setOutlineThickness( 1.5f );
+        } else {
+            rect.setFillColor( sf::Color( 24, 28, 44, 220 ) );
+            rect.setOutlineColor( sf::Color( 110, 130, 170 ) );
+            rect.setOutlineThickness( 1.0f );
+        }
+        window_.draw( rect );
+
+        if ( slotNameText_ ) {
+            slotNameText_->setString( K_STAT_LABELS[i] );
+            slotNameText_->setCharacterSize( K_NAME_FONT_SIZE );
+            slotNameText_->setFillColor( sf::Color( 200, 210, 230 ) );
+            slotNameText_->setPosition( { box.position.x + 6.0f, box.position.y + 2.0f } );
+            window_.draw( *slotNameText_ );
+        }
+
+        if ( slotCountText_ ) {
+            std::string display;
+            if ( editing ) {
+                display = editingBuffer_;
+                const float seconds = editingClock_.getElapsedTime( ).asSeconds( );
+                if ( std::fmod( seconds, 1.0f ) < 0.5f ) {
+                    display.push_back( '_' );
+                }
+            } else {
+                display = std::to_string( heroStatValue( hero, i ) );
+            }
+            slotCountText_->setString( display );
+            slotCountText_->setCharacterSize( K_COUNT_FONT_SIZE - 2 );
+            const sf::FloatRect tb = slotCountText_->getLocalBounds( );
+            slotCountText_->setPosition(
+                { box.position.x + ( box.size.x - tb.size.x ) * 0.5f - tb.position.x,
+                  box.position.y + box.size.y - tb.size.y - tb.position.y - 4.0f } );
+            window_.draw( *slotCountText_ );
+            slotCountText_->setCharacterSize( K_COUNT_FONT_SIZE );
+        }
+    }
+
+    // Restore the shared name-text color for the unit-slot rendering.
+    if ( slotNameText_ ) {
+        slotNameText_->setFillColor( sf::Color::White );
+    }
 }
 
 void SfmlArmySetupView::drawSlot( const SlotUi& slot_ui,
@@ -497,7 +667,7 @@ void SfmlArmySetupView::drawSlot( const SlotUi& slot_ui,
         }
     }
 
-    const bool editing_this_slot = isEditing( side, slot_index );
+    const bool editing_this_slot = isEditingCount( side, slot_index );
     {
         sf::RectangleShape count_bg( slot_ui.countBounds_.size );
         count_bg.setPosition( slot_ui.countBounds_.position );
@@ -702,14 +872,23 @@ void SfmlArmySetupView::showMessage( const std::string& msg ) {
 }
 
 void SfmlArmySetupView::startEditingCount( int side, int slot_index, int current_value ) {
-    editingSide_ = side;
-    editingSlot_ = slot_index;
+    editKind_ = EditKind::Count;
+    editSide_ = side;
+    editIndex_ = slot_index;
     editingBuffer_ = std::to_string( current_value );
     editingClock_.restart( );
 }
 
-void SfmlArmySetupView::commitEditingCount( ArmySetupPresenter& presenter ) {
-    if ( editingSide_ < 0 ) {
+void SfmlArmySetupView::startEditingHeroStat( int side, int stat_index, int current_value ) {
+    editKind_ = EditKind::HeroStat;
+    editSide_ = side;
+    editIndex_ = stat_index;
+    editingBuffer_ = std::to_string( current_value );
+    editingClock_.restart( );
+}
+
+void SfmlArmySetupView::commitEditing( ArmySetupPresenter& presenter ) {
+    if ( editKind_ == EditKind::None ) {
         return;
     }
     int value = 0;
@@ -720,18 +899,27 @@ void SfmlArmySetupView::commitEditingCount( ArmySetupPresenter& presenter ) {
             value = 0;
         }
     }
-    presenter.setCount( editingSide_, editingSlot_, value );
-    cancelEditingCount( );
+    if ( editKind_ == EditKind::Count ) {
+        presenter.setCount( editSide_, editIndex_, value );
+    } else if ( editKind_ == EditKind::HeroStat ) {
+        presenter.setHeroStat( editSide_, editIndex_, value );
+    }
+    cancelEditing( );
 }
 
-void SfmlArmySetupView::cancelEditingCount( ) {
-    editingSide_ = -1;
-    editingSlot_ = -1;
+void SfmlArmySetupView::cancelEditing( ) {
+    editKind_ = EditKind::None;
+    editSide_ = -1;
+    editIndex_ = -1;
     editingBuffer_.clear( );
 }
 
-bool SfmlArmySetupView::isEditing( int side, int slot_index ) const {
-    return editingSide_ == side && editingSlot_ == slot_index;
+bool SfmlArmySetupView::isEditingCount( int side, int slot_index ) const {
+    return editKind_ == EditKind::Count && editSide_ == side && editIndex_ == slot_index;
+}
+
+bool SfmlArmySetupView::isEditingHeroStat( int side, int stat_index ) const {
+    return editKind_ == EditKind::HeroStat && editSide_ == side && editIndex_ == stat_index;
 }
 
 } // namespace views
