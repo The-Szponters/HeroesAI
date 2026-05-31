@@ -41,7 +41,7 @@ private:
     void layoutButtons( );
     void drawBackground( );
     void drawNewGameButton( );
-    void drawArmySetupButton( );
+    void drawCustomSettingsButton( );
     void drawMessage( );
     bool routeMenuClick( float x, float y, presenters::MainMenuPresenter& presenter );
 
@@ -59,11 +59,11 @@ private:
     bool newGameButtonHovered_ = false;
     bool newGameButtonLoaded_ = false;
 
-    sf::Texture armySetupButtonTexture_;
-    std::unique_ptr<sf::Sprite> armySetupButtonSprite_;
-    sf::FloatRect armySetupButtonBounds_;
-    bool armySetupButtonHovered_ = false;
-    bool armySetupButtonLoaded_ = false;
+    sf::Texture customSettingsButtonTexture_;
+    std::unique_ptr<sf::Sprite> customSettingsButtonSprite_;
+    sf::FloatRect customSettingsButtonBounds_;
+    bool customSettingsButtonHovered_ = false;
+    bool customSettingsButtonLoaded_ = false;
 
     sf::Font font_;
     bool fontLoaded_ = false;
