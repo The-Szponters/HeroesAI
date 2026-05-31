@@ -122,7 +122,7 @@ SfmlBattleView::SfmlBattleView( sf::RenderWindow& window )
     window_.setMouseCursorVisible( false );
     osCursorVisible_ = false;
 
-    infoPanelText_->setCharacterSize( 15 );
+    infoPanelText_->setCharacterSize( 14 );
     infoPanelText_->setFillColor( sf::Color::White );
 
     unitStackCountText_->setCharacterSize( 8 );
@@ -817,21 +817,35 @@ void SfmlBattleView::drawInfoPanel( ) {
     }
 
     constexpr float K_PORTRAIT_W = 130.0f;
-    constexpr float K_TEXT_LEFT_PAD = K_PORTRAIT_W + 12.0f;
-    constexpr float K_TEXT_TOP_PAD = 24.0f;
+    constexpr float K_NAME_TOP_PAD = 21.0f;            // unit name, slightly higher
+    constexpr float K_STATS_LEFT_PAD = K_PORTRAIT_W + 30.0f; // stats nudged right
+    constexpr float K_STATS_TOP_PAD = 47.0f;           // stats lower, below the header
+    constexpr float K_STATS_LINE_SPACING = 1.18f;       // a touch more room between lines
 
+    // Unit name: centred across the panel, near the top header band.
+    infoPanelText_->setLineSpacing( 1.0f );
+    infoPanelText_->setString( u.name_ + ( u.isCorpse_ ? " [Corpse]" : "" ) );
+    {
+        const sf::FloatRect tb = infoPanelText_->getLocalBounds( );
+        const float name_x =
+            panel_pos.x + ( static_cast<float>( panel_size.x ) - tb.size.x ) * 0.5f - tb.position.x;
+        infoPanelText_->setPosition( { name_x, panel_pos.y + K_NAME_TOP_PAD } );
+        window_.draw( *infoPanelText_ );
+    }
+
+    // Stats block: right of the portrait, lower, with wider line spacing.
     std::ostringstream panel;
-    panel << u.name_ << ( u.isCorpse_ ? " [Corpse]" : "" ) << "\n"
-          << "Attack: " << u.totalAttack_ << "\n"
+    panel << "Attack: " << u.totalAttack_ << "\n"
           << "Defense: " << u.totalDefense_ << "\n"
-
           << "Shoots left: " << ( u.isRanged_ ? std::to_string( u.ammo_ ) : "" ) << "\n"
           << "Damage: " << u.totalDamageMin_ << "-" << u.totalDamageMax_ << "\n"
           << "Health: " << u.maxHpPerUnit_ << "\n"
           << "Health left: " << u.currentTopUnitHp_ << "\n"
           << "Speed: " << u.totalSpeed_;
+    infoPanelText_->setLineSpacing( K_STATS_LINE_SPACING );
     infoPanelText_->setString( panel.str( ) );
-    infoPanelText_->setPosition( { panel_pos.x + K_TEXT_LEFT_PAD, panel_pos.y + K_TEXT_TOP_PAD } );
+    infoPanelText_->setPosition(
+        { panel_pos.x + K_STATS_LEFT_PAD, panel_pos.y + K_STATS_TOP_PAD } );
     window_.draw( *infoPanelText_ );
 }
 
