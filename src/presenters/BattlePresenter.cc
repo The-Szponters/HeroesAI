@@ -117,13 +117,15 @@ makeUnitRenderData( const GameManager& model, const Unit& unit, int q, int r, bo
 BattlePresenter::BattlePresenter( GameManager& model,
                                           IBattleView& view,
                                           core::PlayerType blue_player,
-                                          core::PlayerType red_player )
+                                          core::PlayerType red_player,
+                                          int minimax_depth )
     : model_( model ),
       view_( view ),
       spellResolver_( model ),
       actionGenerator_( model, spellResolver_ ),
       randomBot_( actionGenerator_ ),
       easyBot_( actionGenerator_ ),
+      minimaxBot_( model, minimax_depth ),
       bluePlayer_( blue_player ),
       redPlayer_( red_player ) {}
 
@@ -1750,6 +1752,8 @@ core::IBot* BattlePresenter::botForUnit( const Unit& unit ) {
         return &randomBot_;
     case core::PlayerType::Easy:
         return &easyBot_;
+    case core::PlayerType::Minimax:
+        return &minimaxBot_;
     case core::PlayerType::Human:
     default:
         return nullptr;

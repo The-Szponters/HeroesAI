@@ -48,7 +48,12 @@ public:
           maxAmmo_( shoots ),
           ammo_( shoots ),
           projectileAsset_( inferProjectileAsset( asset_filename ) ) {}
+    RangeUnit( const RangeUnit& ) = default;
     ~RangeUnit( ) override = default;
+
+    std::shared_ptr<Unit> clone( ) const override {
+        return std::make_shared<RangeUnit>( *this );
+    }
 
     bool isRanged( ) const override { return true; }
     int getAmmo( ) const override { return ammo_; }

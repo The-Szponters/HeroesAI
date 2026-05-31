@@ -34,6 +34,7 @@ add_executable(${PROJECT_NAME}
   src/core/ActionGenerator.cc
   src/core/RandomBotService.cc
   src/core/EasyBotService.cc
+  src/core/MinimaxBotService.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
   src/core/Settings.cc
@@ -108,9 +109,11 @@ add_executable(HeroesAITests
   src/core/SpellResolver.cc
   src/core/ActionGenerator.cc
   src/core/RandomBotService.cc
+  src/core/MinimaxBotService.cc
   src/core/test/ActionGeneratorTest.cc
   src/core/GameManager.cc
   src/core/test/GameManagerTest.cc
+  src/core/test/MinimaxBotTest.cc
 )
 target_include_directories(HeroesAITests PRIVATE src/models)
 target_link_libraries(HeroesAITests GTest::gtest_main nlohmann_json::nlohmann_json)

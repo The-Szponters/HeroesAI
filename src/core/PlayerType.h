@@ -20,7 +20,8 @@ namespace core {
 enum class PlayerType {
     Human,
     Random,
-    Easy
+    Easy,
+    Minimax
 };
 
 inline PlayerType playerTypeFromString( const std::string& value ) {
@@ -29,6 +30,9 @@ inline PlayerType playerTypeFromString( const std::string& value ) {
     }
     if ( value == "easy" ) {
         return PlayerType::Easy;
+    }
+    if ( value == "minimax" ) {
+        return PlayerType::Minimax;
     }
     return PlayerType::Human;
 }
@@ -39,6 +43,8 @@ inline const char* playerTypeToString( PlayerType type ) {
         return "random";
     case PlayerType::Easy:
         return "easy";
+    case PlayerType::Minimax:
+        return "minimax";
     case PlayerType::Human:
     default:
         return "human";

@@ -15,6 +15,7 @@
 #include "../core/EasyBotService.h"
 #include "../core/GameManager.h"
 #include "../core/IBot.h"
+#include "../core/MinimaxBotService.h"
 #include "../core/PlayerType.h"
 #include "../core/RandomBotService.h"
 #include "../core/SpellResolver.h"
@@ -37,7 +38,8 @@ public:
     BattlePresenter( core::GameManager& model,
                           views::IBattleView& view,
                           core::PlayerType blue_player = core::PlayerType::Human,
-                          core::PlayerType red_player = core::PlayerType::Human );
+                          core::PlayerType red_player = core::PlayerType::Human,
+                          int minimax_depth = 4 );
 
     /**
      * @brief Initialises the view with the starting board state and highlights.
@@ -176,6 +178,7 @@ private:
     core::ActionGenerator actionGenerator_;
     core::RandomBotService randomBot_;
     core::EasyBotService easyBot_;
+    core::MinimaxBotService minimaxBot_;
     core::PlayerType bluePlayer_ = core::PlayerType::Human;
     core::PlayerType redPlayer_ = core::PlayerType::Human;
     bool rangePreviewActive_ = false;

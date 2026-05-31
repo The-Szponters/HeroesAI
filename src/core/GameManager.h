@@ -4,6 +4,7 @@
  * @author Dominik Śledziewski & Łukasz Szydlik
  */
 #pragma once
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
@@ -38,6 +39,19 @@ public:
     // turn order. Used by the AI action generator to enumerate enemy
     // targets and spell targets.
     const std::vector<models::Unit*>& getAllUnits( ) const { return allUnitsInBattle_; }
+
+    // Side a unit belongs to: 0 = blue, 1 = red, -1 = neither. Used by
+    // the Minimax evaluator to sign each stack's value.
+    int sideOfUnit( const models::Unit& unit ) const;
+
+    // Deep, independent copy of the whole battle for AI search. Units,
+    // board occupancy, hero mana/cast flags, round order and round number
+    // are all reproduced; morale rolls are disabled on the copy so the
+    // search stays deterministic.
+    std::unique_ptr<GameManager> clone( ) const;
+
+    // Disables random morale bonus turns (set on search clones).
+    void setMoraleEnabled( bool enabled ) { moraleEnabled_ = enabled; }
 
     // True while the current unit may still wait (has not waited yet).
     // Used by the AI action generator to exclude an illegal WAIT that
@@ -102,6 +116,7 @@ private:
     models::Hero redHero_;
     std::vector<models::Unit*> allUnitsInBattle_;
     int roundNumber_ = 1;
+    bool moraleEnabled_ = true;
 
     models::Unit* lastMoraleRolledUnit_ = nullptr;
     bool moraleTriggeredThisTurn_ = false;

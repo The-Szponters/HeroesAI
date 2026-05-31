@@ -5,6 +5,7 @@
  */
 #include "Settings.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -179,6 +180,9 @@ Settings Settings::loadFromFile( const std::string& filepath ) {
         const nlohmann::json& player = j["player"];
         settings.bluePlayer_ = readPlayerType( player, "blue", settings.bluePlayer_ );
         settings.redPlayer_ = readPlayerType( player, "red", settings.redPlayer_ );
+        if ( player.contains( "depth" ) && player["depth"].is_number_integer( ) ) {
+            settings.minimaxDepth_ = std::max( 1, player["depth"].get<int>( ) );
+        }
     }
 
     return settings;

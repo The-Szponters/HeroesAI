@@ -52,6 +52,9 @@ struct Settings {
     PlayerType bluePlayer_ = PlayerType::Human;
     PlayerType redPlayer_ = PlayerType::Random;
 
+    // Search depth used by the Minimax player(s), in unit-activation plies.
+    int minimaxDepth_ = 4;
+
     Settings( );
 
     static Settings loadFromFile( const std::string& filepath );

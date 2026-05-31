@@ -40,6 +40,17 @@ public:
     std::vector<models::Unit*> getUnitsLeftInRound( ) const;
     std::vector<models::Unit*> getUnitQueueInRound( ) const;
 
+    // Raw queue contents (no dead/skip filtering), used by
+    // GameManager::clone to snapshot the exact round state. Order within
+    // each is irrelevant -- the heaps re-sort by speed on restore.
+    std::vector<models::Unit*> snapshotUnactivated( ) const;
+    std::vector<models::Unit*> snapshotWaited( ) const;
+
+    // Replaces both queues with the given (already pointer-remapped)
+    // units. Used when reconstructing a cloned battle state.
+    void restoreState( const std::vector<models::Unit*>& unactivated,
+                            const std::vector<models::Unit*>& waited );
+
 private:
     /**
      * @brief Comparator for the max-heap of unactivated units (fastest first).
