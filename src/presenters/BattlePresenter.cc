@@ -3,8 +3,10 @@
  * @brief Implementation of the MVP presenter for the battle screen.
  * @author Dominik Śledziewski & Łukasz Szydlik
  */
+#include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <future>
 #include <limits>
 #include <stdexcept>
 #include <unordered_set>
@@ -136,6 +138,10 @@ void BattlePresenter::startBattle( ) {
 }
 
 void BattlePresenter::onHexClicked( int q, int r, bool ) {
+    // Ignore input while a bot search owns the model on a worker thread.
+    if ( botThinking_ ) {
+        return;
+    }
     if ( view_.hasPendingVisualEvents( ) ) {
         return;
     }
@@ -377,6 +383,10 @@ void BattlePresenter::executeRangedAttack( Unit& attacker, Unit& target ) {
 }
 
 void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) {
+    // A bot search owns the model on a worker thread -- don't read it here.
+    if ( botThinking_ ) {
+        return;
+    }
     lastCursorPx_ = pixel_x;
     lastCursorPy_ = pixel_y;
 
@@ -655,6 +665,10 @@ void BattlePresenter::onMouseHover( int pixel_x, int pixel_y, bool shift_held ) 
 }
 
 void BattlePresenter::onRightClickPressed( int pixel_x, int pixel_y ) {
+    // A bot search owns the model on a worker thread -- don't read it here.
+    if ( botThinking_ ) {
+        return;
+    }
     const auto [q, r] =
         pixelToHex( static_cast<float>( pixel_x ), static_cast<float>( pixel_y ) );
     const int s = -q - r;
@@ -700,7 +714,7 @@ void BattlePresenter::cancelSpellTargeting( ) {
 }
 
 void BattlePresenter::onDefendClicked( ) {
-    if ( isActiveUnitBotControlled( ) ) {
+    if ( botThinking_ || isActiveUnitBotControlled( ) ) {
         return;
     }
     executeDefend( );
@@ -728,7 +742,7 @@ void BattlePresenter::executeDefend( ) {
 }
 
 void BattlePresenter::onWaitClicked( ) {
-    if ( isActiveUnitBotControlled( ) ) {
+    if ( botThinking_ || isActiveUnitBotControlled( ) ) {
         return;
     }
     executeWait( );
@@ -1570,7 +1584,7 @@ CursorStyle BattlePresenter::directionToCursor( float angle_deg ) const {
 // =========================================================================
 
 void BattlePresenter::onSpellbookClicked( ) {
-    if ( view_.hasPendingVisualEvents( ) ) {
+    if ( botThinking_ || view_.hasPendingVisualEvents( ) ) {
         return;
     }
     // The bot casts via executeCastSpell directly; ignore the human
@@ -1770,19 +1784,35 @@ bool BattlePresenter::isActiveUnitBotControlled( ) const {
 }
 
 void BattlePresenter::update( ) {
-    // Drive the bot only when the battlefield is idle: animations drained
-    // and not waiting on a spell target. One action per frame lets each
-    // action's visuals play out before the next, and paces bot-vs-bot.
+    // 1. A search is in flight: poll it. While thinking, the worker thread
+    //    is the model's sole accessor -- this early return (and the input
+    //    guards) keep the main thread off the model until the result is in.
+    if ( botThinking_ ) {
+        if ( botFuture_.valid( ) &&
+             botFuture_.wait_for( std::chrono::seconds( 0 ) ) == std::future_status::ready ) {
+            std::optional<core::ActionCommand> command;
+            try {
+                command = botFuture_.get( );
+            } catch ( const std::exception& ) {
+                command.reset( );
+            }
+            botThinking_ = false;
+            if ( command.has_value( ) ) {
+                executeCommand( *command );
+            }
+        }
+        return;
+    }
+
+    // 2. Drive the bot only when the battlefield is idle: animations drained
+    //    and not waiting on a spell target.
     if ( view_.hasPendingVisualEvents( ) || isCastingSpell_ ) {
         return;
     }
     if ( ! isActiveUnitBotControlled( ) ) {
         return;
     }
-    runBotTurn( );
-}
 
-void BattlePresenter::runBotTurn( ) {
     Unit* active_unit = model_.getCurrentUnit( );
     if ( active_unit == nullptr ) {
         return;
@@ -1791,11 +1821,24 @@ void BattlePresenter::runBotTurn( ) {
     if ( bot == nullptr ) {
         return;
     }
-    const std::optional<core::ActionCommand> command = bot->decideAction( *active_unit );
-    if ( ! command.has_value( ) ) {
+
+    if ( bot->wantsAsync( ) ) {
+        // Heavy search (Minimax): compute on a worker thread so the window
+        // keeps rendering its cached board. The result is applied on the
+        // main thread next frame.
+        botThinking_ = true;
+        view_.showMessage( "Bot is thinking..." );
+        botFuture_ = std::async( std::launch::async, [bot, active_unit]( ) {
+            return bot->decideAction( *active_unit );
+        } );
         return;
     }
-    executeCommand( *command );
+
+    // Cheap strategies (random / easy) resolve in place.
+    const std::optional<core::ActionCommand> command = bot->decideAction( *active_unit );
+    if ( command.has_value( ) ) {
+        executeCommand( *command );
+    }
 }
 
 void BattlePresenter::executeCommand( const core::ActionCommand& command ) {

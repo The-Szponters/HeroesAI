@@ -31,6 +31,15 @@ public:
      * @return The chosen action, or std::nullopt when no legal action exists.
      */
     virtual std::optional<ActionCommand> decideAction( models::Unit& active_unit ) = 0;
+
+    /**
+     * @brief Whether decideAction is heavy enough to run off the UI thread.
+     *
+     * The presenter runs such strategies on a worker thread so the window
+     * keeps rendering while they think. Cheap strategies (random, easy)
+     * return false and are evaluated synchronously.
+     */
+    virtual bool wantsAsync( ) const { return false; }
 };
 
 } // namespace core

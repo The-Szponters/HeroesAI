@@ -36,6 +36,9 @@ public:
 
     std::optional<ActionCommand> decideAction( models::Unit& active_unit ) override;
 
+    // The alpha-beta search is expensive -- run it off the UI thread.
+    bool wantsAsync( ) const override { return true; }
+
 private:
     double alphaBeta( GameManager& state, int depth, double alpha, double beta, int our_side );
     double evaluate( GameManager& state, int our_side ) const;

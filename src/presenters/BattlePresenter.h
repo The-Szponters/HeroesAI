@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include <future>
 #include <optional>
 #include <SFML/System/Vector2.hpp>
 #include <unordered_map>
@@ -169,7 +170,6 @@ private:
     core::IBot* botForUnit( const models::Unit& unit );
     bool isUnitBotControlled( const models::Unit& unit ) const;
     bool isActiveUnitBotControlled( ) const;
-    void runBotTurn( );
     void executeCommand( const core::ActionCommand& command );
 
     core::GameManager& model_;
@@ -194,6 +194,15 @@ private:
     std::vector<models::Hex*> cachedDestinations_;
     std::unordered_set<std::int64_t> cachedDestinationsSet_;
     bool isDestinationCached( int q, int r ) const;
+
+    // Async AI search. While a search is in flight (botThinking_), update()
+    // and every input handler short-circuit so the worker thread is the
+    // sole accessor of the model -- the view renders cached data, never the
+    // live model. botFuture_ is declared LAST so its destructor (which
+    // blocks until the worker finishes) runs before the bot members it uses
+    // are torn down.
+    bool botThinking_ = false;
+    std::future<std::optional<core::ActionCommand>> botFuture_;
 };
 
 } // namespace presenters
