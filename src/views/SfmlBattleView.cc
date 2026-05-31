@@ -1167,9 +1167,18 @@ void SfmlBattleView::setIdleCallback( std::function<void( )> cb ) {
 
 bool SfmlBattleView::routeActionClick( float x, float y, BattlePresenter& presenter ) {
     constexpr float K_PRESSED_FLASH_SECONDS = 0.15f;
+    // The icon art renders larger than the layout cell and visually sits
+    // down-and-right of it, so the clickable rect is shifted to line up
+    // with where the icon is actually drawn.
+    constexpr float K_HIT_SHIFT_X_FACTOR = 0.35f;
+    constexpr float K_HIT_SHIFT_Y = 12.0f;
 
     for ( ActionSlot& slot : actionSlots_ ) {
-        if ( ! slot.bounds_.contains( { x, y } ) ) {
+        const sf::FloatRect hit(
+            { slot.bounds_.position.x + slot.bounds_.size.x * K_HIT_SHIFT_X_FACTOR,
+              slot.bounds_.position.y + K_HIT_SHIFT_Y },
+            slot.bounds_.size );
+        if ( ! hit.contains( { x, y } ) ) {
             continue;
 }
         slot.pressedSecondsLeft_ = K_PRESSED_FLASH_SECONDS;
