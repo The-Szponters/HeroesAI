@@ -113,10 +113,13 @@ void BattleScene::render( ) {
 }
 
 bool BattleScene::isFinished( ) const {
-    return ! window_.isOpen( );
+    return ! window_.isOpen( ) || presenter_.isSurrenderRequested( );
 }
 
 views::SceneId BattleScene::nextSceneId( ) const {
+    if ( presenter_.isSurrenderRequested( ) ) {
+        return views::SceneId::MAIN_MENU;
+    }
     return views::SceneId::NONE;
 }
 

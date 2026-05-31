@@ -748,6 +748,18 @@ void BattlePresenter::onWaitClicked( ) {
     executeWait( );
 }
 
+void BattlePresenter::onSurrenderClicked( ) {
+    // Just record the request -- it only sets a flag (no model access), so
+    // it is safe even while a bot search owns the model. The scene wrapper
+    // reads isSurrenderRequested() and switches back to the main menu.
+    surrenderRequested_ = true;
+    view_.showMessage( "Surrendered -- returning to the menu." );
+}
+
+bool BattlePresenter::isSurrenderRequested( ) const {
+    return surrenderRequested_;
+}
+
 void BattlePresenter::executeWait( ) {
     cancelSpellTargeting( );
     view_.clearVisualEvents( );

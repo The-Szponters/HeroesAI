@@ -1153,8 +1153,10 @@ bool SfmlBattleView::routeActionClick( float x, float y, BattlePresenter& presen
         case ActionKind::SPELLBOOK:
             presenter.onSpellbookClicked( );
             break;
-        case ActionKind::AUTO_COMBAT:
         case ActionKind::SURRENDER:
+            presenter.onSurrenderClicked( );
+            break;
+        case ActionKind::AUTO_COMBAT:
             showMessage( "Action not yet implemented" );
             break;
         }

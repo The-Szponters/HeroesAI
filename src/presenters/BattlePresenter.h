@@ -90,6 +90,11 @@ public:
     void onSpellChosen( models::SpellId id );
     void onSpellbookCancelled( );
 
+    // Surrender: abandon the battle and return to the main menu. The scene
+    // wrapper polls isSurrenderRequested() to drive the transition.
+    void onSurrenderClicked( );
+    bool isSurrenderRequested( ) const;
+
 private:
     void cancelSpellTargeting( );
     void refreshUiForActiveUnit( );
@@ -203,6 +208,8 @@ private:
     // are torn down.
     bool botThinking_ = false;
     std::future<std::optional<core::ActionCommand>> botFuture_;
+
+    bool surrenderRequested_ = false;
 };
 
 } // namespace presenters
