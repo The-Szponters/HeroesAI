@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -64,7 +65,17 @@ public:
           totalSpeed_( speed ),
           assetFilename_( std::move( asset_filename ) ),
           description_( std::move( description ) ) {}
+    Unit( const Unit& ) = default;
     virtual ~Unit( ) = default;
+
+    /**
+     * @brief Polymorphic deep copy preserving the dynamic type.
+     *
+     * Used by GameManager::clone() so the AI search can simulate on an
+     * independent copy of the battle. Subclasses (RangeUnit) override
+     * this to copy their own state.
+     */
+    virtual std::shared_ptr<Unit> clone( ) const { return std::make_shared<Unit>( *this ); }
 
     const std::string& getName( ) const { return name_; }
     int getTier( ) const { return tier_; }

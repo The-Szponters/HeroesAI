@@ -33,10 +33,19 @@ public:
     void setCount( int side, int slot_index, int value );
     void onBackClicked( );
 
+    // Cycles a side's controller: human -> random -> easy -> minimax -> ...
+    void cyclePlayerType( int side );
+    // Sets one hero primary stat (stat_index 0=attack,1=defense,2=power,
+    // 3=knowledge), clamped to a sane range.
+    void setHeroStat( int side, int stat_index, int value );
+
     bool isBackRequested( ) const;
 
     const core::ArmyConfig& leftArmy( ) const;
     const core::ArmyConfig& rightArmy( ) const;
+
+    core::PlayerType playerType( int side ) const;
+    const core::HeroConfig& heroConfig( int side ) const;
 
     bool pickerOpen( ) const;
     int pickerSide( ) const;

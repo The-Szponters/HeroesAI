@@ -62,16 +62,34 @@ private:
         sf::IntRect portraitRect_;
     };
 
+    // Per-side header controls: a player-type button and four hero-stat
+    // boxes (attack, defense, power, knowledge).
+    struct SideControls {
+        sf::FloatRect playerButton_;
+        bool playerHovered_ = false;
+        std::array<sf::FloatRect, 4> statBounds_;
+        std::array<bool, 4> statHovered_{ };
+    };
+
+    enum class EditKind {
+        None,
+        Count,
+        HeroStat
+    };
+
     void loadAssets( );
     void layout( );
     bool routeClick( float x, float y, presenters::ArmySetupPresenter& presenter );
     void updateHover( float x, float y, bool picker_open );
     void startEditingCount( int side, int slot_index, int current_value );
-    void commitEditingCount( presenters::ArmySetupPresenter& presenter );
-    void cancelEditingCount( );
-    bool isEditing( int side, int slot_index ) const;
+    void startEditingHeroStat( int side, int stat_index, int current_value );
+    void commitEditing( presenters::ArmySetupPresenter& presenter );
+    void cancelEditing( );
+    bool isEditingCount( int side, int slot_index ) const;
+    bool isEditingHeroStat( int side, int stat_index ) const;
 
     void drawBackground( );
+    void drawSideControls( int side, presenters::ArmySetupPresenter& presenter );
     void drawSlot( const SlotUi& slot_ui,
                        int side,
                        int slot_index,
@@ -99,6 +117,7 @@ private:
 
     std::array<SlotUi, 7> leftSlots_;
     std::array<SlotUi, 7> rightSlots_;
+    std::array<SideControls, 2> sideControls_;
 
     sf::FloatRect pickerPanelBounds_;
     std::vector<sf::FloatRect> pickerCellBounds_;
@@ -119,8 +138,9 @@ private:
     bool portraitAtlasLoaded_ = false;
     std::vector<UnitEntry> unitCatalog_;
 
-    int editingSide_ = -1;
-    int editingSlot_ = -1;
+    EditKind editKind_ = EditKind::None;
+    int editSide_ = -1;
+    int editIndex_ = -1;
     std::string editingBuffer_;
     sf::Clock editingClock_;
 

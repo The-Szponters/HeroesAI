@@ -4,8 +4,10 @@
  * @author Dominik Śledziewski
  */
 #include <algorithm>
+#include <memory>
 #include <random>
 #include <tuple>
+#include <unordered_map>
 
 #include "GameManager.h"
 
@@ -39,6 +41,27 @@ void placeUnitOnBoard( Board& board, const std::shared_ptr<Unit>& unit ) {
                 .setUnit( unit );
         } catch ( std::out_of_range& ) {}
     }
+}
+
+// Deep-copies a hero: stats / mana / cast flag come from the value copy,
+// while the army is rebuilt from polymorphic Unit clones so the copy
+// shares no unit objects with the source. Every old->new unit pointer is
+// recorded in @p remap so the board and round queues can be rewired.
+models::Hero cloneHeroDeep( const models::Hero& src,
+                                   std::unordered_map<const Unit*, Unit*>& remap ) {
+    models::Hero dst = src; // copies stats, mana, cast flag, (shallow) army
+    while ( ! dst.getArmy( ).getUnits( ).empty( ) ) {
+        dst.getArmy( ).removeUnit( 0 );
+    }
+    for ( const std::shared_ptr<Unit>& orig : src.getArmy( ).getUnits( ) ) {
+        if ( ! orig ) {
+            continue;
+        }
+        std::shared_ptr<Unit> cloned = orig->clone( );
+        remap[orig.get( )] = cloned.get( );
+        dst.getArmy( ).addUnit( cloned );
+    }
+    return dst;
 }
 
 } // namespace
@@ -102,6 +125,11 @@ models::Hero* GameManager::getCasterFor( const models::Unit& unit ) {
 }
 
 void GameManager::rollMoraleForActive( Unit* unit ) {
+    if ( ! moraleEnabled_ ) {
+        moraleTriggeredThisTurn_ = false;
+        lastMoraleRolledUnit_ = unit;
+        return;
+    }
     if ( unit == nullptr ) {
         lastMoraleRolledUnit_ = nullptr;
         moraleTriggeredThisTurn_ = false;
@@ -139,6 +167,10 @@ std::vector<Unit*> GameManager::getUnitsLeftInRound( ) const {
 
 std::vector<Unit*> GameManager::getUnitQueueInRound( ) const {
     return roundManager_.getUnitQueueInRound( );
+}
+
+bool GameManager::canCurrentUnitWait( ) const {
+    return roundManager_.currentUnitCanWait( );
 }
 
 std::vector<Hex*> GameManager::getAvailableDestinations( const Unit& unit ) const {
@@ -295,6 +327,74 @@ void GameManager::removeDeadUnit( Unit& unit ) {
     if ( it != allUnitsInBattle_.end( ) ) {
         allUnitsInBattle_.erase( it );
     }
+}
+
+int GameManager::sideOfUnit( const Unit& unit ) const {
+    if ( heroContainsUnit( blueHero_, unit ) ) {
+        return 0;
+    }
+    if ( heroContainsUnit( redHero_, unit ) ) {
+        return 1;
+    }
+    return -1;
+}
+
+std::unique_ptr<GameManager> GameManager::clone( ) const {
+    // Default ctor leaves heroes/units empty and binds the new round
+    // manager to the new (empty) allUnitsInBattle_ vector, which we then
+    // populate in place.
+    auto copy = std::make_unique<GameManager>( );
+
+    std::unordered_map<const Unit*, Unit*> remap;
+    copy->blueHero_ = cloneHeroDeep( blueHero_, remap );
+    copy->redHero_ = cloneHeroDeep( redHero_, remap );
+
+    // Rebuild the alive-units list in the same order, remapped to clones.
+    copy->allUnitsInBattle_.clear( );
+    copy->allUnitsInBattle_.reserve( allUnitsInBattle_.size( ) );
+    for ( Unit* original : allUnitsInBattle_ ) {
+        const auto it = remap.find( original );
+        if ( it != remap.end( ) ) {
+            copy->allUnitsInBattle_.push_back( it->second );
+        }
+    }
+
+    // Place living units (corpses are irrelevant to search logic).
+    for ( const std::shared_ptr<Unit>& u : copy->blueHero_.getArmy( ).getUnits( ) ) {
+        if ( u && u->getCount( ) > 0 ) {
+            placeUnitOnBoard( copy->board_, u );
+        }
+    }
+    for ( const std::shared_ptr<Unit>& u : copy->redHero_.getArmy( ).getUnits( ) ) {
+        if ( u && u->getCount( ) > 0 ) {
+            placeUnitOnBoard( copy->board_, u );
+        }
+    }
+
+    // Reproduce round number + the unactivated/waited scheduling.
+    copy->roundNumber_ = roundNumber_;
+    std::vector<Unit*> unactivated = roundManager_.snapshotUnactivated( );
+    std::vector<Unit*> waited = roundManager_.snapshotWaited( );
+    const auto remap_ptr = [&remap]( Unit* p ) -> Unit* {
+        const auto it = remap.find( p );
+        return it != remap.end( ) ? it->second : nullptr;
+    };
+    for ( Unit*& p : unactivated ) {
+        p = remap_ptr( p );
+    }
+    for ( Unit*& p : waited ) {
+        p = remap_ptr( p );
+    }
+    copy->roundManager_.restoreState( unactivated, waited );
+
+    // Search must be deterministic: no random morale bonus turns.
+    copy->moraleEnabled_ = false;
+    copy->moraleTriggeredThisTurn_ = false;
+    copy->lastMoraleRolledUnit_ = nullptr;
+    copy->moraleRolledUnitsThisRound_.clear( );
+    copy->moraleRoundTracked_ = roundNumber_;
+
+    return copy;
 }
 
 void GameManager::notifyUnitMaybeDied( models::Unit& unit ) {

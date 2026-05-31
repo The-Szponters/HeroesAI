@@ -31,6 +31,10 @@ add_executable(${PROJECT_NAME}
   src/models/SpellRegistry.cc
   src/core/ActionManager.cc
   src/core/SpellResolver.cc
+  src/core/ActionGenerator.cc
+  src/core/RandomBotService.cc
+  src/core/EasyBotService.cc
+  src/core/MinimaxBotService.cc
   src/core/RoundManager.cc
   src/core/GameManager.cc
   src/core/Settings.cc
@@ -68,9 +72,17 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets")
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# settings.cfg is copied by a dedicated ALL target rather than a
+# POST_BUILD step. POST_BUILD only runs when HeroesAI is relinked, so
+# editing only settings.cfg (no source change) would never trigger the
+# copy. An ALL custom target runs on every `cmake --build`, and
+# copy_if_different keeps it cheap (only copies when the file changed).
+add_custom_target(copy_settings ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/settings.cfg" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/settings.cfg")
+        "${CMAKE_SOURCE_DIR}/settings.cfg" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/settings.cfg"
+    COMMENT "Copying settings.cfg into the runtime directory")
+add_dependencies(copy_settings ${PROJECT_NAME})
 
 
 include(FetchContent)
@@ -89,12 +101,19 @@ add_executable(HeroesAITests
   src/models/test/ArmyTest.cc
   src/models/test/HeroTest.cc
   src/models/UnitFactory.cc
+  src/models/SpellRegistry.cc
   src/core/RoundManager.cc
   src/core/test/RoundManagerTest.cc
   src/core/ActionManager.cc
   src/core/test/ActionManagerTest.cc
+  src/core/SpellResolver.cc
+  src/core/ActionGenerator.cc
+  src/core/RandomBotService.cc
+  src/core/MinimaxBotService.cc
+  src/core/test/ActionGeneratorTest.cc
   src/core/GameManager.cc
   src/core/test/GameManagerTest.cc
+  src/core/test/MinimaxBotTest.cc
 )
 target_include_directories(HeroesAITests PRIVATE src/models)
 target_link_libraries(HeroesAITests GTest::gtest_main nlohmann_json::nlohmann_json)

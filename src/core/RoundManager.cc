@@ -87,6 +87,20 @@ void RoundManager::waitCurrentUnit( ) {
     }
 }
 
+bool RoundManager::currentUnitCanWait( ) const {
+    // The current unit can wait iff it is still in the unactivated
+    // phase. Copy the queue and discard skipped (dead / speed-0) units
+    // from the top so the check matches what getCurrentUnit would serve.
+    auto temp_unactivated = unactivatedUnits_;
+    while ( ! temp_unactivated.empty( ) ) {
+        if ( canAct( temp_unactivated.top( ) ) ) {
+            return true;
+        }
+        temp_unactivated.pop( );
+    }
+    return false;
+}
+
 std::vector<Unit*> RoundManager::getUnitsLeftInRound( ) const {
     std::vector<Unit*> left;
     auto temp_unactivated = unactivatedUnits_;
@@ -109,6 +123,46 @@ std::vector<Unit*> RoundManager::getUnitsLeftInRound( ) const {
     }
 
     return left;
+}
+
+std::vector<Unit*> RoundManager::snapshotUnactivated( ) const {
+    std::vector<Unit*> out;
+    auto temp = unactivatedUnits_;
+    while ( ! temp.empty( ) ) {
+        out.push_back( temp.top( ) );
+        temp.pop( );
+    }
+    return out;
+}
+
+std::vector<Unit*> RoundManager::snapshotWaited( ) const {
+    std::vector<Unit*> out;
+    auto temp = waitedUnits_;
+    while ( ! temp.empty( ) ) {
+        out.push_back( temp.top( ) );
+        temp.pop( );
+    }
+    return out;
+}
+
+void RoundManager::restoreState( const std::vector<Unit*>& unactivated,
+                                        const std::vector<Unit*>& waited ) {
+    while ( ! unactivatedUnits_.empty( ) ) {
+        unactivatedUnits_.pop( );
+    }
+    while ( ! waitedUnits_.empty( ) ) {
+        waitedUnits_.pop( );
+    }
+    for ( Unit* u : unactivated ) {
+        if ( u != nullptr ) {
+            unactivatedUnits_.push( u );
+        }
+    }
+    for ( Unit* u : waited ) {
+        if ( u != nullptr ) {
+            waitedUnits_.push( u );
+        }
+    }
 }
 
 std::vector<Unit*> RoundManager::getUnitQueueInRound( ) const {

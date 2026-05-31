@@ -5,12 +5,20 @@
  */
 #pragma once
 
+#include <future>
 #include <optional>
 #include <SFML/System/Vector2.hpp>
 #include <unordered_map>
 #include <unordered_set>
 
+#include "../core/ActionCommand.h"
+#include "../core/ActionGenerator.h"
+#include "../core/EasyBotService.h"
 #include "../core/GameManager.h"
+#include "../core/IBot.h"
+#include "../core/MinimaxBotService.h"
+#include "../core/PlayerType.h"
+#include "../core/RandomBotService.h"
 #include "../core/SpellResolver.h"
 #include "../models/Spell.h"
 #include "../views/IBattleView.h"
@@ -28,12 +36,25 @@ namespace presenters {
  */
 class BattlePresenter {
 public:
-    BattlePresenter( core::GameManager& model, views::IBattleView& view );
+    BattlePresenter( core::GameManager& model,
+                          views::IBattleView& view,
+                          core::PlayerType blue_player = core::PlayerType::Human,
+                          core::PlayerType red_player = core::PlayerType::Human,
+                          int minimax_depth = 4 );
 
     /**
      * @brief Initialises the view with the starting board state and highlights.
      */
     void startBattle( );
+
+    /**
+     * @brief Per-frame hook driving the AI.
+     *
+     * Called once each frame by BattleScene. When the battlefield is idle
+     * (no pending animations, not mid spell-targeting) and the active
+     * unit is bot-controlled, asks the bot for one action and executes it.
+     */
+    void update( );
 
     /**
      * @brief Handles a player click on a battlefield hex.
@@ -132,9 +153,34 @@ private:
 
     void handleSpellTargetClick( int q, int r );
 
+    // Cursor-independent action execution shared by player clicks and the
+    // bot. Each applies the model mutation and queues the matching visual
+    // event sequence, then advances the turn.
+    void executeMove( models::Unit& unit, models::Hex& move_head );
+    void executeMeleeAttack( models::Unit& attacker,
+                                  models::Unit& target,
+                                  models::Hex& approach );
+    void executeRangedAttack( models::Unit& attacker, models::Unit& target );
+    void executeCastSpell( models::SpellId id, models::Unit& target );
+    void executeWait( );
+    void executeDefend( );
+
+    // AI driving.
+    core::PlayerType playerTypeForUnit( const models::Unit& unit ) const;
+    core::IBot* botForUnit( const models::Unit& unit );
+    bool isUnitBotControlled( const models::Unit& unit ) const;
+    bool isActiveUnitBotControlled( ) const;
+    void executeCommand( const core::ActionCommand& command );
+
     core::GameManager& model_;
     views::IBattleView& view_;
     core::SpellResolver spellResolver_;
+    core::ActionGenerator actionGenerator_;
+    core::RandomBotService randomBot_;
+    core::EasyBotService easyBot_;
+    core::MinimaxBotService minimaxBot_;
+    core::PlayerType bluePlayer_ = core::PlayerType::Human;
+    core::PlayerType redPlayer_ = core::PlayerType::Human;
     bool rangePreviewActive_ = false;
     bool infoPanelVisible_ = false;
     bool isCastingSpell_ = false;
@@ -148,6 +194,15 @@ private:
     std::vector<models::Hex*> cachedDestinations_;
     std::unordered_set<std::int64_t> cachedDestinationsSet_;
     bool isDestinationCached( int q, int r ) const;
+
+    // Async AI search. While a search is in flight (botThinking_), update()
+    // and every input handler short-circuit so the worker thread is the
+    // sole accessor of the model -- the view renders cached data, never the
+    // live model. botFuture_ is declared LAST so its destructor (which
+    // blocks until the worker finishes) runs before the bot members it uses
+    // are torn down.
+    bool botThinking_ = false;
+    std::future<std::optional<core::ActionCommand>> botFuture_;
 };
 
 } // namespace presenters

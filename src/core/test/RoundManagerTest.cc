@@ -85,6 +85,22 @@ TEST_F( RoundManagerTest, GetUnitsLeftInRoundSizeCheck ) {
     EXPECT_EQ( rm_->getUnitsLeftInRound( ).size( ), 2 );
 }
 
+TEST_F( RoundManagerTest, CurrentUnitCanWaitReflectsPhase ) {
+    rm_->startRound( );
+
+    // Units still in the unactivated phase may wait.
+    EXPECT_TRUE( rm_->currentUnitCanWait( ) ); // u1 active, unactivated
+    rm_->waitCurrentUnit( );
+    EXPECT_TRUE( rm_->currentUnitCanWait( ) ); // u2 active, unactivated
+    rm_->waitCurrentUnit( );
+    EXPECT_TRUE( rm_->currentUnitCanWait( ) ); // u3 active, unactivated
+    rm_->endCurrentUnitTurn( );
+
+    // Now the current unit is served from the waited queue and may not
+    // wait again.
+    EXPECT_FALSE( rm_->currentUnitCanWait( ) );
+}
+
 TEST_F( RoundManagerTest, GetUnitQueueInRoundSorting ) {
     rm_->startRound( );
     std::vector<Unit*> queue = rm_->getUnitQueueInRound( );

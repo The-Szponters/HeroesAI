@@ -66,26 +66,32 @@ void applyRoster( Hero& hero,
 
 } // namespace
 
-Hero BattleScene::buildBlueHero( const ArmyConfig& army ) {
-    Hero hero( "Blue Hero", 10, 10, 10, 10 );
+Hero BattleScene::buildBlueHero( const ArmyConfig& army, const HeroConfig& hero_config ) {
+    Hero hero( "Blue Hero", hero_config.attack_, hero_config.defense_, hero_config.power_,
+               hero_config.knowledge_ );
     applyRoster( hero, army, K_BLUE_SLOT_POSITIONS );
     return hero;
 }
 
-Hero BattleScene::buildRedHero( const ArmyConfig& army ) {
-    Hero hero( "Red Hero", 10, 10, 10, 10 );
+Hero BattleScene::buildRedHero( const ArmyConfig& army, const HeroConfig& hero_config ) {
+    Hero hero( "Red Hero", hero_config.attack_, hero_config.defense_, hero_config.power_,
+               hero_config.knowledge_ );
     applyRoster( hero, army, K_RED_SLOT_POSITIONS );
     return hero;
 }
 
 BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
     : window_( window ),
-      blueHero_(
-          ( UnitFactory::init( "assets/units.json" ), buildBlueHero( settings.leftArmy_ ) ) ),
-      redHero_( buildRedHero( settings.rightArmy_ ) ),
+      blueHero_( ( UnitFactory::init( "assets/units.json" ),
+                   buildBlueHero( settings.leftArmy_, settings.blueHeroConfig_ ) ) ),
+      redHero_( buildRedHero( settings.rightArmy_, settings.redHeroConfig_ ) ),
       gameManager_( blueHero_, redHero_ ),
       view_( window ),
-      presenter_( gameManager_, view_ ) {
+      presenter_( gameManager_,
+                  view_,
+                  settings.bluePlayer_,
+                  settings.redPlayer_,
+                  settings.minimaxDepth_ ) {
     try {
         presenter_.startBattle( );
     } catch ( const std::exception& ) {}
@@ -94,6 +100,9 @@ BattleScene::BattleScene( sf::RenderWindow& window, const Settings& settings )
 void BattleScene::processEvents( ) {
     try {
         view_.processEvents( presenter_ );
+        // Drive the AI after input so a bot-controlled side acts on its
+        // own turn. update() no-ops while animations are still playing.
+        presenter_.update( );
     } catch ( ... ) {}
 }
 

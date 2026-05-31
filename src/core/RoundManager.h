@@ -27,8 +27,29 @@ public:
     void endCurrentUnitTurn( );
     void waitCurrentUnit( );
 
+    /**
+     * @brief Whether the current unit may still choose to wait this round.
+     *
+     * True only while the current unit is being served from the
+     * unactivated phase (i.e. it has not already waited). A unit acting
+     * from the waited queue can no longer wait -- calling waitCurrentUnit
+     * on it is a no-op, so the AI must exclude WAIT in that case.
+     */
+    bool currentUnitCanWait( ) const;
+
     std::vector<models::Unit*> getUnitsLeftInRound( ) const;
     std::vector<models::Unit*> getUnitQueueInRound( ) const;
+
+    // Raw queue contents (no dead/skip filtering), used by
+    // GameManager::clone to snapshot the exact round state. Order within
+    // each is irrelevant -- the heaps re-sort by speed on restore.
+    std::vector<models::Unit*> snapshotUnactivated( ) const;
+    std::vector<models::Unit*> snapshotWaited( ) const;
+
+    // Replaces both queues with the given (already pointer-remapped)
+    // units. Used when reconstructing a cloned battle state.
+    void restoreState( const std::vector<models::Unit*>& unactivated,
+                            const std::vector<models::Unit*>& waited );
 
 private:
     /**
