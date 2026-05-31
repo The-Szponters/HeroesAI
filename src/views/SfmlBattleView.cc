@@ -834,14 +834,31 @@ void SfmlBattleView::drawInfoPanel( ) {
     }
 
     // Stats block: right of the portrait, lower, with wider line spacing.
+    // Each stat shows its base value, plus the current value in parentheses
+    // when it differs (hero attack/defense bonus, spell buffs, etc.).
+    auto stat = []( int base, int total ) {
+        return base == total
+                   ? std::to_string( base )
+                   : std::to_string( base ) + " (" + std::to_string( total ) + ")";
+    };
+    auto dmg = []( int base_min, int base_max, int total_min, int total_max ) {
+        const std::string base = std::to_string( base_min ) + "-" + std::to_string( base_max );
+        if ( base_min == total_min && base_max == total_max ) {
+            return base;
+        }
+        return base + " (" + std::to_string( total_min ) + "-" + std::to_string( total_max ) + ")";
+    };
+
     std::ostringstream panel;
-    panel << "Attack: " << u.totalAttack_ << "\n"
-          << "Defense: " << u.totalDefense_ << "\n"
+    panel << "Attack: " << stat( u.baseAttack_, u.totalAttack_ ) << "\n"
+          << "Defense: " << stat( u.baseDefense_, u.totalDefense_ ) << "\n"
           << "Shoots left: " << ( u.isRanged_ ? std::to_string( u.ammo_ ) : "" ) << "\n"
-          << "Damage: " << u.totalDamageMin_ << "-" << u.totalDamageMax_ << "\n"
+          << "Damage: "
+          << dmg( u.baseDamageMin_, u.baseDamageMax_, u.totalDamageMin_, u.totalDamageMax_ )
+          << "\n"
           << "Health: " << u.maxHpPerUnit_ << "\n"
           << "Health left: " << u.currentTopUnitHp_ << "\n"
-          << "Speed: " << u.totalSpeed_;
+          << "Speed: " << stat( u.baseSpeed_, u.totalSpeed_ );
     infoPanelText_->setLineSpacing( K_STATS_LINE_SPACING );
     infoPanelText_->setString( panel.str( ) );
     infoPanelText_->setPosition(

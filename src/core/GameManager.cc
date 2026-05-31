@@ -70,19 +70,24 @@ GameManager::GameManager( const Hero& blue_hero, const Hero& red_hero )
     : blueHero_( blue_hero ),
       redHero_( red_hero ),
       roundManager_( allUnitsInBattle_ ) {
-    for ( const auto& unit_ptr : this->blueHero_.getArmy( ).getUnits( ) ) {
-        if ( unit_ptr ) {
+    // Each hero's attack / defense skill is granted to all of its stacks as
+    // a permanent flat bonus (HoMM3 rule), applied once at battle start.
+    auto enlist = [this]( const models::Hero& hero ) {
+        const int atk = hero.getAttack( );
+        const int def = hero.getDefense( );
+        for ( const auto& unit_ptr : hero.getArmy( ).getUnits( ) ) {
+            if ( ! unit_ptr ) {
+                continue;
+            }
+            if ( atk != 0 || def != 0 ) {
+                unit_ptr->applyBuff( models::BuffFactory::createHeroBonusBuff( atk, def ) );
+            }
             allUnitsInBattle_.push_back( unit_ptr.get( ) );
             placeUnitOnBoard( board_, unit_ptr );
         }
-    }
-
-    for ( const auto& unit_ptr : this->redHero_.getArmy( ).getUnits( ) ) {
-        if ( unit_ptr ) {
-            allUnitsInBattle_.push_back( unit_ptr.get( ) );
-            placeUnitOnBoard( board_, unit_ptr );
-        }
-    }
+    };
+    enlist( this->blueHero_ );
+    enlist( this->redHero_ );
 
     roundManager_.startRound( );
 }

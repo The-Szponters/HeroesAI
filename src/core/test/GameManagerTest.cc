@@ -65,4 +65,27 @@ TEST_F( GameManagerTest, AttackRemovesDeadUnit ) {
     EXPECT_EQ( std::find( units_left.begin( ), units_left.end( ), red_unit ), units_left.end( ) );
 }
 
+TEST( GameManagerHeroBonusTest, BoostsStacks ) {
+    auto blue_unit = std::make_shared<Unit>( "BlueUnit", 1, 10, 5, 50, 5, 10, 6, 3 );
+    blue_unit->setPosition( 0, 0, 0 );
+    Hero blue( "Blue", 4, 2, 0, 0 ); // hero attack +4, defense +2
+    blue.getArmy( ).addUnit( blue_unit );
+
+    auto red_unit = std::make_shared<Unit>( "RedUnit", 1, 5, 5, 50, 2, 5, 1, 3 );
+    red_unit->setPosition( 1, 0, -1 );
+    Hero red( "Red", 0, 0, 0, 0 ); // no hero skill
+    red.getArmy( ).addUnit( red_unit );
+
+    GameManager gm( blue, red );
+
+    Unit* b = gm.getBlueHero( ).getArmy( ).getUnits( )[0].get( );
+    EXPECT_EQ( b->getBaseAttack( ), 10 );        // intrinsic base unchanged
+    EXPECT_EQ( b->getAttack( ), 14 );            // base + hero attack
+    EXPECT_EQ( b->getBaseDefense( ), 5 );
+    EXPECT_EQ( b->getDefense( ), 7 );            // base + hero defense
+
+    Unit* r = gm.getRedHero( ).getArmy( ).getUnits( )[0].get( );
+    EXPECT_EQ( r->getAttack( ), r->getBaseAttack( ) ); // red hero grants nothing
+}
+
 } // namespace test

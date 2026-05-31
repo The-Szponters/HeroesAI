@@ -22,7 +22,8 @@ enum class BuffType {
     BLESS,
     STONE_SKIN,
     SHIELD,
-    DISRUPTING_RAY
+    DISRUPTING_RAY,
+    HERO_BONUS
 };
 
 /**
@@ -171,6 +172,19 @@ public:
         b.stackable_ = true;         // each cast adds another -3
         b.alignment_ = BuffAlignment::NEGATIVE;
         b.modifyDefense_ = []( int def ) { return def - 3; };
+        return b;
+    }
+
+    // The owning hero's attack / defense skill, applied as a permanent flat
+    // bonus on top of every stack's base stats (HoMM3 rule). Kept as a buff
+    // so it flows through recalculateStats and stacks correctly with spells.
+    static Buff createHeroBonusBuff( int attack_bonus, int defense_bonus ) {
+        Buff b;
+        b.type_ = BuffType::HERO_BONUS;
+        b.duration_ = -1; // lasts the whole battle
+        b.alignment_ = BuffAlignment::POSITIVE;
+        b.modifyAttack_ = [attack_bonus]( int atk ) { return atk + attack_bonus; };
+        b.modifyDefense_ = [defense_bonus]( int def ) { return def + defense_bonus; };
         return b;
     }
 };
