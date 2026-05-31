@@ -126,7 +126,7 @@ BattlePresenter::BattlePresenter( GameManager& model,
       spellResolver_( model ),
       actionGenerator_( model, spellResolver_ ),
       randomBot_( actionGenerator_ ),
-      easyBot_( actionGenerator_ ),
+      easyBot_( model, actionGenerator_ ),
       minimaxBot_( model, minimax_depth ),
       bluePlayer_( blue_player ),
       redPlayer_( red_player ) {}

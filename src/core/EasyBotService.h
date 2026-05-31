@@ -13,24 +13,25 @@
 
 namespace core {
 
+class GameManager;
+
 /**
  * @brief Heuristic AI with a fixed action-category preference.
  *
  * Each turn it casts a (random) spell whenever it can, otherwise it
  * prefers, in order: ranged attack, melee attack, wait, move, and
- * finally defend. Within the chosen category the concrete action (which
- * spell, which target, which hex) is picked at random, so it stays
- * unpredictable while behaving more purposefully than the pure random
- * bot. Implements IBot, so it is interchangeable with the other
- * strategies.
+ * finally defend. Attacks and spells pick a random target within the
+ * category; a move always heads toward the nearest enemy. Implements
+ * IBot, so it is interchangeable with the other strategies.
  */
 class EasyBotService : public IBot {
 public:
-    explicit EasyBotService( ActionGenerator& generator );
+    EasyBotService( GameManager& model, ActionGenerator& generator );
 
     std::optional<ActionCommand> decideAction( models::Unit& active_unit ) override;
 
 private:
+    GameManager& model_;
     ActionGenerator& generator_;
     std::mt19937 rng_{ std::random_device{ }( ) };
 };
