@@ -518,15 +518,21 @@ int ActionManager::calculateDamageWithAttack( const Unit& attacker,
         return 0;
 }
 
-    int total_base_damage = 0;
-    std::random_device rd;
-    std::mt19937 gen( rd( ) );
     const int dmg_min = std::max( 0, attacker.getDamageMin( ) );
     const int dmg_max = std::max( dmg_min, attacker.getDamageMax( ) );
-    std::uniform_int_distribution<> distrib( dmg_min, dmg_max );
 
-    for ( int i = 0; i < attacker.getCount( ); ++i ) {
-        total_base_damage += distrib( gen );
+    double total_base_damage = 0.0;
+    if ( deterministicDamage_ ) {
+        // Expected damage: every creature deals the range average.
+        total_base_damage =
+            attacker.getCount( ) * ( dmg_min + dmg_max ) / 2.0;
+    } else {
+        std::random_device rd;
+        std::mt19937 gen( rd( ) );
+        std::uniform_int_distribution<> distrib( dmg_min, dmg_max );
+        for ( int i = 0; i < attacker.getCount( ); ++i ) {
+            total_base_damage += distrib( gen );
+        }
     }
 
     double modifier = 1.0;

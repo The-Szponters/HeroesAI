@@ -418,12 +418,14 @@ std::unique_ptr<GameManager> GameManager::clone( ) const {
     }
     copy->roundManager_.restoreState( unactivated, waited );
 
-    // Search must be deterministic: no random morale bonus turns.
+    // Search must be deterministic: no random morale bonus turns and no
+    // random damage rolls -- attacks deal their expected (average) damage.
     copy->moraleEnabled_ = false;
     copy->moraleTriggeredThisTurn_ = false;
     copy->lastMoraleRolledUnit_ = nullptr;
     copy->moraleRolledUnitsThisRound_.clear( );
     copy->moraleRoundTracked_ = roundNumber_;
+    copy->actionManager_.setDeterministicDamage( true );
 
     return copy;
 }

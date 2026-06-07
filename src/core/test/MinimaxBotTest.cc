@@ -140,4 +140,25 @@ TEST( MinimaxBotTest, ShootsInsteadOfDefending ) {
     EXPECT_EQ( command->type_, core::ActionType::RANGED_ATTACK );
 }
 
+TEST( MinimaxBotTest, DecisionIsDeterministic ) {
+    // decideAction does not mutate the live model, and the search uses
+    // expected (not random) damage, so repeated calls on the same position
+    // must yield the identical action.
+    GameManager gm( makeBlue( ), makeRed( ) );
+    MinimaxBotService bot( gm, 3 );
+
+    Unit* active = gm.getCurrentUnit( );
+    ASSERT_NE( active, nullptr );
+
+    const auto a = bot.decideAction( *active );
+    const auto b = bot.decideAction( *active );
+    const auto c = bot.decideAction( *active );
+    ASSERT_TRUE( a.has_value( ) && b.has_value( ) && c.has_value( ) );
+    EXPECT_EQ( a->type_, b->type_ );
+    EXPECT_EQ( a->type_, c->type_ );
+    EXPECT_EQ( a->target_, b->target_ );
+    EXPECT_EQ( a->destQ_, b->destQ_ );
+    EXPECT_EQ( a->destR_, b->destR_ );
+}
+
 } // namespace test

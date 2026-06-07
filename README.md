@@ -37,9 +37,14 @@ libraries automatically during configuration — no manual installation is neede
 ## Prerequisites
 
 * **CMake** ≥ 3.20
-* A **C++23**-capable compiler (tested with `g++` 13).
-* SFML's system-level development headers (graphics/audio backends). On
-  Debian/Ubuntu:
+* A **C++23**-capable compiler.
+
+All other dependencies (SFML, nlohmann/json, GoogleTest) are fetched and built
+automatically by CMake — no manual installation needed. The project builds and
+runs on both **Linux** and **Windows**.
+
+**Linux** (tested on Ubuntu 24.04 LTS with `g++` 13) — install SFML's
+system-level development headers (graphics/audio backends):
 
 ```bash
 sudo apt update
@@ -48,17 +53,25 @@ sudo apt install -y build-essential cmake git \
     libudev-dev libopenal-dev libflac-dev libvorbis-dev libgl1-mesa-dev
 ```
 
-> Tested on **Ubuntu 24.04 LTS** with `g++` 13. On Ubuntu 22.04 LTS install a
-> C++23 compiler first (e.g. `sudo apt install g++-13` and pass
-> `-DCMAKE_CXX_COMPILER=g++-13`).
+> On Ubuntu 22.04 LTS install a C++23 compiler first (e.g. `sudo apt install
+> g++-13` and pass `-DCMAKE_CXX_COMPILER=g++-13`).
+
+**Windows** (tested with VS Code) — just CMake and a C++ compiler toolchain
+(MSVC from Visual Studio Build Tools, or MinGW). SFML's backends use built-in
+Windows system libraries, so no extra packages are required.
 
 ## Build
 
 All dependencies are fetched and built locally inside the build directory:
 
 ```bash
+# Linux (single-config generator — build type set at configure time)
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+
+# Windows (multi-config generator — build type set at build time)
+cmake -S . -B build
+cmake --build build --config Release
 ```
 
 ## Run
@@ -67,21 +80,27 @@ Run from the project root so the executable can find the `assets/` folder and
 `settings.cfg` (both are also copied next to the binary at build time):
 
 ```bash
+# Linux
 ./build/HeroesAI
+
+# Windows
+./build/Release/HeroesAI.exe
 ```
 
 ## Tests
 
 The project ships automated unit tests for the model and game-logic layers
-(creatures, board, army, hero, turn ordering, action rules, the action
-generator and the minimax bot). Build then run them with either:
+(board, army, hero, units, buffs and hero bonuses, the data-driven roster
+loader, turn ordering, movement and combat rules, the action generator,
+state-clone independence, the minimax bot and battle-end detection). Build,
+then run them with either:
 
 ```bash
-# directly
-./build/HeroesAITests
+# Linux
+ctest --test-dir build --output-on-failure              # or: ./build/HeroesAITests
 
-# or through CTest
-ctest --test-dir build --output-on-failure
+# Windows
+ctest --test-dir build -C Release --output-on-failure   # or: ./build/Release/HeroesAITests.exe
 ```
 
 ## Configuration
@@ -97,12 +116,6 @@ ctest --test-dir build --output-on-failure
 * `left_army` / `right_army` — starting stacks (`unit` name from
   `assets/units.json` and `count`); a `null` unit leaves the slot empty.
 
-## Controls
-
-* **Left click** a highlighted hex to move, or an enemy stack to attack from the
-  hovered approach hex.
-* **W** — wait, **D** — defend, **spell-book button** — open the spell book.
-* **Esc** / on-screen buttons — surrender or quit.
 
 ## Project Layout
 
@@ -114,7 +127,7 @@ src/
   views/        SFML rendering, .def sprite parsing, animation, input
   Main.cc       Entry point
 assets/         Creature data (units.json), sprites, backgrounds, UI, cursors
-settings.cfg    Match configuration
+settings.cfg    Game configuration
 ```
 
 The codebase follows a **Model–View–Presenter** structure: `core`/`models` hold

@@ -140,6 +140,19 @@ public:
     int calculateDamageWithAttack( const models::Unit& attacker,
                                        const models::Unit& defender,
                                        int attack_override ) const;
+
+    /**
+     * @brief Switches damage between random rolls and the expected value.
+     *
+     * The AI search (on cloned state) enables this so that simulated
+     * combat is deterministic -- each attack deals exactly the average of
+     * its damage range instead of a fresh random roll. The live battle
+     * keeps it disabled and rolls normally.
+     */
+    void setDeterministicDamage( bool enabled ) { deterministicDamage_ = enabled; }
+
+private:
+    bool deterministicDamage_ = false;
 };
 
 } // namespace core
