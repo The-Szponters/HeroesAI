@@ -1,7 +1,7 @@
 /**
  * @file BattleLayout.h
  * @brief Single source of truth for battle hex-grid layout constants.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

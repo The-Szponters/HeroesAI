@@ -1,7 +1,7 @@
 /**
  * @file DefManager.cc
  * @brief Implementation of the DEF resource cache and lookup.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include <algorithm>
 #include <cctype>

@@ -1,6 +1,7 @@
 /**
  * @file MinimaxBotTest.cc
  * @brief Tests for GameManager::clone independence and the Minimax bot.
+ * @author Lukasz Szydlik
  */
 #include "../GameManager.h"
 #include "../MinimaxBotService.h"

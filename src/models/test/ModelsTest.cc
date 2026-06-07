@@ -1,6 +1,7 @@
 /**
  * @file ModelsTest.cc
  * @brief Unit tests for Hex, Unit, RangeUnit and the buff system.
+ * @author Dominik Sledziewski
  */
 #include "../Hex.h"
 #include "../RangeUnit.h"

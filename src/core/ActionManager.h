@@ -1,7 +1,7 @@
 /**
  * @file ActionManager.h
  * @brief Movement, attack and defend rules executed against the board.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 #include <functional>

@@ -1,7 +1,7 @@
 /**
  * @file MinimaxBotService.h
  * @brief Depth-limited minimax (alpha-beta) battle AI.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

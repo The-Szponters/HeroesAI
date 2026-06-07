@@ -1,7 +1,7 @@
 /**
  * @file GameManager.cc
  * @brief Implementation of the battle facade and morale rolls.
- * @author Dominik Śledziewski
+ * @author Lukasz Szydlik
  */
 #include <algorithm>
 #include <memory>
@@ -342,6 +342,32 @@ int GameManager::sideOfUnit( const Unit& unit ) const {
         return 1;
     }
     return -1;
+}
+
+GameManager::BattleOutcome GameManager::getBattleOutcome( ) const {
+    int blue_alive = 0;
+    int red_alive = 0;
+    for ( const Unit* unit : allUnitsInBattle_ ) {
+        if ( unit == nullptr || unit->getCount( ) <= 0 ) {
+            continue;
+        }
+        const int side = sideOfUnit( *unit );
+        if ( side == 0 ) {
+            ++blue_alive;
+        } else if ( side == 1 ) {
+            ++red_alive;
+        }
+    }
+    if ( blue_alive > 0 && red_alive > 0 ) {
+        return BattleOutcome::ONGOING;
+    }
+    if ( blue_alive > 0 ) {
+        return BattleOutcome::BLUE_WINS;
+    }
+    if ( red_alive > 0 ) {
+        return BattleOutcome::RED_WINS;
+    }
+    return BattleOutcome::DRAW;
 }
 
 std::unique_ptr<GameManager> GameManager::clone( ) const {

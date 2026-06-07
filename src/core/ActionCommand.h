@@ -1,7 +1,7 @@
 /**
  * @file ActionCommand.h
  * @brief Discrete, evaluable representation of a single battle action.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

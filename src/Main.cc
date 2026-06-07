@@ -5,7 +5,7 @@
  * Constructs the SceneManager (which loads settings.cfg internally,
  * opens the SFML window, and runs the scene loop). The scene flow is
  * MainMenu -> [ArmySetup] -> Battle.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski & Lukasz Szydlik
  */
 #include "core/SceneManager.h"
 

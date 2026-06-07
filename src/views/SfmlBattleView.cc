@@ -1,7 +1,7 @@
 /**
  * @file SfmlBattleView.cc
  * @brief Implementation of the SFML-backed battle renderer.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include <algorithm>
 #include <array>
@@ -334,6 +334,7 @@ void SfmlBattleView::render( ) {
         drawSpellbookOverlay( );
     }
     drawCursor( );
+    drawGameOverBanner( );
 
     window_.display( );
 }
@@ -948,6 +949,41 @@ void SfmlBattleView::updateTurnOrder( const std::vector<TurnQueueSlot>& slots ) 
 
 void SfmlBattleView::showMessage( const std::string& msg ) {
     latestMessage_ = msg;
+}
+
+void SfmlBattleView::showGameOverBanner( const std::string& title,
+                                             const std::string& subtitle ) {
+    gameOverTitle_ = title;
+    gameOverSubtitle_ = subtitle;
+    gameOverBannerActive_ = true;
+}
+
+void SfmlBattleView::drawGameOverBanner( ) {
+    if ( ! gameOverBannerActive_ ) {
+        return;
+    }
+
+    // Dim the whole battlefield so the banner reads clearly.
+    sf::RectangleShape overlay( { screenWidth_, screenHeight_ } );
+    overlay.setFillColor( sf::Color( 0, 0, 0, 180 ) );
+    window_.draw( overlay );
+
+    // Helper: draw a string centered horizontally at the given y.
+    const auto draw_centered =
+        [this]( const std::string& str, unsigned int size, sf::Color color, float y ) {
+            sf::Text text( font_, str, size );
+            text.setFillColor( color );
+            text.setStyle( sf::Text::Bold );
+            const sf::FloatRect bounds = text.getLocalBounds( );
+            text.setOrigin( { bounds.position.x + bounds.size.x * 0.5f,
+                              bounds.position.y + bounds.size.y * 0.5f } );
+            text.setPosition( { screenWidth_ * 0.5f, y } );
+            window_.draw( text );
+        };
+
+    draw_centered( gameOverTitle_, 96, sf::Color( 220, 50, 50 ), screenHeight_ * 0.5f - 40.0f );
+    draw_centered( gameOverSubtitle_, 44, sf::Color( 235, 235, 235 ),
+                   screenHeight_ * 0.5f + 55.0f );
 }
 
 void SfmlBattleView::setActiveUnitHighlight( int q, int r, int size, bool is_facing_left ) {

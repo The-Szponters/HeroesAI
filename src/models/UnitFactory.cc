@@ -1,7 +1,7 @@
 /**
  * @file UnitFactory.cc
  * @brief Implementation of the data-driven Unit / RangeUnit factory.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include <fstream>
 #include <stdexcept>

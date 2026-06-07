@@ -1,7 +1,7 @@
 /**
  * @file BattleScene.cc
  * @brief Implementation of the battle scene wrapper.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "BattleScene.h"
 
@@ -113,11 +113,14 @@ void BattleScene::render( ) {
 }
 
 bool BattleScene::isFinished( ) const {
-    return ! window_.isOpen( ) || presenter_.isSurrenderRequested( );
+    return ! window_.isOpen( ) || presenter_.isSurrenderRequested( ) ||
+           presenter_.isReturnToMenuRequested( );
 }
 
 views::SceneId BattleScene::nextSceneId( ) const {
-    if ( presenter_.isSurrenderRequested( ) ) {
+    // Both surrender and the end-of-battle countdown send the player back
+    // to the main menu; only a closed window terminates the application.
+    if ( presenter_.isSurrenderRequested( ) || presenter_.isReturnToMenuRequested( ) ) {
         return views::SceneId::MAIN_MENU;
     }
     return views::SceneId::NONE;

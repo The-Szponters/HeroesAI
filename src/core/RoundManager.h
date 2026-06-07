@@ -1,7 +1,7 @@
 /**
  * @file RoundManager.h
  * @brief Per-round turn ordering for all units in a battle.
- * @author Dominik Śledziewski
+ * @author Lukasz Szydlik
  */
 #pragma once
 #include <queue>

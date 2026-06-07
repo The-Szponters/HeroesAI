@@ -1,7 +1,7 @@
 /**
  * @file RangeUnit.h
  * @brief Specialised Unit that can attack at range with limited ammo.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <algorithm>

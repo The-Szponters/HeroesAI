@@ -1,7 +1,7 @@
 /**
  * @file BattleScene.h
  * @brief IScene wrapper composing the battle MVP triad.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

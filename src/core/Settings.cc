@@ -1,7 +1,7 @@
 /**
  * @file Settings.cc
  * @brief Implementation of the JSON settings loader / saver.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "Settings.h"
 

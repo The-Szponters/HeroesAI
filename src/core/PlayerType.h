@@ -1,7 +1,7 @@
 /**
  * @file PlayerType.h
  * @brief Identifies who controls a battle side.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

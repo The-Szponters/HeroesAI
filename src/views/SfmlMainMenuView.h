@@ -1,7 +1,7 @@
 /**
  * @file SfmlMainMenuView.h
  * @brief Concrete SFML-backed main menu view.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

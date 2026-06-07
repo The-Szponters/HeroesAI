@@ -1,7 +1,7 @@
 /**
  * @file IArmySetupView.h
  * @brief Abstract view interface used by the army setup presenter.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

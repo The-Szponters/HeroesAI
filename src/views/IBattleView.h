@@ -4,7 +4,7 @@
  *
  * Defines the data and animation hooks required to render and animate
  * a battle, decoupling presenter logic from any concrete renderer.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 
@@ -113,6 +113,12 @@ public:
     };
     virtual void updateTurnOrder( const std::vector<TurnQueueSlot>& slots ) = 0;
     virtual void showMessage( const std::string& msg ) = 0;
+
+    // Shows a persistent, centered end-of-battle banner (e.g. title
+    // "GAME OVER" and subtitle "Blue player wins!"). It stays on screen
+    // until the battle scene is torn down.
+    virtual void showGameOverBanner( const std::string& title,
+                                       const std::string& subtitle ) = 0;
     virtual void setActiveUnitHighlight( int q, int r, int size, bool is_facing_left ) = 0;
     virtual void clearActiveUnitHighlight( ) = 0;
     virtual void

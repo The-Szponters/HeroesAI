@@ -1,7 +1,7 @@
 /**
  * @file MainMenuPresenter.cc
  * @brief Implementation of the main menu presenter.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include "MainMenuPresenter.h"
 

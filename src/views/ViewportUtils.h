@@ -1,7 +1,7 @@
 /**
  * @file ViewportUtils.h
  * @brief Helpers that map a fixed logical render area onto the OS window.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

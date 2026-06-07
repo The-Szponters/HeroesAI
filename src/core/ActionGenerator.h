@@ -1,7 +1,7 @@
 /**
  * @file ActionGenerator.h
  * @brief Enumerates every legal ActionCommand for the active unit + hero.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

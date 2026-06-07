@@ -1,7 +1,7 @@
 /**
  * @file Army.h
  * @brief Container for a hero's deployable unit stacks.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <memory>

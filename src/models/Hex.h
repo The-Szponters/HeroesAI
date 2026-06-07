@@ -1,7 +1,7 @@
 /**
  * @file Hex.h
  * @brief Single battlefield cell using cube (q, r, s) coordinates.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <algorithm>

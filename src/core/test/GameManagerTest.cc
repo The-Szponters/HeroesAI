@@ -1,6 +1,7 @@
 /**
  * @file GameManagerTest.cc
  * @brief Unit tests for the GameManager battle facade.
+ * @author Lukasz Szydlik
  */
 #include "../GameManager.h"
 #include "../../models/Army.h"
@@ -63,6 +64,29 @@ TEST_F( GameManagerTest, AttackRemovesDeadUnit ) {
 
     std::vector<Unit*> units_left = gm.getUnitsLeftInRound( );
     EXPECT_EQ( std::find( units_left.begin( ), units_left.end( ), red_unit ), units_left.end( ) );
+}
+
+TEST_F( GameManagerTest, OutcomeOngoingWhileBothSidesAlive ) {
+    GameManager gm( blue_, red_ );
+    EXPECT_EQ( gm.getBattleOutcome( ), GameManager::BattleOutcome::ONGOING );
+}
+
+TEST_F( GameManagerTest, OutcomeBlueWinsWhenRedWiped ) {
+    auto killer = std::make_shared<Unit>( "BlueKiller", 1, 200, 5, 50, 1000, 1000, 9, 1 );
+    killer->setPosition( 0, 0, 0 );
+    blue_.getArmy( ).removeUnit( 0 );
+    blue_.getArmy( ).addUnit( killer );
+
+    GameManager gm( blue_, red_ );
+    Unit* current = gm.getCurrentUnit( );
+    ASSERT_EQ( current->getName( ), "BlueKiller" );
+
+    Unit* red_unit = gm.getRedHero( ).getArmy( ).getUnits( )[0].get( );
+    Hex placeholder_hex( 0, 0, 0 );
+    gm.attack( *current, *red_unit, placeholder_hex );
+
+    // Red has no living stacks left -- the blue side has won.
+    EXPECT_EQ( gm.getBattleOutcome( ), GameManager::BattleOutcome::BLUE_WINS );
 }
 
 TEST( GameManagerHeroBonusTest, BoostsStacks ) {

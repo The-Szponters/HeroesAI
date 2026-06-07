@@ -1,7 +1,7 @@
 /**
  * @file BattlePresenter.cc
  * @brief Implementation of the MVP presenter for the battle screen.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include <chrono>
 #include <cmath>
@@ -138,6 +138,10 @@ void BattlePresenter::startBattle( ) {
 }
 
 void BattlePresenter::onHexClicked( int q, int r, bool ) {
+    // The battle is over -- the banner is up and input is frozen.
+    if ( gameOver_ ) {
+        return;
+    }
     // Ignore input while a bot search owns the model on a worker thread.
     if ( botThinking_ ) {
         return;
@@ -714,7 +718,7 @@ void BattlePresenter::cancelSpellTargeting( ) {
 }
 
 void BattlePresenter::onDefendClicked( ) {
-    if ( botThinking_ || isActiveUnitBotControlled( ) ) {
+    if ( gameOver_ || botThinking_ || isActiveUnitBotControlled( ) ) {
         return;
     }
     executeDefend( );
@@ -742,7 +746,7 @@ void BattlePresenter::executeDefend( ) {
 }
 
 void BattlePresenter::onWaitClicked( ) {
-    if ( botThinking_ || isActiveUnitBotControlled( ) ) {
+    if ( gameOver_ || botThinking_ || isActiveUnitBotControlled( ) ) {
         return;
     }
     executeWait( );
@@ -758,6 +762,29 @@ void BattlePresenter::onSurrenderClicked( ) {
 
 bool BattlePresenter::isSurrenderRequested( ) const {
     return surrenderRequested_;
+}
+
+bool BattlePresenter::isReturnToMenuRequested( ) const {
+    return returnToMenuRequested_;
+}
+
+void BattlePresenter::enterGameOver( core::GameManager::BattleOutcome outcome ) {
+    gameOver_ = true;
+    gameOverAt_ = std::chrono::steady_clock::now( );
+
+    std::string subtitle;
+    switch ( outcome ) {
+    case core::GameManager::BattleOutcome::BLUE_WINS:
+        subtitle = "Blue player wins!";
+        break;
+    case core::GameManager::BattleOutcome::RED_WINS:
+        subtitle = "Red player wins!";
+        break;
+    default:
+        subtitle = "Draw!";
+        break;
+    }
+    view_.showGameOverBanner( "GAME OVER", subtitle );
 }
 
 void BattlePresenter::executeWait( ) {
@@ -1596,7 +1623,7 @@ CursorStyle BattlePresenter::directionToCursor( float angle_deg ) const {
 // =========================================================================
 
 void BattlePresenter::onSpellbookClicked( ) {
-    if ( botThinking_ || view_.hasPendingVisualEvents( ) ) {
+    if ( gameOver_ || botThinking_ || view_.hasPendingVisualEvents( ) ) {
         return;
     }
     // The bot casts via executeCastSpell directly; ignore the human
@@ -1642,6 +1669,9 @@ void BattlePresenter::onSpellbookClicked( ) {
 }
 
 void BattlePresenter::onSpellChosen( models::SpellId id ) {
+    if ( gameOver_ ) {
+        return;
+    }
     view_.hideSpellbook( );
     pendingSpellId_ = id;
     isCastingSpell_ = true;
@@ -1816,11 +1846,29 @@ void BattlePresenter::update( ) {
         return;
     }
 
-    // 2. Drive the bot only when the battlefield is idle: animations drained
+    // 2. Battle already decided: hold the banner, then ask the scene to
+    //    return to the main menu once the delay has elapsed.
+    if ( gameOver_ ) {
+        if ( std::chrono::steady_clock::now( ) - gameOverAt_ >= K_GAME_OVER_DELAY ) {
+            returnToMenuRequested_ = true;
+        }
+        return;
+    }
+
+    // 3. Drive the bot only when the battlefield is idle: animations drained
     //    and not waiting on a spell target.
     if ( view_.hasPendingVisualEvents( ) || isCastingSpell_ ) {
         return;
     }
+
+    // 4. End-of-battle check, now that the last killing blow's death
+    //    animation has finished playing and the board is idle.
+    const core::GameManager::BattleOutcome outcome = model_.getBattleOutcome( );
+    if ( outcome != core::GameManager::BattleOutcome::ONGOING ) {
+        enterGameOver( outcome );
+        return;
+    }
+
     if ( ! isActiveUnitBotControlled( ) ) {
         return;
     }

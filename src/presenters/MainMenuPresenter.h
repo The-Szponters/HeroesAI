@@ -1,7 +1,7 @@
 /**
  * @file MainMenuPresenter.h
  * @brief Mediator handling main menu interactions.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

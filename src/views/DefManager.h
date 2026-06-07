@@ -1,7 +1,7 @@
 /**
  * @file DefManager.h
  * @brief Filesystem cache of parsed DEF animation resources.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

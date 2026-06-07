@@ -1,7 +1,7 @@
 /**
  * @file MainMenuScene.cc
  * @brief Implementation of the main-menu scene wrapper.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "MainMenuScene.h"
 

@@ -1,7 +1,7 @@
 /**
  * @file RandomBotService.cc
  * @brief Implementation of the uniform-random action bot.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "RandomBotService.h"
 

@@ -1,7 +1,7 @@
 /**
  * @file SceneManager.cc
  * @brief Implementation of the application-level scene orchestrator.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "SceneManager.h"
 

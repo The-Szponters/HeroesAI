@@ -1,7 +1,7 @@
 /**
  * @file IScene.h
  * @brief Abstract top-level application scene driven by the SceneManager.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

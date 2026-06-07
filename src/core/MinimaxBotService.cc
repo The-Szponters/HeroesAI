@@ -1,7 +1,7 @@
 /**
  * @file MinimaxBotService.cc
  * @brief Implementation of the alpha-beta minimax battle AI.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "MinimaxBotService.h"
 

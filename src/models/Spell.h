@@ -1,7 +1,7 @@
 /**
  * @file Spell.h
  * @brief Data structures describing a castable spell.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

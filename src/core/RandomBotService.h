@@ -1,7 +1,7 @@
 /**
  * @file RandomBotService.h
  * @brief A bot that picks a uniformly-random legal action.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

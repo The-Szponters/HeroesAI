@@ -1,7 +1,7 @@
 /**
  * @file MainMenuScene.h
  * @brief IScene wrapper composing the main-menu MVP triad.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

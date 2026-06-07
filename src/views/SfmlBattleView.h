@@ -1,7 +1,7 @@
 /**
  * @file SfmlBattleView.h
  * @brief Concrete SFML-backed battle view.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 
@@ -49,6 +49,7 @@ public:
     void updateHud( const std::string& unit_name, int count, int hp_left ) override;
     void updateTurnOrder( const std::vector<TurnQueueSlot>& slots ) override;
     void showMessage( const std::string& msg ) override;
+    void showGameOverBanner( const std::string& title, const std::string& subtitle ) override;
     void setActiveUnitHighlight( int q, int r, int size, bool is_facing_left ) override;
     void clearActiveUnitHighlight( ) override;
     void
@@ -106,6 +107,7 @@ private:
     void drawTurnQueue( );
     void drawInfoPanel( );
     void drawCursor( );
+    void drawGameOverBanner( );
 
     sf::Vector2f hexToPixel( int q, int r ) const;
     std::pair<int, int> pixelToHex( float x, float y ) const;
@@ -275,6 +277,12 @@ private:
     int hudCount_;
     int hudHpLeft_;
     std::string latestMessage_;
+
+    // End-of-battle banner. Once active it is drawn on top of everything
+    // each frame until the scene is destroyed.
+    bool gameOverBannerActive_ = false;
+    std::string gameOverTitle_;
+    std::string gameOverSubtitle_;
 
     std::vector<UnitRenderData> unitsToDraw_;
     std::vector<UnitRenderData> modelUnitsLatest_;

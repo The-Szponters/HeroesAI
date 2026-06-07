@@ -1,7 +1,7 @@
 /**
  * @file ArmySetupScene.cc
  * @brief Implementation of the army-setup scene wrapper.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "ArmySetupScene.h"
 

@@ -1,7 +1,7 @@
 /**
  * @file SceneManager.h
  * @brief Application-level scene orchestrator.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

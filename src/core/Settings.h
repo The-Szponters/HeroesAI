@@ -1,7 +1,7 @@
 /**
  * @file Settings.h
  * @brief Application-level configuration loaded from a JSON file.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

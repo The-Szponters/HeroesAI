@@ -1,6 +1,7 @@
 /**
  * @file ActionGeneratorTest.cc
  * @brief Unit tests for the AI legal-action generator.
+ * @author Lukasz Szydlik
  */
 #include "../ActionGenerator.h"
 #include "../GameManager.h"

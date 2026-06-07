@@ -1,6 +1,7 @@
 /**
  * @file UnitFactoryTest.cc
  * @brief Unit tests for the data-driven UnitFactory loader.
+ * @author Dominik Sledziewski
  */
 #include "../UnitFactory.h"
 #include <cstdio>

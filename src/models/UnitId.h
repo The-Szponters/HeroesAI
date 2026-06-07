@@ -4,7 +4,7 @@
  *
  * Used by the unit factory to look up data-driven unit definitions
  * (stats, ranged ammo, animation files) loaded from JSON at startup.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #pragma once
 

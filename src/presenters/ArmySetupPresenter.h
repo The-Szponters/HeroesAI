@@ -1,7 +1,7 @@
 /**
  * @file ArmySetupPresenter.h
  * @brief Mediator handling army setup interactions.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

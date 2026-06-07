@@ -1,7 +1,7 @@
 /**
  * @file Unit.h
  * @brief Stack of identical creatures that fights as a single entity.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <algorithm>

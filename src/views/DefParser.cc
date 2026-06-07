@@ -1,7 +1,7 @@
 /**
  * @file DefParser.cc
  * @brief Implementation of the legacy DEF binary format parser.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #include <cstddef>
 #include <iostream>

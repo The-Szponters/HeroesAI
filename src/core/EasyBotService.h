@@ -1,7 +1,7 @@
 /**
  * @file EasyBotService.h
  * @brief A bot that picks actions by a fixed category priority.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

@@ -1,7 +1,7 @@
 /**
  * @file UnitFactory.h
  * @brief Factory that builds Unit / RangeUnit instances from JSON data.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

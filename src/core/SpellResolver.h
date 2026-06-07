@@ -1,7 +1,7 @@
 /**
  * @file SpellResolver.h
  * @brief Executes hero spells against target units.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

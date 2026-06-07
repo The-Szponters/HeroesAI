@@ -1,10 +1,11 @@
 /**
  * @file BattlePresenter.h
  * @brief Mediator between the GameManager model and an IBattleView.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 
+#include <chrono>
 #include <future>
 #include <optional>
 #include <SFML/System/Vector2.hpp>
@@ -95,6 +96,10 @@ public:
     void onSurrenderClicked( );
     bool isSurrenderRequested( ) const;
 
+    // True once the end-of-battle banner has been shown for its full
+    // delay. The scene wrapper polls this to return to the main menu.
+    bool isReturnToMenuRequested( ) const;
+
 private:
     void cancelSpellTargeting( );
     void refreshUiForActiveUnit( );
@@ -170,6 +175,10 @@ private:
     void executeWait( );
     void executeDefend( );
 
+    // Enters the end-of-battle state: shows the banner with the winner and
+    // starts the countdown to the automatic return to the main menu.
+    void enterGameOver( core::GameManager::BattleOutcome outcome );
+
     // AI driving.
     core::PlayerType playerTypeForUnit( const models::Unit& unit ) const;
     core::IBot* botForUnit( const models::Unit& unit );
@@ -210,6 +219,13 @@ private:
     std::future<std::optional<core::ActionCommand>> botFuture_;
 
     bool surrenderRequested_ = false;
+
+    // End-of-battle state. Once gameOver_ is set the banner is up; after
+    // K_GAME_OVER_DELAY elapses the scene is asked to return to the menu.
+    static constexpr std::chrono::seconds K_GAME_OVER_DELAY{ 5 };
+    bool gameOver_ = false;
+    bool returnToMenuRequested_ = false;
+    std::chrono::steady_clock::time_point gameOverAt_;
 };
 
 } // namespace presenters

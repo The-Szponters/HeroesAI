@@ -1,7 +1,7 @@
 /**
  * @file SpellResolver.cc
  * @brief Implementation of spell validation and effect application.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "SpellResolver.h"
 

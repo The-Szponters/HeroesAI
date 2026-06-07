@@ -1,7 +1,7 @@
 /**
  * @file ArmySetupPresenter.cc
  * @brief Implementation of the army setup presenter.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include "ArmySetupPresenter.h"
 

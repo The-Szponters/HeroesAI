@@ -1,7 +1,7 @@
 /**
  * @file GameManager.h
  * @brief High-level battle controller -- the model the presenter talks to.
- * @author Dominik Śledziewski & Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 #include <memory>
@@ -43,6 +43,20 @@ public:
     // Side a unit belongs to: 0 = blue, 1 = red, -1 = neither. Used by
     // the Minimax evaluator to sign each stack's value.
     int sideOfUnit( const models::Unit& unit ) const;
+
+    // Result of the battle, derived from how many living units each side
+    // still has. ONGOING while both armies have at least one unit left.
+    enum class BattleOutcome {
+        ONGOING,
+        BLUE_WINS,
+        RED_WINS,
+        DRAW
+    };
+
+    // Inspects the living-unit list and reports whether one side has been
+    // wiped out. The presenter polls this once the battlefield is idle to
+    // trigger the end-of-battle banner.
+    BattleOutcome getBattleOutcome( ) const;
 
     // Deep, independent copy of the whole battle for AI search. Units,
     // board occupancy, hero mana/cast flags, round order and round number

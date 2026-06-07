@@ -1,6 +1,7 @@
 /**
  * @file RoundManagerTest.cc
  * @brief Unit tests for the RoundManager initiative ordering and waits.
+ * @author Lukasz Szydlik
  */
 #include "../RoundManager.h"
 #include "../../models/Unit.h"

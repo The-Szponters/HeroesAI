@@ -1,7 +1,7 @@
 /**
  * @file SpellRegistry.h
  * @brief Static catalogue of every implemented spell.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

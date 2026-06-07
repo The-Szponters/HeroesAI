@@ -1,6 +1,7 @@
 /**
  * @file ActionManagerTest.cc
  * @brief Unit tests for ActionManager move, attack and defend logic.
+ * @author Lukasz Szydlik
  */
 #include "../ActionManager.h"
 #include "../../models/Board.h"

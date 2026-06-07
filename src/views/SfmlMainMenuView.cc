@@ -1,7 +1,7 @@
 /**
  * @file SfmlMainMenuView.cc
  * @brief Implementation of the SFML-backed main menu renderer.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include <array>
 #include <optional>

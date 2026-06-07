@@ -1,7 +1,7 @@
 /**
  * @file Board.h
  * @brief Battlefield grid built out of axial-coordinate hex cells.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <cstddef>

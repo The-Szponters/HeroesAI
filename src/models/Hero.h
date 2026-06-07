@@ -1,7 +1,7 @@
 /**
  * @file Hero.h
  * @brief Hero entity that owns an army and provides primary stats.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <algorithm>

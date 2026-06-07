@@ -1,7 +1,7 @@
 /**
  * @file RoundManager.cc
  * @brief Implementation of round scheduling and the wait/initiative logic.
- * @author Dominik Śledziewski
+ * @author Lukasz Szydlik
  */
 #include <algorithm>
 

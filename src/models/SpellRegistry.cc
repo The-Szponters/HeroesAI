@@ -1,7 +1,7 @@
 /**
  * @file SpellRegistry.cc
  * @brief Implementation of the static spell catalogue.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "SpellRegistry.h"
 
@@ -12,7 +12,7 @@ namespace models {
 namespace {
 
 // Atlas geometry mirrors the creatures-portraits pattern: 58x58 cells
-// with a 5 px gap. 4 cols × 4 rows fits the 13 spells with a few empty
+// with a 5 px gap. 4 cols x 4 rows fits the 13 spells with a few empty
 // trailing slots -- the picker UI just ignores them.
 constexpr int K_CELL_W = 58;
 constexpr int K_CELL_H = 58;

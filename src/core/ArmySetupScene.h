@@ -1,7 +1,7 @@
 /**
  * @file ArmySetupScene.h
  * @brief IScene wrapper composing the army-setup MVP triad.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

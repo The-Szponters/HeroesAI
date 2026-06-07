@@ -1,7 +1,7 @@
 /**
  * @file SfmlArmySetupView.h
  * @brief Concrete SFML-backed army setup view.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 

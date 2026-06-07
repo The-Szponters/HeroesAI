@@ -1,7 +1,7 @@
 /**
  * @file ActionManager.cc
  * @brief Implementation of pathfinding and combat resolution rules.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include <algorithm>
 #include <limits>

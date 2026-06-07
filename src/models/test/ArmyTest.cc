@@ -1,6 +1,7 @@
 /**
  * @file ArmyTest.cc
  * @brief Unit tests for the Army class (capacity, add, remove).
+ * @author Dominik Sledziewski
  */
 #include "../Army.h"
 #include "../Unit.h"

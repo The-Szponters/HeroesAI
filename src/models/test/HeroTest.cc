@@ -1,6 +1,7 @@
 /**
  * @file HeroTest.cc
  * @brief Unit tests for the Hero class and its army integration.
+ * @author Dominik Sledziewski
  */
 #include "../Hero.h"
 #include <gtest/gtest.h>

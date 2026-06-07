@@ -1,7 +1,7 @@
 /**
  * @file EasyBotService.cc
  * @brief Implementation of the fixed-priority heuristic bot.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "EasyBotService.h"
 

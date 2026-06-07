@@ -1,7 +1,7 @@
 /**
  * @file AnimationController.h
  * @brief Per-unit sprite animation state machine.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #pragma once
 

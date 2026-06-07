@@ -1,7 +1,7 @@
 /**
  * @file SfmlArmySetupView.cc
  * @brief Implementation of the SFML-backed army setup renderer.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #include <array>
 #include <cmath>

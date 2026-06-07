@@ -1,7 +1,7 @@
 /**
  * @file AnimationController.cc
  * @brief Implementation of the unit-sprite animation state machine.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #include <algorithm>
 #include <cmath>

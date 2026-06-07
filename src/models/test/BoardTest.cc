@@ -1,6 +1,7 @@
 /**
  * @file BoardTest.cc
  * @brief Unit tests for the hex Board grid construction and lookup.
+ * @author Dominik Sledziewski
  */
 #include "../Board.h"
 #include <gtest/gtest.h>

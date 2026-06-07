@@ -1,7 +1,7 @@
 /**
  * @file Buff.h
  * @brief Temporary stat-modifying effects applied to units.
- * @author Dominik Śledziewski
+ * @author Dominik Sledziewski
  */
 #pragma once
 #include <cmath>

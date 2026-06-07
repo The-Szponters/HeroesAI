@@ -1,7 +1,7 @@
 /**
  * @file IBot.h
  * @brief Strategy interface for an AI that picks a battle action.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #pragma once
 

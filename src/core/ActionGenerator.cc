@@ -1,7 +1,7 @@
 /**
  * @file ActionGenerator.cc
  * @brief Implementation of legal-action enumeration.
- * @author Łukasz Szydlik
+ * @author Lukasz Szydlik
  */
 #include "ActionGenerator.h"
 

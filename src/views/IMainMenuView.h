@@ -1,7 +1,7 @@
 /**
  * @file IMainMenuView.h
  * @brief Abstract view interface used by the main menu presenter.
- * @author Łukasz Szydlik
+ * @author Dominik Sledziewski
  */
 #pragma once
 
